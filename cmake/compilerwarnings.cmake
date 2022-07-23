@@ -1,4 +1,4 @@
-function(set_project_warnings project_name)
+function(nui_set_project_warnings project_name)
   set(CLANG_WARNINGS
       -Wall
       -Wextra # reasonable and standard
