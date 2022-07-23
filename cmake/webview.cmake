@@ -1,5 +1,13 @@
 project(webview-git NONE)
 
+if(UNIX)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(
+        webkit2 REQUIRED webkit2gtk-4.0
+        IMPORTED_TARGET
+    )
+endif()
+
 include(FetchContent)
 FetchContent_Declare(
     webview_raw
@@ -9,6 +17,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(webview_raw)
 
+if (WIN32)
 add_custom_target(
     webview2_msys
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/_deps/webview2" 
@@ -21,6 +30,7 @@ add_custom_target(
     COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/_deps/webview2/build/native/x64/WebView2Loader.dll" "${CMAKE_BINARY_DIR}/bin"
     COMMAND_EXPAND_LISTS
 )
+endif()
 
 add_custom_target(
     webview_prep 
@@ -31,10 +41,22 @@ add_custom_target(
 
 add_library(webview INTERFACE)
 target_include_directories(webview INTERFACE "${CMAKE_BINARY_DIR}/include")
-target_include_directories(webview INTERFACE "${CMAKE_BINARY_DIR}/_deps/webview2/build/native/include")
-target_link_directories(webview INTERFACE "${CMAKE_BINARY_DIR}/_deps/webview2/build/native/x64")
+
+if (WIN32)
+    target_include_directories(webview INTERFACE "${CMAKE_BINARY_DIR}/_deps/webview2/build/native/include")
+    target_link_directories(webview INTERFACE "${CMAKE_BINARY_DIR}/_deps/webview2/build/native/x64")
+endif()
+
 add_dependencies(webview webview_prep)
 set_target_properties(webview PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES $<TARGET_PROPERTY:webview,INTERFACE_INCLUDE_DIRECTORIES>)
+
+target_link_libraries(
+    webview
+    INTERFACE
+        $<$<PLATFORM_ID:Linux>:
+            PkgConfig::webkit2
+        >
+)
 
 if (WIN32)
     # add_dependencies(webview webview2_msys)

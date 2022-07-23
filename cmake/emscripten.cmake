@@ -11,12 +11,24 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(emscripten)
 
-add_custom_target(
-    emscripten_setup
-    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/emscripten-src"
-    COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" install latest --build=Release
-    COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcc --generate-config"
-)
+if(UNIX)
+    add_custom_target(
+        emscripten_setup
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/emscripten-src"
+        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" install latest --build=Release
+        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" activate latest
+        COMMAND_EXPAND_LISTS
+    )
+else()
+    add_custom_target(
+        emscripten_setup
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/emscripten-src"
+        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" install latest --build=Release
+        #FIXME: properly generate config / get activate to work.
+        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcc --generate-config"
+        COMMAND_EXPAND_LISTS
+    )
+endif()
 
 list(APPEND CMAKE_PROGRAM_PATH "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten")
 
