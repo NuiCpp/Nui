@@ -32,13 +32,11 @@ target_link_libraries(
         project-warnings
 )
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    if (MSYS2_CLANG)
-        target_include_directories(nui-backend PUBLIC ${CMAKE_BINARY_DIR}/libs/webview2/build/native/include)
-        target_link_directories(nui-backend PUBLIC ${CMAKE_BINARY_DIR}/libs/webview2/build/native/x64)
-        target_link_libraries(nui-backend PUBLIC WebView2Loader.dll ole32 shell32 shlwapi user32)
-    endif()
+if (WIN32)
+    target_include_directories(nui-backend PUBLIC ${CMAKE_BINARY_DIR}/libs/webview2/build/native/include)
+    target_link_directories(nui-backend PUBLIC ${CMAKE_BINARY_DIR}/libs/webview2/build/native/x64)
+    target_link_libraries(nui-backend PUBLIC WebView2Loader.dll ole32 shell32 shlwapi user32)
 endif()
 
-apply_project_properties(nui-backend)
-apply_project_properties(nui-frontend)
+nui_set_target_output_directories(nui-backend)
+nui_set_target_output_directories(nui-frontend)

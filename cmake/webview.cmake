@@ -19,13 +19,14 @@ FetchContent_MakeAvailable(webview_raw)
 
 if (WIN32)
 add_custom_target(
-    webview2_win
-    ALL
+    webview2_msys
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/_deps/webview2" 
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bin"
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps"
     COMMAND curl -sSL "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2" -o temp.zip
-    COMMAND unzip -v -n "${CMAKE_BINARY_DIR}/temp.zip" -d "${CMAKE_BINARY_DIR}/_deps/webview2"
-    COMMAND rm "${CMAKE_BINARY_DIR}/temp.zip"
+    COMMAND rmdir --ignore-fail-on-non-empty "${CMAKE_BINARY_DIR}/_deps/webview2"
+    COMMAND unzip -n "${CMAKE_BINARY_DIR}/_deps/temp.zip" -d "${CMAKE_BINARY_DIR}/_deps/webview2"
+    COMMAND rm "${CMAKE_BINARY_DIR}/_deps/temp.zip"
     COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/_deps/webview2/build/native/x64/WebView2Loader.dll" "${CMAKE_BINARY_DIR}/bin"
     COMMAND_EXPAND_LISTS
 )
@@ -33,9 +34,8 @@ endif()
 
 add_custom_target(
     webview_prep 
-    ALL
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/include" 
-    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/_deps/webview_raw-src/webview.h" "${CMAKE_BINARY_DIR}/include/webview.h"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different  "${CMAKE_BINARY_DIR}/_deps/webview_raw-src/webview.h" "${CMAKE_BINARY_DIR}/include/webview.h"
     COMMAND_EXPAND_LISTS
 )
 
@@ -59,5 +59,5 @@ target_link_libraries(
 )
 
 if (WIN32)
-    add_dependencies(webview webview2_win)
+    # add_dependencies(webview webview2_msys)
 endif()

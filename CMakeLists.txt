@@ -13,5 +13,5 @@ include(./cmake/webview.cmake)
 add_subdirectory(nui/src/nui)
 
 if (${NUI_BUILD_EXAMPLES})
-    add_subdirectory(nui/examples)
+    add_subdirectory(examples)
 endif()
