@@ -1,0 +1,1 @@
+option(NUI_USE_EXTERNAL_EMSCRIPTEN "Use external emscripten?" off)
