@@ -14,12 +14,21 @@ target_compile_options(nui-basic PUBLIC "$<$<CONFIG:RELEASE>:${RELEASE_OPTIONS}>
 #nui_set_project_warnings(nui-basic)    
 
 if (EMSCRIPTEN)
+    # Link frontend of nui inside of emscripten
     target_link_libraries(nui-basic PRIVATE nui-frontend)
-    set_target_properties(nui-basic PROPERTIES LINK_FLAGS "-s DEMANGLE_SUPPORT=1 --no-entry --bind -s NO_EXIT_RUNTIME=1 --pre-js=\"../cmake/emsdk_prejs.js\"")
+
+    # insert --pre-js=\"../cmake/emsdk_prejs.js in the future
+    set_target_properties(nui-basic PROPERTIES LINK_FLAGS "-s DEMANGLE_SUPPORT=1 --no-entry --bind -s NO_EXIT_RUNTIME=1")
+
+    # Sets additional properties etc on the target.
+    nui_prepare_emscripten_target(nui-basic)    
 else()
+    # Link backend of nui outside of emscripten
     target_link_libraries(nui-basic PRIVATE nui-backend)
-    nui_add_emscripten_target(nui-basic)
+    
+    # Creates a target that is compiled through emscripten. This target becomes the frontend part.
+    nui_add_emscripten_target(nui-basic ${CMAKE_SOURCE_DIR} -DNUI_BUILD_EXAMPLES=on)
+
     # Use this to add more source files based on frontend/backend build
     # target_sources(nui-basic PRIVATE ${extra_file})
-    
 endif()

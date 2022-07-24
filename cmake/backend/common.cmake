@@ -1,0 +1,12 @@
+add_library(project-settings INTERFACE)
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  if (MSYS2_CLANG)
+    #find_library(GCC_ATOMIC NAMES atomic PATHS "/mingw64/bin" "/mingw64/lib")
+    #target_link_libraries(project-settings INTERFACE ${GCC_ATOMIC})
+  else()
+    target_link_libraries(project-settings INTERFACE atomic)
+  endif()
+  #target_link_libraries(project-settings INTERFACE)
+  #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libstdc++")
+endif()

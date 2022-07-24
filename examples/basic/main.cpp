@@ -1,3 +1,4 @@
+#include <nui/core.hpp>
 #include <nui/window.hpp>
 
 #include <iostream>
@@ -14,7 +15,7 @@ constexpr const auto html = R"NUIX(
     initialize();
 </script>)NUIX";
 
-int main()
+int EMSCRIPTEN_KEEPALIVE main()
 {
     Nui::Window window{"Basic Example"};
     window.setSize(480, 320, Nui::WebViewHint::WEBVIEW_HINT_NONE);

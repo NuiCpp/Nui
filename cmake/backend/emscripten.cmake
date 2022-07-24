@@ -30,19 +30,30 @@ else()
     )
 endif()
 
-list(APPEND CMAKE_PROGRAM_PATH "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten")
+if (${NUI_USE_EXTERNAL_EMSCRIPTEN})
+    set(EMCMAKE "emcmake")
+    set(EMMAKE "emmake")
+else()
+    set(EMCMAKE "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcmake")
+    set(EMMAKE "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emmake")
+    list(APPEND CMAKE_PROGRAM_PATH "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten")
+endif()
 
-function(nui_add_emscripten_target target)
-    set(externalProjectName "${target}-emscripten")
-    message("target ${target}")
-    get_target_property(sourceDir ${target} SOURCE_DIR)
-    message("sourceDir ${sourceDir}")
+function(nui_add_emscripten_target target sourceDir cmakeOptions)
+    if (sourceDir STREQUAL "")
+        get_target_property(sourceDir ${target} SOURCE_DIR)
+    endif()
     ExternalProject_Add(
-        "${target}_emscripten"
-        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/modules_${target}"
-        PREFIX "${CMAKE_CURRENT_BINARY_DIR}/modules_${target}"
+        "${target}-emscripten"
         SOURCE_DIR "${sourceDir}"
-        CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcmake cmake ${sourceDir}
-        BUILD_COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emmake make
+        CONFIGURE_COMMAND ${EMCMAKE} cmake ${cmakeOptions} ${sourceDir}
+        BUILD_COMMAND ${EMMAKE} make ${target}
+        BINARY_DIR "${CMAKE_BINARY_DIR}/modules_build"
+        INSTALL_COMMAND ""
+        INSTALL_COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modules ${CMAKE_BINARY_DIR}/modules
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different 
+            ${CMAKE_BINARY_DIR}/modules_build/bin/${target}.js 
+            ${CMAKE_BINARY_DIR}/modules_build/bin/${target}.wasm
+            ${CMAKE_BINARY_DIR}/modules
     )
 endfunction()

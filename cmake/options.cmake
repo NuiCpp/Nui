@@ -1,1 +1,1 @@
-option(NUI_BUILD_EXAMPLES "Build examples?" off)
+option(NUI_USE_EXTERNAL_EMSCRIPTEN "Use external emscripten?" off)
