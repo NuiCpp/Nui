@@ -1,3 +1,4 @@
+#include <nui/core.hpp>
 #include <nui/window.hpp>
 
 #include <iostream>
@@ -14,6 +15,7 @@ constexpr const auto html = R"NUIX(
     initialize();
 </script>)NUIX";
 
+EMSCRIPTEN_KEEPALIVE
 int main()
 {
     Nui::Window window{"Basic Example"};
