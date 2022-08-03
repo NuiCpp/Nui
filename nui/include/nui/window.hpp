@@ -31,6 +31,7 @@ namespace Nui
         void navigate(const std::string& url);
         void run();
         void terminate();
+        void loadFrontend(std::string_view front);
         // eval
         // init
         // bind

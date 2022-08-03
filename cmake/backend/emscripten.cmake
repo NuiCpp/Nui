@@ -43,17 +43,17 @@ function(nui_add_emscripten_target target sourceDir cmakeOptions)
     if (sourceDir STREQUAL "")
         get_target_property(sourceDir ${target} SOURCE_DIR)
     endif()
+    string(REPLACE "-" "_" target_normalized ${target})
     ExternalProject_Add(
         "${target}-emscripten"
         SOURCE_DIR "${sourceDir}"
         CONFIGURE_COMMAND ${EMCMAKE} cmake ${cmakeOptions} ${sourceDir}
         BUILD_COMMAND ${EMMAKE} make ${target}
-        BINARY_DIR "${CMAKE_BINARY_DIR}/modules_build"
+        COMMAND ${CMAKE_BINARY_DIR}/tools/bin2hpp/bin2hpp ${CMAKE_BINARY_DIR}/module_build/bin/${target}.js ${CMAKE_BINARY_DIR}/include/${target_normalized}.hpp ${target_normalized}
+        BINARY_DIR "${CMAKE_BINARY_DIR}/module_build"
+        BUILD_ALWAYS 1
         INSTALL_COMMAND ""
-        INSTALL_COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/modules ${CMAKE_BINARY_DIR}/modules
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different 
-            ${CMAKE_BINARY_DIR}/modules_build/bin/${target}.js 
-            ${CMAKE_BINARY_DIR}/modules_build/bin/${target}.wasm
-            ${CMAKE_BINARY_DIR}/modules
     )
+    add_dependencies(${target} ${target}-emscripten)
+    add_dependencies(${target}-emscripten bin2hpp)
 endfunction()

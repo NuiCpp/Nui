@@ -21,6 +21,8 @@ done
 # Go to build dir
 CURDIR=$(basename $PWD)
 BUILD_DIR="build/${CCOMPILER}_${BUILD_TYPE,,}"
+SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+WORKSPACE=${SCRIPTPATH%/*}
 if [[ $CURDIR == "scripts" ]]; then
   cd ..
 fi
@@ -59,6 +61,10 @@ cmake \
   -DCMAKE_CXX_STANDARD=20 \
   ../..
 
+if [ ! -d ./_deps/emscripten-src/upstream ]; then
+  make emscripten_setup
+fi
+
 cd ../..
 node ./scripts/copy_compile_commands.js
 cd ${BUILD_DIR}
@@ -66,6 +72,7 @@ make -j$THREADS
 
 mkdir -p module
 cd module
-../_deps/emscripten-src/emsdk_env.sh
+../_deps/emscripten-src/emsdk_env.sh > /dev/null 2>&1
+export PATH="$PATH:${WORKSPACE}/${BUILD_DIR}/_deps/emscripten-src/upstream/emscripten"
 emcmake cmake -DCMAKE_CXX_STANDARD=20 -DCMAKE_BUILD_TYPE=$BUILD_TYPE ../../..
 emmake make -j$THREADS

@@ -17,9 +17,6 @@ if (EMSCRIPTEN)
     # Link frontend of nui inside of emscripten
     target_link_libraries(nui-basic PRIVATE nui-frontend)
 
-    # insert --pre-js=\"../cmake/emsdk_prejs.js in the future
-    set_target_properties(nui-basic PROPERTIES LINK_FLAGS "-s DEMANGLE_SUPPORT=1 --no-entry --bind -s NO_EXIT_RUNTIME=1")
-
     # Sets additional properties etc on the target.
     nui_prepare_emscripten_target(nui-basic)    
 else()

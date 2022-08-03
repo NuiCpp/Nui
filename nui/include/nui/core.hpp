@@ -4,6 +4,9 @@
 #    include <emscripten/emscripten.h>
 #    include <emscripten/val.h>
 #    include <emscripten/bind.h>
+#    define NUI_FRONTEND
+#else
+#    define NUI_BACKEND
 #endif
 
 #ifndef __EMSCRIPTEN__
