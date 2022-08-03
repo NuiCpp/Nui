@@ -4,8 +4,9 @@ project(nui VERSION 0.1.0)
 
 include(./cmake/common.cmake)
 include(./cmake/options.cmake)
+include(./cmake/stlab.cmake)
 if (EMSCRIPTEN)
-    message("CMake is called from escripten")
+    message("CMake is called from emscripten")
     include(./cmake/frontend/common.cmake)
     include(./cmake/frontend/options.cmake)
     include(./cmake/frontend/emscripten.cmake)
@@ -15,6 +16,7 @@ else()
     include(./cmake/backend/options.cmake)
     include(./cmake/backend/emscripten.cmake)
     include(./cmake/webview.cmake)
+    include(./cmake/fmt.cmake)
 endif()
 
 # Submodules

@@ -22,6 +22,8 @@ if (EMSCRIPTEN)
 else()
     # Link backend of nui outside of emscripten
     target_link_libraries(nui-basic PRIVATE nui-backend)
+
+    nui_set_target_output_directories(nui-basic)
     
     # Creates a target that is compiled through emscripten. This target becomes the frontend part.
     nui_add_emscripten_target(nui-basic ${CMAKE_SOURCE_DIR} -DNUI_BUILD_EXAMPLES=on)

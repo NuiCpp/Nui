@@ -47,7 +47,7 @@ function(nui_add_emscripten_target target sourceDir cmakeOptions)
     ExternalProject_Add(
         "${target}-emscripten"
         SOURCE_DIR "${sourceDir}"
-        CONFIGURE_COMMAND ${EMCMAKE} cmake ${cmakeOptions} ${sourceDir}
+        CONFIGURE_COMMAND ${EMCMAKE} cmake -DCMAKE_CXX_STANDARD=20 ${cmakeOptions} ${sourceDir}
         BUILD_COMMAND ${EMMAKE} make ${target}
         COMMAND ${CMAKE_BINARY_DIR}/tools/bin2hpp/bin2hpp ${CMAKE_BINARY_DIR}/module_build/bin/${target}.js ${CMAKE_BINARY_DIR}/include/${target_normalized}.hpp ${target_normalized}
         BINARY_DIR "${CMAKE_BINARY_DIR}/module_build"

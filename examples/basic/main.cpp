@@ -1,31 +1,55 @@
 #include <nui/core.hpp>
 #include <nui/window.hpp>
+#include <nui/dom.hpp>
+#include <nui/elements.hpp>
+#include <nui/attributes.hpp>
 
-#ifndef NUI_FRONTEND
+// FIXME: eradicate ifdef
+#ifdef NUI_BACKEND
 #    include <nui_basic.hpp>
+#else
+#    include <emscripten/val.h>
 #endif
 
 #include <iostream>
 #include <string_view>
 
+using namespace Nui;
+
 int EMSCRIPTEN_KEEPALIVE main()
 {
-    Nui::Window window{"Basic Example"};
+    Window window{"Basic Example"};
     window.setSize(480, 320, Nui::WebViewHint::WEBVIEW_HINT_NONE);
 
-#ifndef NUI_FRONTEND
+// FIXME: eradicate ifdef
+#ifdef NUI_BACKEND
     window.loadFrontend(nui_basic());
+#else
+    Dom dom;
+
+    using Nui::div; // there is a global symbol named div
+
+    // clang-format off
+    const auto body = div{
+        style = "background-color: #ff0000;"
+    }(
+        div{
+            id = "hi"
+        }
+    );
+    // clang-format on
+
+    dom.root(body);
 #endif
-
-    // w.bind("increment", [&](const std::string& s) -> std::string {
-    //     auto count_string = std::to_string(++count);
-    //     std::cout << count_string << "\n";
-    //     return "{\"count\": " + count_string + "}";
-    // });
-    // w.set_html(html);
-    // w.run();
-
     window.run();
 
     return 0;
 }
+
+// FIXME: eradicate ifdef
+#ifdef NUI_FRONTEND
+EMSCRIPTEN_BINDINGS(mymod)
+{
+    emscripten::function("main", &main);
+}
+#endif
