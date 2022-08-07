@@ -25,7 +25,7 @@ int EMSCRIPTEN_KEEPALIVE main()
 #ifdef NUI_BACKEND
     window.loadFrontend(nui_basic());
 #else
-    Dom dom;
+    thread_local Dom::Dom dom;
 
     using Nui::div; // there is a global symbol named div
 
@@ -38,8 +38,6 @@ int EMSCRIPTEN_KEEPALIVE main()
         }
     );
     // clang-format on
-
-    dom.root(body);
 #endif
     window.run();
 

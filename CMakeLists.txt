@@ -4,7 +4,6 @@ project(nui VERSION 0.1.0)
 
 include(./cmake/common.cmake)
 include(./cmake/options.cmake)
-include(./cmake/stlab.cmake)
 if (EMSCRIPTEN)
     message("CMake is called from emscripten")
     include(./cmake/frontend/common.cmake)
