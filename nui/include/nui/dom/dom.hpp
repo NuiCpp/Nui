@@ -23,12 +23,14 @@ namespace Nui::Dom
     class Dom
     {
       public:
-        Dom() = default;
+        Dom();
         Dom(const Dom&) = default;
         Dom(Dom&&) = default;
         Dom& operator=(const Dom&) = default;
         Dom& operator=(Dom&&) = default;
         ~Dom() = default;
+
+        Element& root();
 
       private:
         Element root_;

@@ -14,19 +14,22 @@ namespace Nui::Dom
     class Element
     {
       public:
-        using iterator = std::vector<std::shared_ptr<Element>>::iterator;
-        using const_iterator = std::vector<std::shared_ptr<Element>>::const_iterator;
+        using collection_type = std::vector<std::shared_ptr<Element>>;
+        using iterator = collection_type::iterator;
+        using const_iterator = collection_type::const_iterator;
 
         template <typename T, typename... Attributes>
         Element(HtmlElement<T, Attributes...> const& element)
             : type_{T::name}
-            , element_{emscripten::val::global("document").call<emscripten::val>("createElement", type_)}
+            , element_{emscripten::val::global("document")
+                           .call<emscripten::val>("createElement", emscripten::val{type_})}
             , children_{}
         {
-            for (auto const& attribute : element.attributes)
-            {
-                element_.set(attribute.name, attribute.value);
-            }
+            std::apply(
+                [this](auto const&... attribute) {
+                    (..., element_.set(attribute.name(), attribute.value()));
+                },
+                element.attributes());
         }
 
         template <typename T>
@@ -62,20 +65,37 @@ namespace Nui::Dom
         template <typename U, typename... Attributes>
         void appendElement(HtmlElement<U, Attributes...> const& element)
         {
-            children_.emplace_back(std::make_shared<Element>(element));
-            element_.call<emscripten::val>("appendChild", element);
+            auto elem = std::make_shared<Element>(element);
+            element_.call<emscripten::val>("appendChild", elem->element_);
+            children_.emplace_back(std::move(elem));
+        }
+
+        template <typename... Elements>
+        void appendElement(std::tuple<Elements...> const& elements)
+        {
+            std::apply(
+                [this](auto const&... element) {
+                    (appendElement(element), ...);
+                },
+                elements);
         }
 
         template <typename U, typename... Attributes>
         void insert(iterator where, HtmlElement<U, Attributes...> const& element)
         {
-            element_.call<emscripten::val>("insertBefore", element, where->element_);
-            children_.insert(where, Element{element});
+            auto elem = std::make_shared<Element>(element);
+            element_.call<emscripten::val>("insertBefore", elem->element_, (*where)->element_);
+            children_.insert(where, std::move(elem));
+        }
+
+        emscripten::val& val()
+        {
+            return element_;
         }
 
       private:
         char const* type_;
         emscripten::val element_;
-        std::vector<std::shared_ptr<Element>> children_;
+        collection_type children_;
     };
 }

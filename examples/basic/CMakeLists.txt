@@ -18,7 +18,7 @@ if (EMSCRIPTEN)
     target_link_libraries(nui-basic PRIVATE nui-frontend)
 
     # Sets additional properties etc on the target.
-    nui_prepare_emscripten_target(nui-basic)    
+    nui_prepare_emscripten_target(nui-basic ${CMAKE_CURRENT_SOURCE_DIR}/module.js)    
 else()
     # Link backend of nui outside of emscripten
     target_link_libraries(nui-basic PRIVATE nui-backend)
@@ -26,7 +26,7 @@ else()
     nui_set_target_output_directories(nui-basic)
     
     # Creates a target that is compiled through emscripten. This target becomes the frontend part.
-    nui_add_emscripten_target(nui-basic ${CMAKE_SOURCE_DIR} -DNUI_BUILD_EXAMPLES=on)
+    nui_add_emscripten_target(nui-basic ${CMAKE_CURRENT_SOURCE_DIR}/module.js ${CMAKE_SOURCE_DIR} -DNUI_BUILD_EXAMPLES=on)
 
     # Use this to add more source files based on frontend/backend build
     # target_sources(nui-basic PRIVATE ${extra_file})

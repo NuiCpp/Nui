@@ -9,11 +9,16 @@ namespace Nui
     class Attribute
     {
       public:
-        using discrete_attributes = DiscreteAttribute;
+        using discrete_attribute = DiscreteAttribute;
 
         Attribute(T value)
             : value_{std::move(value)}
         {}
+
+        constexpr static char const* name()
+        {
+            return discrete_attribute::name;
+        }
 
         Attribute(Attribute const&) = default;
         Attribute(Attribute&&) = default;

@@ -7,9 +7,18 @@ namespace Nui
 {
     namespace
     {
-        constexpr const auto htmlTemplate = R"NUIX(
-        <div id="root">hello</div>
-        <script>{}</script>)NUIX";
+        constexpr std::string_view htmlTemplate = R"NUIX(
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Nui</title>
+                <script defer>{}</script>
+            </head>
+            <body>
+            </body>
+        )NUIX";
     }
     //#####################################################################################################################
     struct Window::Implementation

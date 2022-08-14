@@ -39,7 +39,7 @@ else()
     list(APPEND CMAKE_PROGRAM_PATH "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten")
 endif()
 
-function(nui_add_emscripten_target target sourceDir cmakeOptions)
+function(nui_add_emscripten_target target prejs sourceDir cmakeOptions)
     if (sourceDir STREQUAL "")
         get_target_property(sourceDir ${target} SOURCE_DIR)
     endif()
@@ -56,4 +56,12 @@ function(nui_add_emscripten_target target sourceDir cmakeOptions)
     )
     add_dependencies(${target} ${target}-emscripten)
     add_dependencies(${target}-emscripten bin2hpp)
+    add_custom_target(
+        prejs ALL
+        DEPENDS ${prejs}
+    )
+    add_dependencies(
+        ${target}-emscripten
+        prejs
+    )
 endfunction()

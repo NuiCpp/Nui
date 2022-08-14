@@ -21,6 +21,11 @@ namespace Nui
             return std::make_tuple(std::forward<ElementT>(elements)...);
         }
 
+        std::tuple<Attributes...> const& attributes() const
+        {
+            return attributes_;
+        }
+
       private:
         std::tuple<Attributes...> attributes_;
     };

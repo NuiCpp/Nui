@@ -1,14 +1,14 @@
 #include <nui/core.hpp>
 #include <nui/window.hpp>
-#include <nui/dom.hpp>
-#include <nui/elements.hpp>
-#include <nui/attributes.hpp>
 
 // FIXME: eradicate ifdef
 #ifdef NUI_BACKEND
 #    include <nui_basic.hpp>
 #else
 #    include <emscripten/val.h>
+#    include <nui/dom/dom.hpp>
+#    include <nui/elements.hpp>
+#    include <nui/attributes.hpp>
 #endif
 
 #include <iostream>
@@ -37,7 +37,9 @@ int EMSCRIPTEN_KEEPALIVE main()
             id = "hi"
         }
     );
-    // clang-format on
+
+    dom.root().appendElement(body);
+    //  clang-format on
 #endif
     window.run();
 

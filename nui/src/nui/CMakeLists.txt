@@ -13,8 +13,6 @@ if (EMSCRIPTEN)
         nui-frontend
         PRIVATE
             project-warnings
-        PUBLIC
-            stlab
     )
     nui_set_target_output_directories(nui-frontend)
 else()
@@ -36,7 +34,6 @@ else()
             fmt
         PUBLIC
             webview
-            stlab
     )
     if (WIN32)
         target_include_directories(nui-backend PUBLIC ${CMAKE_BINARY_DIR}/libs/webview2/build/native/include)
