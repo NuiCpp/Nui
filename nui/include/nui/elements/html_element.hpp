@@ -1,16 +1,34 @@
 #pragma once
 
-namespace Nui::Elements
+#include <tuple>
+#include <utility>
+
+namespace Nui
 {
+    template <typename Derived, typename... Attributes>
     class HtmlElement
     {
-    public:
-        template <typename... Attributes>
-        HtmlElement(Attributes&&... attributes)
+      public:
+        friend class DomElement;
+
+        constexpr HtmlElement(Attributes&&... attributes)
+            : attributes_{std::move(attributes)...}
+        {}
+
+        template <typename... ElementT>
+        constexpr auto operator()(ElementT&&... elements) &&
         {
+            return [this, children = std::make_tuple(std::forward<ElementT>(elements)...)](auto& materializedElement) {
+                materializedElement.appendElement(*this)->appendElements(children);
+            };
         }
 
-    private:
-        std::vector <std::string> attributes;
+        std::tuple<Attributes...> const& attributes() const
+        {
+            return attributes_;
+        }
+
+      private:
+        std::tuple<Attributes...> attributes_;
     };
 }

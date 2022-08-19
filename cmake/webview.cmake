@@ -18,18 +18,18 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(webview_raw)
 
 if (WIN32)
-add_custom_target(
-    webview2_msys
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/_deps/webview2" 
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bin"
-    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps"
-    COMMAND curl -sSL "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2" -o temp.zip
-    COMMAND rmdir --ignore-fail-on-non-empty "${CMAKE_BINARY_DIR}/_deps/webview2"
-    COMMAND unzip -n "${CMAKE_BINARY_DIR}/_deps/temp.zip" -d "${CMAKE_BINARY_DIR}/_deps/webview2"
-    COMMAND rm "${CMAKE_BINARY_DIR}/_deps/temp.zip"
-    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/_deps/webview2/build/native/x64/WebView2Loader.dll" "${CMAKE_BINARY_DIR}/bin"
-    COMMAND_EXPAND_LISTS
-)
+    add_custom_target(
+        webview2_msys
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/_deps/webview2" 
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bin"
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps"
+        COMMAND curl -sSL "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2" -o temp.zip
+        COMMAND rmdir --ignore-fail-on-non-empty "${CMAKE_BINARY_DIR}/_deps/webview2"
+        COMMAND unzip -n "${CMAKE_BINARY_DIR}/_deps/temp.zip" -d "${CMAKE_BINARY_DIR}/_deps/webview2"
+        COMMAND rm "${CMAKE_BINARY_DIR}/_deps/temp.zip"
+        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/_deps/webview2/build/native/x64/WebView2Loader.dll" "${CMAKE_BINARY_DIR}/bin"
+        COMMAND_EXPAND_LISTS
+    )
 endif()
 
 add_custom_target(

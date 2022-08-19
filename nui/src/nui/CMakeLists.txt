@@ -1,6 +1,7 @@
 if (EMSCRIPTEN)
     add_library(nui-frontend
         STATIC
+            frontend/dom/dom.cpp
             frontend/window.cpp
     )
     target_include_directories(
