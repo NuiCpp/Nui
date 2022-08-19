@@ -16,9 +16,11 @@ namespace Nui
         {}
 
         template <typename... ElementT>
-        constexpr auto operator()(ElementT&&... elements)
+        constexpr auto operator()(ElementT&&... elements) &&
         {
-            return std::make_tuple(std::forward<ElementT>(elements)...);
+            return [this, children = std::make_tuple(std::forward<ElementT>(elements)...)](auto& materializedElement) {
+                materializedElement.appendElement(*this)->appendElements(children);
+            };
         }
 
         std::tuple<Attributes...> const& attributes() const

@@ -5,13 +5,16 @@
 
 #include <emscripten/val.h>
 
+#include <concepts>
 #include <string>
 #include <vector>
 #include <memory>
 
+#include <iostream>
+
 namespace Nui::Dom
 {
-    class Element
+    class Element : public std::enable_shared_from_this<Element>
     {
       public:
         using collection_type = std::vector<std::shared_ptr<Element>>;
@@ -19,15 +22,43 @@ namespace Nui::Dom
         using const_iterator = collection_type::const_iterator;
 
         template <typename T, typename... Attributes>
-        Element(HtmlElement<T, Attributes...> const& element)
+        Element(HtmlElement<T, Attributes...> const&)
             : type_{T::name}
             , element_{emscripten::val::global("document")
                            .call<emscripten::val>("createElement", emscripten::val{type_})}
             , children_{}
+        {}
+
+        template <typename U, typename... Attributes>
+        static std::shared_ptr<Element> makeElement(HtmlElement<U, Attributes...> const& element)
         {
+            auto elem = std::make_shared<Element>(element);
+            elem->setup(element);
+            return elem;
+        }
+
+        /**
+         * @brief Relies on weak_from_this and cannot be used from the constructor
+         */
+        template <typename T, typename... Attributes>
+        void setup(HtmlElement<T, Attributes...> const& element)
+        {
+            std::cout << "setup(" << T::name << ")\n";
+
+            auto setSideEffect = [self = this](auto const& attribute) {
+                attribute.emplaceSideEffect(
+                    [weak = self->weak_from_this(), name = attribute.name()](auto const& value) {
+                        if (auto shared = weak.lock(); shared)
+                        {
+                            // TODO: non string_view able values
+                            shared->setAttribute(name, value);
+                        }
+                    });
+            };
+
             std::apply(
-                [this](auto const&... attribute) {
-                    (..., element_.set(attribute.name(), attribute.value()));
+                [this, &setSideEffect](auto const&... attribute) {
+                    (..., (setAttribute(attribute.name(), attribute.value()), setSideEffect(attribute)));
                 },
                 element.attributes());
         }
@@ -42,7 +73,10 @@ namespace Nui::Dom
         // TODO: more overloads?
         void setAttribute(std::string_view key, std::string_view value)
         {
-            element_.call<emscripten::val>("setAttribute", key, value);
+            std::cout << "setAttribute: " << key << " = " << value << '\n';
+            // FIXME: performance fix: val(string(...))
+            element_.call<emscripten::val>(
+                "setAttribute", emscripten::val{std::string{key}}, emscripten::val{std::string{value}});
         }
 
         iterator begin()
@@ -63,15 +97,20 @@ namespace Nui::Dom
         }
 
         template <typename U, typename... Attributes>
-        void appendElement(HtmlElement<U, Attributes...> const& element)
+        auto& appendElement(HtmlElement<U, Attributes...> const& element)
         {
-            auto elem = std::make_shared<Element>(element);
+            auto elem = makeElement(element);
             element_.call<emscripten::val>("appendChild", elem->element_);
-            children_.emplace_back(std::move(elem));
+            return children_.emplace_back(std::move(elem));
+        }
+
+        void appendElement(std::invocable<Element&> auto&& fn)
+        {
+            fn(*this);
         }
 
         template <typename... Elements>
-        void appendElement(std::tuple<Elements...> const& elements)
+        void appendElements(std::tuple<Elements...> const& elements)
         {
             std::apply(
                 [this](auto const&... element) {
@@ -83,7 +122,7 @@ namespace Nui::Dom
         template <typename U, typename... Attributes>
         void insert(iterator where, HtmlElement<U, Attributes...> const& element)
         {
-            auto elem = std::make_shared<Element>(element);
+            auto elem = makeElement(element);
             element_.call<emscripten::val>("insertBefore", elem->element_, (*where)->element_);
             children_.insert(where, std::move(elem));
         }
