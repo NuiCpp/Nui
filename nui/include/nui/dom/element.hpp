@@ -52,7 +52,9 @@ namespace Nui::Dom
                         {
                             // TODO: non string_view able values
                             shared->setAttribute(name, value);
+                            return true;
                         }
+                        return false;
                     });
             };
 
@@ -130,6 +132,11 @@ namespace Nui::Dom
         emscripten::val& val()
         {
             return element_;
+        }
+
+        void clearChildren()
+        {
+            children_.clear();
         }
 
       private:

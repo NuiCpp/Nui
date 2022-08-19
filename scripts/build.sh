@@ -58,7 +58,7 @@ cmake \
   -DCMAKE_CXX_COMPILER=$COMPILER \
   -DCMAKE_C_COMPILER=$CCOMPILER \
   -DCMAKE_LINKER=$LINKER \
-  -DCMAKE_CXX_STANDARD=20 \
+  -DCMAKE_CXX_STANDARD=23 \
   ../..
 
 if [ ! -d ./_deps/emscripten-src/upstream ]; then
@@ -74,5 +74,5 @@ mkdir -p module
 cd module
 ../_deps/emscripten-src/emsdk_env.sh > /dev/null 2>&1
 export PATH="$PATH:${WORKSPACE}/${BUILD_DIR}/_deps/emscripten-src/upstream/emscripten"
-emcmake cmake -DCMAKE_CXX_STANDARD=20 -DCMAKE_BUILD_TYPE=$BUILD_TYPE ../../..
+emcmake cmake -DCMAKE_CXX_STANDARD=23 -DCMAKE_BUILD_TYPE=$BUILD_TYPE ../../..
 emmake make -j$THREADS

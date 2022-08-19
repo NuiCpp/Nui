@@ -7,6 +7,7 @@
 #else
 #    include <emscripten/val.h>
 #    include <nui/dom/dom.hpp>
+#    include <nui/dom/element.hpp>
 #    include <nui/elements.hpp>
 #    include <nui/attributes.hpp>
 #    include <nui/observed.hpp>
@@ -14,6 +15,7 @@
 
 #include <iostream>
 #include <string_view>
+#include <functional>
 
 using namespace Nui;
 
@@ -31,8 +33,10 @@ int EMSCRIPTEN_KEEPALIVE main()
 
     thread_local Dom::Dom dom;
     thread_local Observed<std::string> style = "background-color: #ff00000;";
+    thread_local Observed<bool> condition = false;
 
     using Nui::div; // there is a global symbol named div
+    using Dom::Element;
 
     std::cout << *style << '\n';
 
@@ -46,8 +50,23 @@ int EMSCRIPTEN_KEEPALIVE main()
             div{
                 id = "deep"
             }(
-                div{
-                    id = "deeper"
+                observe(condition),
+                []() -> std::function<void(Element&)>{
+                    if (!*condition)
+                    {
+                        std::cout << "no\n";
+                        return div{
+                            id = "no",
+                            attr::style = "background-color: red; width: 100px; height: 100px;"
+                        }();
+                    }
+                    else {
+                        std::cout << "yes\n";
+                        return div{
+                            id = "yes",
+                            attr::style = "background-color: green; width: 100px; height: 100px;"
+                        }();
+                    }
                 }
             )
         )
@@ -56,7 +75,8 @@ int EMSCRIPTEN_KEEPALIVE main()
     dom.root().appendElement(body);
     //  clang-format on
 
-    style = "background-color: cyan; height: 100px; width: 100px;";
+    style = "background-color: black; height: 100px; width: 100px;";
+    condition = true;
 #endif
     window.run();
 

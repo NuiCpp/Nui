@@ -1,12 +1,12 @@
 #pragma once
 
 #include <nui/concepts.hpp>
-#include <nui/dom/element.hpp>
 
 #include <memory>
 #include <vector>
 #include <functional>
 #include <type_traits>
+#include <list>
 
 namespace Nui
 {
@@ -108,13 +108,19 @@ namespace Nui
       private:
         void update()
         {
-            for (auto& effect : sideEffects_)
-                effect(contained_);
+            for (auto effect = std::begin(sideEffects_); effect != std::end(sideEffects_);)
+            {
+                if (!effect(contained_))
+                    effect = sideEffects_.erase(effect);
+                else
+                    ++effect;
+            }
         }
 
       private:
         ContainedT contained_;
-        std::vector<std::function<void(ContainedT const&)>> sideEffects_;
+        // TODO: performance container:
+        std::list<std::function<bool(ContainedT const&)>> sideEffects_;
     };
 
     namespace Detail

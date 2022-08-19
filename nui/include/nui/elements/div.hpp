@@ -12,8 +12,8 @@ namespace Nui
     template <typename... Attributes>
     struct div : HtmlElement<div_, Attributes...>
     {
-        constexpr div(Attributes&&... attr)
-            : HtmlElement<div_, Attributes...>{std::move(attr)...}
-        {}
+        using HtmlElement<div_, Attributes...>::HtmlElement;
     };
+    template <typename... Attributes>
+    div(Attributes&&...) -> div<Attributes...>;
 }

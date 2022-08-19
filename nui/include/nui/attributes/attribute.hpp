@@ -19,13 +19,15 @@ namespace Nui
             : value_{std::move(value)}
         {}
 
+        Attribute(Attribute const&) = default;
+        Attribute(Attribute&&) = default;
+        Attribute& operator=(Attribute const&) = default;
+        Attribute& operator=(Attribute&&) = default;
+
         constexpr static char const* name()
         {
             return discrete_attribute::name;
         }
-
-        Attribute(Attribute const&) = delete;
-        Attribute(Attribute&&) = default;
 
         T const& value() const
         {
