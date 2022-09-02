@@ -1,12 +1,12 @@
 #pragma once
 
 #include <nui/concepts.hpp>
-#include <nui/dom/element.hpp>
 
 #include <memory>
 #include <vector>
 #include <functional>
 #include <type_traits>
+#include <list>
 
 namespace Nui
 {
@@ -55,7 +55,9 @@ namespace Nui
         template <typename T = ContainedT>
         Observed(T&& t)
             : contained_{std::forward<T>(t)}
+            , updating_{false}
             , sideEffects_{}
+            , sideEffectsDelayed_{}
         {}
 
         /**
@@ -85,7 +87,15 @@ namespace Nui
 
         void emplaceSideEffect(std::invocable<ContainedT const&> auto&& sideEffect)
         {
-            sideEffects_.emplace_back(std::forward<std::decay_t<decltype(sideEffect)>>(sideEffect));
+            sideEffectsToAppendTo().emplace_back(std::forward<std::decay_t<decltype(sideEffect)>>(sideEffect));
+        }
+
+        void emplaceSideEffect(std::invocable auto&& sideEffect)
+        {
+            sideEffectsToAppendTo().emplace_back(
+                [sideEffect = std::forward<std::decay_t<decltype(sideEffect)>>(sideEffect)](ContainedT const&) {
+                    return sideEffect();
+                });
         }
 
         ContainedT& value()
@@ -108,13 +118,37 @@ namespace Nui
       private:
         void update()
         {
-            for (auto& effect : sideEffects_)
-                effect(contained_);
+            updating_ = true;
+            for (auto effect = std::begin(sideEffects_); effect != std::end(sideEffects_);)
+            {
+                if (!(*effect)(contained_))
+                    effect = sideEffects_.erase(effect);
+                else
+                    ++effect;
+            }
+            updating_ = false;
+            transferDelayedSideEffects();
+        }
+
+        std::list<std::function<bool(ContainedT const&)>>& sideEffectsToAppendTo()
+        {
+            if (updating_)
+                return sideEffectsDelayed_;
+            else
+                return sideEffects_;
+        }
+
+        void transferDelayedSideEffects()
+        {
+            sideEffects_.splice(std::end(sideEffects_), sideEffectsDelayed_);
         }
 
       private:
         ContainedT contained_;
-        std::vector<std::function<void(ContainedT const&)>> sideEffects_;
+        bool updating_;
+        // TODO: performance container:
+        std::list<std::function<bool(ContainedT const&)>> sideEffects_;
+        std::list<std::function<bool(ContainedT const&)>> sideEffectsDelayed_;
     };
 
     namespace Detail

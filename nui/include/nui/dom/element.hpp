@@ -52,7 +52,9 @@ namespace Nui::Dom
                         {
                             // TODO: non string_view able values
                             shared->setAttribute(name, value);
+                            return true;
                         }
+                        return false;
                     });
             };
 
@@ -69,6 +71,11 @@ namespace Nui::Dom
             , element_{std::move(val)}
             , children_{}
         {}
+
+        ~Element()
+        {
+            element_.call<void>("remove");
+        }
 
         // TODO: more overloads?
         void setAttribute(std::string_view key, std::string_view value)
@@ -130,6 +137,11 @@ namespace Nui::Dom
         emscripten::val& val()
         {
             return element_;
+        }
+
+        void clearChildren()
+        {
+            children_.clear();
         }
 
       private:
