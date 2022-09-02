@@ -72,6 +72,11 @@ namespace Nui::Dom
             , children_{}
         {}
 
+        ~Element()
+        {
+            element_.call<void>("remove");
+        }
+
         // TODO: more overloads?
         void setAttribute(std::string_view key, std::string_view value)
         {

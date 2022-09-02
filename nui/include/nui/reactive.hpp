@@ -6,31 +6,25 @@
 
 namespace Nui
 {
-
-    namespace Detail
-    {
-        template <typename... ObservedValues, typename... SideEffects>
-        constexpr void AttachEffects(std::tuple<ObservedValues...> observed, SideEffects&&... effects)
-        {
-            (..., observed.template emplaceSideEffect(std::forward<SideEffects>(effects)));
-        }
-    }
-
     template <typename... ObservedValues>
     struct Reactive
     {
       public:
-        Reactive(ObservedValues&... observedValues)
+        constexpr Reactive(ObservedValues&... observedValues)
             : observedValues_{observedValues...}
         {}
 
-        void emplaceSideEffects(auto&&... sideEffect)
+        void emplaceSideEffects(auto&&... sideEffect) const
         {
-            Detail::AttachEffects(observedValues_, std::forward<decltype(sideEffect)>(sideEffect)...);
+            std::apply(
+                [&sideEffect...](auto& observed) {
+                    (..., observed.emplaceSideEffect(sideEffect));
+                },
+                observedValues_);
         }
 
       private:
-        std::tuple<ObservedValues&...> observedValues_;
+        const std::tuple<ObservedValues&...> observedValues_;
     };
 
     template <typename... ObservedValues>

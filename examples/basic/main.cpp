@@ -51,7 +51,8 @@ int EMSCRIPTEN_KEEPALIVE main()
                 id = "deep"
             }(
                 observe(condition),
-                []() -> std::function<void(Element&)>{
+                []() -> std::function<std::shared_ptr<Element>(Element&)>{
+                    std::cout << "reactive!\n";
                     if (!*condition)
                     {
                         std::cout << "no\n";
@@ -75,7 +76,7 @@ int EMSCRIPTEN_KEEPALIVE main()
     dom.root().appendElement(body);
     //  clang-format on
 
-    style = "background-color: black; height: 100px; width: 100px;";
+    //style = "background-color: black; height: 100px; width: 100px;";
     condition = true;
 #endif
     window.run();
