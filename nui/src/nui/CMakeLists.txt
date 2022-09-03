@@ -3,6 +3,7 @@ if (EMSCRIPTEN)
         STATIC
             frontend/dom/dom.cpp
             frontend/window.cpp
+            frontend/utility/functions.cpp
     )
     target_include_directories(
         nui-frontend
@@ -11,6 +12,9 @@ if (EMSCRIPTEN)
     )
     target_link_libraries(
         nui-frontend
+        PUBLIC
+            boost_preprocessor
+            libcpppre
         PRIVATE
             project-warnings
     )

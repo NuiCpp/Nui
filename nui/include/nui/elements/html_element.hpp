@@ -6,9 +6,6 @@
 #include <utility>
 #include <concepts>
 
-// FIXME: remove me
-#include <iostream>
-
 namespace Nui
 {
     namespace Detail
@@ -99,8 +96,6 @@ namespace Nui
         template <typename... ObservedValues, std::invocable... GeneratorT>
         constexpr auto operator()(Reactive<ObservedValues...>&& observedValues, GeneratorT&&... generators) &&
         {
-            std::cout << "operator reactive\n";
-
             return [self = this->clone(),
                     observedValues = std::move(observedValues),
                     generators = std::make_tuple(std::forward<GeneratorT>(generators)...)](auto& materializedElement) {
@@ -115,8 +110,6 @@ namespace Nui
                      weakFunctionWrapped =
                          std::weak_ptr<typename std::decay_t<decltype(sameFunctionWrapped)>::element_type>{
                              sameFunctionWrapped}](auto& materializedElement) {
-                        std::cout << "sameFuctionWrapped\n";
-
                         auto& appended = materializedElement.appendElement(self);
                         auto weakElement = materializedElement.weak_from_this();
                         std::apply(
