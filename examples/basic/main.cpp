@@ -30,6 +30,7 @@ int EMSCRIPTEN_KEEPALIVE main()
 #else
     namespace attr = Nui::Attributes;
     using attr::id;
+    using attr::onClick;
 
     thread_local Dom::Dom dom;
     thread_local Observed<std::string> style = "background-color: #ff00000;";
@@ -47,6 +48,12 @@ int EMSCRIPTEN_KEEPALIVE main()
         div{
             id = "hi"
         }(
+            button{
+                onClick = [](emscripten::val event){
+                    std::cout << "clicked\n";
+                    condition = !*condition;
+                }
+            },
             div{
                 id = "deep"
             }(
@@ -90,4 +97,6 @@ EMSCRIPTEN_BINDINGS(mymod)
 {
     emscripten::function("main", &main);
 }
+
+#include <nui/utility/bindings.hpp>
 #endif

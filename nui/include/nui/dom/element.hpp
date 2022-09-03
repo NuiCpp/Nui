@@ -2,6 +2,7 @@
 
 #include <nui/elements/html_element.hpp>
 #include <nui/utility/inferance_helper.hpp>
+#include <nui/utility/functions.hpp>
 
 #include <emscripten/val.h>
 
@@ -84,6 +85,12 @@ namespace Nui::Dom
             // FIXME: performance fix: val(string(...))
             element_.call<emscripten::val>(
                 "setAttribute", emscripten::val{std::string{key}}, emscripten::val{std::string{value}});
+        }
+
+        void setAttribute(std::string_view key, std::invocable<emscripten::val> auto&& value)
+        {
+            std::cout << "setAttribute: " << key << " = FUNCTION \n";
+            element_.set(emscripten::val{std::string{key}}, Nui::bind(value, std::placeholders::_1));
         }
 
         iterator begin()
