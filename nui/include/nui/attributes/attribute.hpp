@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nui/observed.hpp>
+#include <nui/utility/fixed_string.hpp>
 
 #include <utility>
 #include <string>
@@ -26,7 +27,7 @@ namespace Nui
 
         constexpr static char const* name()
         {
-            return discrete_attribute::name;
+            return discrete_attribute::name();
         }
 
         T const& value() const
@@ -54,7 +55,7 @@ namespace Nui
 
         constexpr static char const* name()
         {
-            return discrete_attribute::name;
+            return discrete_attribute::name();
         }
 
         T const& value() const
@@ -82,7 +83,10 @@ namespace Nui
     { \
         struct NAME##_ \
         { \
-            constexpr static char const* name = #NAME; \
+            constexpr static char const* name() \
+            { \
+                return #NAME; \
+            }; \
             template <typename U> \
             std::enable_if_t<!Detail::IsObserved_v<std::decay_t<U>>, Attribute<NAME##_, U>> operator=(U&& val) \
             { \
@@ -93,6 +97,26 @@ namespace Nui
             operator=(U& val) \
             { \
                 return Attribute<NAME##_, std::decay_t<U>>{val}; \
+            } \
+        } NAME; \
+    }
+
+#define MAKE_HTML_EVENT_ATTRIBUTE(NAME) \
+    namespace Nui::Attributes \
+    { \
+        struct NAME##_ \
+        { \
+\
+            constexpr static auto nameValue = fixToLower(#NAME); \
+\
+            consteval static char const* name() \
+            { \
+                return nameValue; \
+            }; \
+            Attribute<NAME##_, std::function<void(emscripten::val)>> \
+            operator=(std::function<void(emscripten::val)>&& func) \
+            { \
+                return Attribute<NAME##_, std::function<void(emscripten::val)>>{std::move(func)}; \
             } \
         } NAME; \
     }
