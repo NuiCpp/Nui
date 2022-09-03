@@ -11,8 +11,6 @@
 #include <vector>
 #include <memory>
 
-#include <iostream>
-
 namespace Nui::Dom
 {
     class Element : public std::enable_shared_from_this<Element>
@@ -44,8 +42,6 @@ namespace Nui::Dom
         template <typename T, typename... Attributes>
         void setup(HtmlElement<T, Attributes...> const& element)
         {
-            std::cout << "setup(" << T::name << ")\n";
-
             auto setSideEffect = [self = this](auto const& attribute) {
                 attribute.emplaceSideEffect(
                     [weak = self->weak_from_this(), name = attribute.name()](auto const& value) {
@@ -81,7 +77,6 @@ namespace Nui::Dom
         // TODO: more overloads?
         void setAttribute(std::string_view key, std::string_view value)
         {
-            std::cout << "setAttribute: " << key << " = " << value << '\n';
             // FIXME: performance fix: val(string(...))
             element_.call<emscripten::val>(
                 "setAttribute", emscripten::val{std::string{key}}, emscripten::val{std::string{value}});
@@ -89,7 +84,6 @@ namespace Nui::Dom
 
         void setAttribute(std::string_view key, std::invocable<emscripten::val> auto&& value)
         {
-            std::cout << "setAttribute: " << key << " = FUNCTION \n";
             element_.set(emscripten::val{std::string{key}}, Nui::bind(value, std::placeholders::_1));
         }
 

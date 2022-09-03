@@ -39,8 +39,6 @@ int EMSCRIPTEN_KEEPALIVE main()
     using Nui::div; // there is a global symbol named div
     using Dom::Element;
 
-    std::cout << *style << '\n';
-
     // clang-format off
     const auto body = div{
         attr::style = style,
@@ -48,31 +46,28 @@ int EMSCRIPTEN_KEEPALIVE main()
         div{
             id = "hi"
         }(
-            button{
-                onClick = [](emscripten::val event){
-                    std::cout << "clicked\n";
-                    condition = !*condition;
-                }
-            },
             div{
                 id = "deep"
             }(
                 observe(condition),
                 []() -> std::function<std::shared_ptr<Element>(Element&)>{
-                    std::cout << "reactive!\n";
                     if (!*condition)
                     {
-                        std::cout << "no\n";
                         return div{
                             id = "no",
-                            attr::style = "background-color: red; width: 100px; height: 100px;"
+                            attr::style = "background-color: red; width: 100px; height: 100px;",
+                            onClick = [](emscripten::val event) {
+                                condition = !*condition;
+                            }
                         }();
                     }
                     else {
-                        std::cout << "yes\n";
                         return div{
                             id = "yes",
-                            attr::style = "background-color: green; width: 100px; height: 100px;"
+                            attr::style = "background-color: green; width: 100px; height: 100px;",
+                            onClick = [](emscripten::val event) {
+                                condition = !*condition;
+                            }
                         }();
                     }
                 }
