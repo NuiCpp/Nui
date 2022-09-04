@@ -29,7 +29,16 @@ else()
     nui_set_target_output_directories(nui-basic)
     
     # Creates a target that is compiled through emscripten. This target becomes the frontend part.
-    nui_add_emscripten_target(nui-basic ${CMAKE_CURRENT_SOURCE_DIR}/module.js ${CMAKE_SOURCE_DIR} -DNUI_BUILD_EXAMPLES=on)
+    nui_add_emscripten_target(
+        TARGET
+            nui-basic 
+        PREJS 
+            ${CMAKE_CURRENT_SOURCE_DIR}/module.js 
+        SOURCE_DIR
+            ${CMAKE_SOURCE_DIR}
+        CMAKE_OPTIONS
+            -DNUI_BUILD_EXAMPLES=on
+    )
     
     target_sources(nui-basic PRIVATE main.cpp)
 endif()

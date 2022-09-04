@@ -8,7 +8,7 @@ if (EMSCRIPTEN)
     target_include_directories(
         nui-frontend
         PUBLIC
-            ${CMAKE_SOURCE_DIR}/nui/include
+            ${CMAKE_CURRENT_LIST_DIR}/../../include
     )
     target_link_libraries(
         nui-frontend
@@ -27,7 +27,7 @@ else()
     target_include_directories(
         nui-backend
         PUBLIC
-            ${CMAKE_SOURCE_DIR}/nui/include
+            ${CMAKE_CURRENT_LIST_DIR}/../../include
             ${CMAKE_BINARY_DIR}/include
     )
     target_link_libraries(
