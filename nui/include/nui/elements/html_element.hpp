@@ -23,32 +23,26 @@ namespace Nui
         template <typename T, typename... Parameters>
         struct ClearChildrenSideEffect<T, Parameters...>
         {
-            static void apply(auto& observedValues, auto& appended, auto& weakParent, auto const& weakFunctionWrapped)
+            static void apply(auto& observedValues, auto& weakParent, auto const& childrenRefabricator)
             {
                 observedValues.emplaceSideEffects(
-                    [weak = std::weak_ptr<typename std::decay_t<decltype(appended)>::element_type>{appended},
-                     weakParent,
-                     sameFunctionWrapped = weakFunctionWrapped.lock()]() -> bool {
+                    [weakParent, childrenRefabricator = childrenRefabricator.lock()]() -> bool {
                         if (auto parent = weakParent.lock(); parent)
                         {
-                            if (auto shared = weak.lock(); shared)
-                                shared->clearChildren();
-                            else
-                                return false;
-                            if (sameFunctionWrapped && *sameFunctionWrapped)
-                                (*sameFunctionWrapped)(*parent);
+                            parent->clearChildren();
+                            if (childrenRefabricator && *childrenRefabricator)
+                                (*childrenRefabricator)();
                             return false;
                         }
                         return false;
                     });
-                ClearChildrenSideEffect<Parameters...>::apply(
-                    observedValues, appended, weakParent, weakFunctionWrapped);
+                ClearChildrenSideEffect<Parameters...>::apply(observedValues, weakParent, childrenRefabricator);
             }
         };
         template <>
         struct ClearChildrenSideEffect<>
         {
-            static void apply(auto&&, auto&, auto&, auto const&)
+            static void apply(auto&&, auto&, auto const&)
             {}
         };
     }
@@ -78,8 +72,8 @@ namespace Nui
         constexpr auto operator()(ElementT&&... elements) &&
         {
             return [self = this->clone(),
-                    children = std::make_tuple(std::forward<ElementT>(elements)...)](auto& materializedElement) {
-                auto materialized = materializedElement.appendElement(self);
+                    children = std::make_tuple(std::forward<ElementT>(elements)...)](auto& parentElement) {
+                auto materialized = parentElement.appendElement(self);
                 materialized->appendElements(children);
                 return materialized;
             };
@@ -87,53 +81,56 @@ namespace Nui
 
         constexpr auto operator()() &&
         {
-            return [self = this->clone()](auto& materializedElement) {
-                auto& materialized = materializedElement.appendElement(self);
+            return [self = this->clone()](auto& parentElement) {
+                auto& materialized = parentElement.appendElement(self);
                 return materialized;
             };
         }
 
         template <typename... ObservedValues, std::invocable... GeneratorT>
-        constexpr auto operator()(Reactive<ObservedValues...>&& observedValues, GeneratorT&&... generators) &&
+        constexpr auto operator()(Reactive<ObservedValues...>&& observedValues, GeneratorT&&... elementGenerators) &&
         {
             return [self = this->clone(),
                     observedValues = std::move(observedValues),
-                    generators = std::make_tuple(std::forward<GeneratorT>(generators)...)](auto& materializedElement) {
-                using ElementType = std::decay_t<decltype(materializedElement)>;
-                auto sameFunctionWrapped =
-                    std::make_shared<std::function<std::shared_ptr<ElementType>(ElementType&)>>();
+                    elementGenerators =
+                        std::make_tuple(std::forward<GeneratorT>(elementGenerators)...)](auto& parentElement) {
+                using ElementType = std::decay_t<decltype(parentElement)>;
+
+                // function is called when observed values change to refabricate the children.
+                auto childrenRefabricator = std::make_shared<std::function<void()>>();
+
+                // create the parent for the children, that is the "self" element.
+                auto& createdSelf = parentElement.appendElement(self);
+
                 // FIXME: mutable outer then move:
-                *sameFunctionWrapped =
+                *childrenRefabricator =
                     [self,
                      observedValues,
-                     generators,
-                     weakFunctionWrapped =
-                         std::weak_ptr<typename std::decay_t<decltype(sameFunctionWrapped)>::element_type>{
-                             sameFunctionWrapped}](auto& materializedElement) {
-                        auto& appended = materializedElement.appendElement(self);
-                        auto weakElement = materializedElement.weak_from_this();
+                     elementGenerators,
+                     createdSelfWeak = std::weak_ptr<ElementType>{createdSelf},
+                     childrenRefabricator =
+                         std::weak_ptr<typename std::decay_t<decltype(childrenRefabricator)>::element_type>{
+                             childrenRefabricator}]() {
                         std::apply(
-                            [&appended,
-                             &observedValues,
-                             weakFunctionWrapped = std::move(weakFunctionWrapped),
-                             weakMaterialized = weakElement](auto&&... generators) {
+                            [&observedValues, &childrenRefabricator, &createdSelfWeak](auto&&... elementGenerators) {
+                                auto parent = createdSelfWeak.lock();
+                                if (!parent)
+                                    return;
                                 std::apply(
-                                    [&appended,
-                                     &observedValues,
-                                     weakFunctionWrapped = std::move(weakFunctionWrapped),
-                                     weakMaterialized = std::move(weakMaterialized)]<typename... GeneratedType>(
-                                        GeneratedType&&...) mutable {
+                                    [&observedValues,
+                                     &childrenRefabricator,
+                                     &createdSelfWeak]<typename... GeneratedType>(GeneratedType&&...) mutable {
                                         Detail::ClearChildrenSideEffect<GeneratedType...>::apply(
-                                            observedValues, appended, weakMaterialized, weakFunctionWrapped);
+                                            observedValues, createdSelfWeak, childrenRefabricator);
                                     },
                                     std::make_tuple(
-                                        std::weak_ptr<typename decltype(generators()(*appended))::element_type>(
-                                            generators()(*appended))...));
+                                        std::weak_ptr<typename decltype(elementGenerators()(*parent))::element_type>(
+                                            elementGenerators()(*parent))...));
                             },
-                            generators);
-                        return appended;
+                            elementGenerators);
                     };
-                return (*sameFunctionWrapped)(materializedElement);
+                (*childrenRefabricator)();
+                return createdSelf;
             };
         }
 
