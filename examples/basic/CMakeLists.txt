@@ -18,7 +18,12 @@ if (EMSCRIPTEN)
     target_link_libraries(nui-basic PRIVATE nui-frontend)
 
     # Sets additional properties etc on the target.
-    nui_prepare_emscripten_target(nui-basic ${CMAKE_CURRENT_SOURCE_DIR}/module.js)    
+    nui_prepare_emscripten_target(
+        TARGET
+            nui-basic 
+        PREJS 
+            ${CMAKE_CURRENT_SOURCE_DIR}/module.js
+    )    
 
     # Use this to add more source files based on frontend/backend build
     target_sources(nui-basic PRIVATE frontend/frontend.cpp)
