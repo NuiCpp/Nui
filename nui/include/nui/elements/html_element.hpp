@@ -18,31 +18,24 @@ namespace Nui
         {};
 
         template <typename... Parameters>
-        struct ClearChildrenSideEffect
+        struct RefabricationSideEffect
         {};
         template <typename T, typename... Parameters>
-        struct ClearChildrenSideEffect<T, Parameters...>
+        struct RefabricationSideEffect<T, Parameters...>
         {
-            static void apply(auto& observedValues, auto& weakParent, auto const& childrenRefabricator)
+            static void apply(auto& observedValues, auto const& childrenRefabricator)
             {
-                observedValues.emplaceSideEffects(
-                    [weakParent, childrenRefabricator = childrenRefabricator.lock()]() -> bool {
-                        if (auto parent = weakParent.lock(); parent)
-                        {
-                            parent->clearChildren();
-                            if (childrenRefabricator && *childrenRefabricator)
-                                (*childrenRefabricator)();
-                            return false;
-                        }
-                        return false;
-                    });
-                ClearChildrenSideEffect<Parameters...>::apply(observedValues, weakParent, childrenRefabricator);
+                observedValues.emplaceSideEffects([childrenRefabricator]() -> bool {
+                    (*childrenRefabricator)();
+                    return false;
+                });
+                RefabricationSideEffect<Parameters...>::apply(observedValues, childrenRefabricator);
             }
         };
         template <>
-        struct ClearChildrenSideEffect<>
+        struct RefabricationSideEffect<>
         {
-            static void apply(auto&&, auto&, auto const&)
+            static void apply(auto&&, auto const&)
             {}
         };
     }
@@ -116,12 +109,16 @@ namespace Nui
                                 auto parent = createdSelfWeak.lock();
                                 if (!parent)
                                     return;
+
+                                // clear children
+                                parent->clearChildren();
+
+                                // regenerate children and (re)register side effect.
                                 std::apply(
                                     [&observedValues,
-                                     &childrenRefabricator,
-                                     &createdSelfWeak]<typename... GeneratedType>(GeneratedType&&...) mutable {
-                                        Detail::ClearChildrenSideEffect<GeneratedType...>::apply(
-                                            observedValues, createdSelfWeak, childrenRefabricator);
+                                     &childrenRefabricator]<typename... GeneratedType>(GeneratedType&&...) mutable {
+                                        Detail::RefabricationSideEffect<GeneratedType...>::apply(
+                                            observedValues, childrenRefabricator.lock());
                                     },
                                     std::make_tuple(
                                         std::weak_ptr<typename decltype(elementGenerators()(*parent))::element_type>(
