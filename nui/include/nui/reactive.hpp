@@ -1,8 +1,9 @@
 #pragma once
 
 #include <nui/observed.hpp>
+#include <nui/utility/tuple_for_each.hpp>
 
-#include <concepts>
+#include <tuple>
 
 namespace Nui
 {
@@ -14,13 +15,11 @@ namespace Nui
             : observedValues_{observedValues...}
         {}
 
-        void emplaceSideEffects(auto&&... sideEffect) const
+        constexpr void emplaceSideEffects(auto const& sideEffect) const
         {
-            std::apply(
-                [&sideEffect...](auto& observed) {
-                    (..., observed.emplaceSideEffect(sideEffect));
-                },
-                observedValues_);
+            tupleForEach(observedValues_, [&sideEffect](auto& observed){
+                observed.emplaceSideEffect(sideEffect);
+            });
         }
 
       private:

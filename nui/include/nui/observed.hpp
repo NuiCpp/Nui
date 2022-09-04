@@ -87,13 +87,13 @@ namespace Nui
 
         void emplaceSideEffect(std::invocable<ContainedT const&> auto&& sideEffect)
         {
-            sideEffectsToAppendTo().emplace_back(std::forward<std::decay_t<decltype(sideEffect)>>(sideEffect));
+            sideEffectsToAppendTo().emplace_back(std::forward<decltype(sideEffect)>(sideEffect));
         }
 
         void emplaceSideEffect(std::invocable auto&& sideEffect)
         {
             sideEffectsToAppendTo().emplace_back(
-                [sideEffect = std::forward<std::decay_t<decltype(sideEffect)>>(sideEffect)](ContainedT const&) {
+                [sideEffect = std::forward<decltype(sideEffect)>(sideEffect)](ContainedT const&) {
                     return sideEffect();
                 });
         }
