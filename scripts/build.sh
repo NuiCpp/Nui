@@ -69,10 +69,3 @@ cd ../..
 node ./scripts/copy_compile_commands.js
 cd ${BUILD_DIR}
 make -j$THREADS
-
-mkdir -p module
-cd module
-../_deps/emscripten-src/emsdk_env.sh > /dev/null 2>&1
-export PATH="$PATH:${WORKSPACE}/${BUILD_DIR}/_deps/emscripten-src/upstream/emscripten"
-emcmake cmake -DCMAKE_CXX_STANDARD=23 -DCMAKE_BUILD_TYPE=$BUILD_TYPE ../../..
-emmake make -j$THREADS

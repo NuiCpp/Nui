@@ -30,38 +30,60 @@ else()
     )
 endif()
 
-if (${NUI_USE_EXTERNAL_EMSCRIPTEN})
-    set(EMCMAKE "emcmake")
-    set(EMMAKE "emmake")
-else()
-    set(EMCMAKE "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcmake")
-    set(EMMAKE "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emmake")
-    list(APPEND CMAKE_PROGRAM_PATH "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten")
-endif()
-
-function(nui_add_emscripten_target target prejs sourceDir cmakeOptions)
-    if (sourceDir STREQUAL "")
-        get_target_property(sourceDir ${target} SOURCE_DIR)
+function(nui_add_emscripten_target)
+    if (${NUI_USE_EXTERNAL_EMSCRIPTEN})
+        set(EMCMAKE "emcmake")
+        set(EMMAKE "emmake")
+    else()
+        set(EMCMAKE "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcmake")
+        set(EMMAKE "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emmake")
+        list(APPEND CMAKE_PROGRAM_PATH "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten")
     endif()
-    string(REPLACE "-" "_" target_normalized ${target})
+
+    cmake_parse_arguments(
+        NUI_ADD_EMSCRIPTEN_TARGET_ARGS
+        ""
+        "TARGET;PREJS;SOURCE_DIR"
+        "CMAKE_OPTIONS;MAKE_OPTIONS"
+        ${ARGN}
+    )    
+
+    if (NOT NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET)
+        message(FATAL_ERROR "You must provide a target to create a frontend pendant of.")
+    endif()
+
+    if (NOT NUI_ADD_EMSCRIPTEN_TARGET_ARGS_PREJS)
+        message(FATAL_ERROR "You must provide a prejs script that loads your app.")
+    endif()
+
+    if (NOT NUI_ADD_EMSCRIPTEN_TARGET_ARGS_SOURCE_DIR)
+        get_target_property(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_SOURCE_DIR} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} SOURCE_DIR)
+    else()
+        set(SOURCE_DIR ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_SOURCE_DIR})
+    endif()
+
+    string(REPLACE "-" "_" targetNormalized ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET})
+
+    message(STATUS "emcmake: ${EMCMAKE}")
+
     ExternalProject_Add(
-        "${target}-emscripten"
-        SOURCE_DIR "${sourceDir}"
-        CONFIGURE_COMMAND ${EMCMAKE} cmake -DCMAKE_CXX_STANDARD=20 ${cmakeOptions} ${sourceDir}
-        BUILD_COMMAND ${EMMAKE} make ${target}
-        COMMAND ${CMAKE_BINARY_DIR}/tools/bin2hpp/bin2hpp ${CMAKE_BINARY_DIR}/module_build/bin/${target}.js ${CMAKE_BINARY_DIR}/include/${target_normalized}.hpp ${target_normalized}
+        "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten"
+        SOURCE_DIR "${SOURCE_DIR}"
+        CONFIGURE_COMMAND ${EMCMAKE} cmake -DCMAKE_CXX_STANDARD=20 ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS} ${SOURCE_DIR}
+        BUILD_COMMAND ${EMMAKE} make ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_MAKE_OPTIONS} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}
+        COMMAND $<TARGET_FILE:bin2hpp> ${CMAKE_BINARY_DIR}/module_build/bin/${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}.js ${CMAKE_BINARY_DIR}/include/${targetNormalized}.hpp ${targetNormalized}
         BINARY_DIR "${CMAKE_BINARY_DIR}/module_build"
         BUILD_ALWAYS 1
         INSTALL_COMMAND ""
     )
-    add_dependencies(${target} ${target}-emscripten)
-    add_dependencies(${target}-emscripten bin2hpp)
+    add_dependencies(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten)
+    add_dependencies(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten bin2hpp)
     add_custom_target(
-        prejs ALL
-        DEPENDS ${prejs}
+        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-prejs ALL
+        DEPENDS ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_PREJS}
     )
     add_dependencies(
-        ${target}-emscripten
-        prejs
+        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
+        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-prejs
     )
 endfunction()
