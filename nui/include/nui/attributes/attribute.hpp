@@ -1,6 +1,7 @@
 #pragma once
 
-#include <nui/observed.hpp>
+#include <nui/event_system/observed_value.hpp>
+#include <nui/event_system/event_context.hpp>
 #include <nui/utility/fixed_string.hpp>
 
 #include <utility>
@@ -35,7 +36,7 @@ namespace Nui
             return value_;
         }
 
-        void emplaceSideEffect(auto&&) const
+        void createEvent(auto&&, auto&&) const
         {}
 
       private:
@@ -68,9 +69,20 @@ namespace Nui
             return obs_;
         }
 
-        void emplaceSideEffect(std::invocable<T const&> auto&& sideEffect) const
+        template <typename ElementT>
+        void createEvent(
+            std::weak_ptr<ElementT> element,
+            std::invocable<std::shared_ptr<ElementT> const&, T const&> auto&& event) const
         {
-            obs_.emplaceSideEffect(std::forward<std::decay_t<decltype(sideEffect)>>(sideEffect));
+            const auto eventId = globalEventContext.registerEvent(Event{
+                element,
+                std::function<bool(const std::shared_ptr<ElementT>&)>{
+                    [&obs = this->obs_,
+                     event = std::forward<decltype(event)>(event)](std::shared_ptr<ElementT> const& element) -> bool {
+                        event(element, obs.value());
+                        return true;
+                    }}});
+            obs_.attachEvent(eventId);
         }
 
       private:

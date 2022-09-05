@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nui/concepts.hpp>
+#include <nui/event_system/event_context.hpp>
 
 #include <memory>
 #include <vector>
@@ -56,8 +57,7 @@ namespace Nui
         Observed(T&& t)
             : contained_{std::forward<T>(t)}
             , updating_{false}
-            , sideEffects_{}
-            , sideEffectsDelayed_{}
+            , attachedEvents_{}
         {}
 
         /**
@@ -85,17 +85,15 @@ namespace Nui
             return ModificationProxy{*this};
         }
 
-        void emplaceSideEffect(std::invocable<ContainedT const&> auto&& sideEffect)
+        void attachEvent(EventContext::EventIdType eventId)
         {
-            sideEffectsToAppendTo().emplace_back(std::forward<decltype(sideEffect)>(sideEffect));
+            attachedEvents_.emplace_back(eventId);
         }
-
-        void emplaceSideEffect(std::invocable auto&& sideEffect)
+        void unattachEvent(EventContext::EventIdType eventId)
         {
-            sideEffectsToAppendTo().emplace_back(
-                [sideEffect = std::forward<decltype(sideEffect)>(sideEffect)](ContainedT const&) {
-                    return sideEffect();
-                });
+            attachedEvents_.erase(
+                std::remove(std::begin(attachedEvents_), std::end(attachedEvents_), eventId),
+                std::end(attachedEvents_));
         }
 
         ContainedT& value()
@@ -118,37 +116,20 @@ namespace Nui
       private:
         void update()
         {
-            updating_ = true;
-            for (auto effect = std::begin(sideEffects_); effect != std::end(sideEffects_);)
+            for (auto& event : attachedEvents_)
             {
-                if (!(*effect)(contained_))
-                    effect = sideEffects_.erase(effect);
-                else
-                    ++effect;
+                if (!globalEventContext.activateEvent(event))
+                    event = EventRegistry::invalidEventId;
             }
-            updating_ = false;
-            transferDelayedSideEffects();
-        }
-
-        std::list<std::function<bool(ContainedT const&)>>& sideEffectsToAppendTo()
-        {
-            if (updating_)
-                return sideEffectsDelayed_;
-            else
-                return sideEffects_;
-        }
-
-        void transferDelayedSideEffects()
-        {
-            sideEffects_.splice(std::end(sideEffects_), sideEffectsDelayed_);
+            attachedEvents_.erase(
+                std::remove(std::begin(attachedEvents_), std::end(attachedEvents_), EventRegistry::invalidEventId),
+                std::end(attachedEvents_));
         }
 
       private:
         ContainedT contained_;
         bool updating_;
-        // TODO: performance container:
-        std::list<std::function<bool(ContainedT const&)>> sideEffects_;
-        std::list<std::function<bool(ContainedT const&)>> sideEffectsDelayed_;
+        std::vector<EventContext::EventIdType> attachedEvents_;
     };
 
     namespace Detail
