@@ -9,6 +9,8 @@
 #include <variant>
 #include <limits>
 
+#include <iostream>
+
 namespace Nui
 {
     template <typename T>
@@ -28,7 +30,7 @@ namespace Nui
         class IteratorBase
         {
           public:
-            IteratorBase(WrappedIterator&& wrapped)
+            IteratorBase(WrappedIterator wrapped)
                 : wrappedIterator_{std::move(wrapped)}
             {}
             IteratorBase(IteratorBase const&) = default;
@@ -67,14 +69,14 @@ namespace Nui
                 return tmp;
             }
 
-            bool operator==(const IteratorBase& rhs) const
+            friend bool operator==(const IteratorBase& lhs, const IteratorBase& rhs)
             {
-                return wrappedIterator_ == rhs.wrappedIterator_;
+                return lhs.wrappedIterator_ == rhs.wrappedIterator_;
             }
 
-            bool operator!=(const IteratorBase& rhs) const
+            friend bool operator!=(const IteratorBase& lhs, const IteratorBase& rhs)
             {
-                return !(*this == rhs);
+                return !(lhs == rhs);
             }
 
             IteratorBase operator+(std::size_t offset) const
@@ -115,18 +117,20 @@ namespace Nui
           public:
             using IteratorBase<WrappedIterator>::IteratorBase;
             using IteratorBase<WrappedIterator>::operator=;
-            using IteratorBase<WrappedIterator>::operator==;
-            using IteratorBase<WrappedIterator>::operator!=;
             using IteratorBase<WrappedIterator>::wrappedIterator_;
 
-            T const& operator*() const
+            ConstIterator(typename ItemContainerType::iterator iter)
+                : IteratorBase<WrappedIterator>{std::move(iter)}
+            {}
+
+            auto const& operator*() const
             {
-                return *wrappedIterator_->item;
+                return *wrappedIterator_;
             }
 
-            T const* operator->() const
+            auto const* operator->() const
             {
-                return &*wrappedIterator_->item;
+                return &*wrappedIterator_;
             }
         };
 
@@ -136,18 +140,16 @@ namespace Nui
           public:
             using IteratorBase<WrappedIterator>::IteratorBase;
             using IteratorBase<WrappedIterator>::operator=;
-            using IteratorBase<WrappedIterator>::operator==;
-            using IteratorBase<WrappedIterator>::operator!=;
             using IteratorBase<WrappedIterator>::wrappedIterator_;
 
-            T& operator*()
+            auto& operator*()
             {
-                return *wrappedIterator_->item;
+                return *wrappedIterator_;
             }
 
-            T* operator->()
+            auto* operator->()
             {
-                return &*wrappedIterator_->item;
+                return &*wrappedIterator_;
             }
         };
 
@@ -175,8 +177,9 @@ namespace Nui
             if (rewireSelected)
             {
                 for (auto& selected : selected_)
-                    selected.second = findItem(selected.first.id);
+                    selected.second = selected.first.id;
             }
+
             return id;
         }
 
@@ -189,28 +192,22 @@ namespace Nui
             p->item.reset();
             --itemCount_;
 
-            if (selected_.empty() && itemCount_ < (items_.size() / 2))
-            {
-                return items_.erase(
-                    std::remove_if(
-                        begin(items_),
-                        end(items_),
-                        [](auto const& item) {
-                            return !item.item;
-                        }),
-                    end(items_));
-            }
+            auto result = condense();
+            if (result != std::end(items_))
+                return result;
+
             return p;
         }
 
         bool select(IdType id)
         {
             const auto iter = findItem(id);
-            if (iter == std::end(items_))
+            if (iter == std::end(items_) || !iter->item.has_value())
                 return false;
 
-            selected_.push_back(
-                std::pair<ItemWithId, typename std::vector<ItemWithId>::iterator>{std::move(*iter), iter});
+            --itemCount_;
+
+            selected_.push_back(std::pair<ItemWithId, IdType>{std::move(*iter), id});
             iter->item.reset();
             return true;
         }
@@ -219,30 +216,33 @@ namespace Nui
         {
             for (auto& selected : selected_)
             {
+                auto const id = selected.first.id;
                 if (callback(selected.first))
-                    *selected.second = std::move(selected.first);
+                {
+                    ++itemCount_;
+                    auto entry = get(id);
+                    if (entry != end())
+                        *entry = std::move(selected.first);
+                }
             }
             selected_.clear();
+            condense();
         }
 
         IteratorType get(IdType id)
         {
-            const auto iter = findItem(id);
+            auto iter = findItem(id);
             if (iter == std::end(items_))
                 return end();
-            return iter;
+            return IteratorType{iter};
         }
 
-        IteratorType get(IdType id) const
+        ConstIteratorType get(IdType id) const
         {
-            const auto p = std::lower_bound(begin(items_), end(items_), id, [](auto const& lhs, auto const& rhs) {
-                return lhs.id < rhs.id;
-            });
-
-            if (p == std::end(items_) || p->id != id)
+            auto iter = findItem(id);
+            if (iter == std::end(items_))
                 return end();
-
-            return p;
+            return ConstIteratorType{iter};
         }
 
         IteratorType operator[](IdType id) const
@@ -292,11 +292,27 @@ namespace Nui
             return p;
         }
 
+        auto condense()
+        {
+            if (selected_.empty() && itemCount_ < (items_.size() / 2))
+            {
+                return items_.erase(
+                    std::remove_if(
+                        std::begin(items_),
+                        std::end(items_),
+                        [](auto const& item) {
+                            return !item.item;
+                        }),
+                    std::end(items_));
+            }
+            return std::end(items_);
+        }
+
       private:
         std::vector<ItemWithId> items_;
-        std::vector<std::pair<ItemWithId, typename std::vector<ItemWithId>::iterator>> selected_;
-        // unsigned for well defined overflow:
-        std::size_t itemCount_;
+        // TODO: improve performance, id link backs are costly, each one is a binary search.
+        std::vector<std::pair<ItemWithId, IdType>> selected_;
+        IdType itemCount_;
         IdType id_;
     };
 }

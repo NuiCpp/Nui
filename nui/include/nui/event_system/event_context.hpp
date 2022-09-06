@@ -56,7 +56,7 @@ namespace Nui
         {
             return impl_->eventRegistry().activateEvent(id);
         }
-        void executeActiveEvents()
+        void executeActiveEventsImmediately()
         {
             impl_->eventRegistry().executeActiveEvents();
         }

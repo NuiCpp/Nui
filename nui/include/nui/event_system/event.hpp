@@ -35,32 +35,6 @@ namespace Nui
         std::function<bool()> valid_;
     };
 
-    template <typename T>
-    struct WeakPtrEventImpl : EventImpl
-    {
-      public:
-        WeakPtrEventImpl(std::weak_ptr<T> weak, std::function<bool(std::shared_ptr<T> const& thing)> action)
-            : weak_{std::move(weak)}
-            , action_{std::move(action)}
-        {}
-
-        bool call() const override
-        {
-            if (auto shared = weak_.lock(); shared)
-                return action_(shared);
-            return false;
-        }
-
-        bool valid() const override
-        {
-            return !weak_.expired();
-        }
-
-      private:
-        std::weak_ptr<T> weak_;
-        std::function<bool(std::shared_ptr<T> const& thing)> action_;
-    };
-
     class Event
     {
       public:
@@ -71,10 +45,6 @@ namespace Nui
                     return true;
                 })
             : impl_{std::make_unique<TwoFunctorEventImpl>(std::move(action), std::move(valid))}
-        {}
-        template <typename T>
-        Event(std::weak_ptr<T> weak, std::function<bool(std::shared_ptr<T> const& thing)> action)
-            : impl_{std::make_unique<WeakPtrEventImpl<T>>(std::move(weak), std::move(action))}
         {}
 
         operator bool() const

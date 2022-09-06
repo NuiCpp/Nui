@@ -56,7 +56,7 @@ namespace Nui
         template <typename T = ContainedT>
         Observed(T&& t)
             : contained_{std::forward<T>(t)}
-            , updating_{false}
+            , instantUpdate_{false}
             , attachedEvents_{}
         {}
 
@@ -74,6 +74,15 @@ namespace Nui
             return *this;
         }
 
+        void instantUpdate(bool instant)
+        {
+            instantUpdate_ = instant;
+        }
+        bool instantUpdate() const
+        {
+            return instantUpdate_;
+        }
+
         /**
          * @brief Can be used to make mutations to the underlying class that get commited when the returned proxy is
          * destroyed.
@@ -88,6 +97,10 @@ namespace Nui
         void attachEvent(EventContext::EventIdType eventId)
         {
             attachedEvents_.emplace_back(eventId);
+        }
+        void attachOneshotEvent(EventContext::EventIdType eventId)
+        {
+            attachedOneshotEvents_.emplace_back(eventId);
         }
         void unattachEvent(EventContext::EventIdType eventId)
         {
@@ -121,15 +134,21 @@ namespace Nui
                 if (!globalEventContext.activateEvent(event))
                     event = EventRegistry::invalidEventId;
             }
+            for (auto& event : attachedOneshotEvents_)
+                globalEventContext.activateEvent(event);
+            attachedOneshotEvents_.clear();
             attachedEvents_.erase(
                 std::remove(std::begin(attachedEvents_), std::end(attachedEvents_), EventRegistry::invalidEventId),
                 std::end(attachedEvents_));
+            if (instantUpdate_)
+                globalEventContext.executeActiveEventsImmediately();
         }
 
       private:
         ContainedT contained_;
-        bool updating_;
+        bool instantUpdate_;
         std::vector<EventContext::EventIdType> attachedEvents_;
+        std::vector<EventContext::EventIdType> attachedOneshotEvents_;
     };
 
     namespace Detail

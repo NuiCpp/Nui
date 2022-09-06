@@ -23,6 +23,20 @@ namespace Nui
             });
         }
 
+        constexpr void attachOneshotEvent(auto eventId) const
+        {
+            tupleForEach(observedValues_, [eventId](auto& observed) {
+                observed.attachOneshotEvent(eventId);
+            });
+        }
+
+        constexpr void unattachEvent(auto eventId) const
+        {
+            tupleForEach(observedValues_, [eventId](auto& observed) {
+                observed.unattachEvent(eventId);
+            });
+        }
+
       private:
         const std::tuple<ObservedValues&...> observedValues_;
     };

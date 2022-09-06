@@ -32,6 +32,10 @@ namespace Nui
         void run();
         void terminate();
         void loadFrontend(std::string_view front);
+        /**
+         * @brief Returns the frontend page if in backend, nothing otherwise.
+         */
+        std::string page(std::string_view front) const;
         // eval
         // init
         // bind

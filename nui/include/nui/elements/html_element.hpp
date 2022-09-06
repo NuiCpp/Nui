@@ -8,8 +8,6 @@
 #include <concepts>
 #include <memory>
 
-#include <iostream>
-
 namespace Nui
 {
     namespace Detail
@@ -88,23 +86,18 @@ namespace Nui
                      createdSelfWeak = std::weak_ptr<ElementType>{createdSelf},
                      childrenRefabricator =
                          std::weak_ptr<typename std::decay_t<decltype(childrenRefabricator)>::element_type>{
-                             childrenRefabricator}]() {
+                             childrenRefabricator}]() mutable {
                         std::apply(
                             [&observedValues, &childrenRefabricator, &createdSelfWeak](auto&&... elementGenerators) {
-                                std::cout << "parent check...\n";
-
                                 auto parent = createdSelfWeak.lock();
                                 if (!parent)
                                     return;
 
-                                std::cout << "parent check survived\n";
-
                                 // clear children
                                 parent->clearChildren();
-                                std::cout << "clear children\n";
 
                                 const auto eventId = globalEventContext.registerEvent(Event{
-                                    [childrenRefabricator = childrenRefabricator.lock()]() -> bool {
+                                    [observedValues, childrenRefabricator = childrenRefabricator.lock()]() -> bool {
                                         (*childrenRefabricator)();
                                         return false;
                                     },
@@ -113,7 +106,7 @@ namespace Nui
                                     }});
 
                                 //  (re)register side effect.
-                                observedValues.attachEvent(eventId);
+                                observedValues.attachOneshotEvent(eventId);
 
                                 // regenerate children
                                 (..., elementGenerators()(*parent));
