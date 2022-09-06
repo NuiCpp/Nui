@@ -166,19 +166,12 @@ namespace Nui
 
         IdType append(T element)
         {
-            bool rewireSelected = !selected_.empty() && items_.capacity() == 0;
-
             items_.push_back(ItemWithId{id_, std::optional<T>{std::move(element)}});
             ++itemCount_;
             const auto id = id_;
             id_++;
             if (id_ == invalidId - 1)
                 id_ = 0;
-            if (rewireSelected)
-            {
-                for (auto& selected : selected_)
-                    selected.second = selected.first.id;
-            }
 
             return id;
         }
@@ -207,7 +200,7 @@ namespace Nui
 
             --itemCount_;
 
-            selected_.push_back(std::pair<ItemWithId, IdType>{std::move(*iter), id});
+            selected_.push_back(std::move(*iter));
             iter->item.reset();
             return true;
         }
@@ -216,13 +209,13 @@ namespace Nui
         {
             for (auto& selected : selected_)
             {
-                auto const id = selected.first.id;
-                if (callback(selected.first))
+                auto const id = selected.id;
+                if (callback(selected))
                 {
                     ++itemCount_;
                     auto entry = get(id);
                     if (entry != end())
-                        *entry = std::move(selected.first);
+                        *entry = std::move(selected);
                 }
             }
             selected_.clear();
@@ -311,7 +304,7 @@ namespace Nui
       private:
         std::vector<ItemWithId> items_;
         // TODO: improve performance, id link backs are costly, each one is a binary search.
-        std::vector<std::pair<ItemWithId, IdType>> selected_;
+        std::vector<ItemWithId> selected_;
         IdType itemCount_;
         IdType id_;
     };
