@@ -56,7 +56,6 @@ namespace Nui
         template <typename T = ContainedT>
         Observed(T&& t)
             : contained_{std::forward<T>(t)}
-            , instantUpdate_{false}
             , attachedEvents_{}
         {}
 
@@ -74,13 +73,21 @@ namespace Nui
             return *this;
         }
 
-        void instantUpdate(bool instant)
+        template <typename T = ContainedT>
+        requires std::equality_comparable<T> && Fundamental<T> Observed& operator=(T&& t)
         {
-            instantUpdate_ = instant;
+            return assignChecked(t);
         }
-        bool instantUpdate() const
+
+        template <typename T = ContainedT>
+        requires std::equality_comparable<T> Observed& assignChecked(T&& other)
         {
-            return instantUpdate_;
+            if (contained_ != other)
+            {
+                contained_ = std::forward<T>(other);
+                update();
+            }
+            return *this;
         }
 
         /**
@@ -140,13 +147,10 @@ namespace Nui
             attachedEvents_.erase(
                 std::remove(std::begin(attachedEvents_), std::end(attachedEvents_), EventRegistry::invalidEventId),
                 std::end(attachedEvents_));
-            if (instantUpdate_)
-                globalEventContext.executeActiveEventsImmediately();
         }
 
       private:
         ContainedT contained_;
-        bool instantUpdate_;
         std::vector<EventContext::EventIdType> attachedEvents_;
         std::vector<EventContext::EventIdType> attachedOneshotEvents_;
     };
