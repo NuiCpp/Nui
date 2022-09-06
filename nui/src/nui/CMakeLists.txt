@@ -4,6 +4,7 @@ if (EMSCRIPTEN)
             frontend/dom/dom.cpp
             frontend/window.cpp
             frontend/utility/functions.cpp
+            frontend/event_system/event_context.cpp
     )
     target_include_directories(
         nui-frontend

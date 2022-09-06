@@ -3,6 +3,8 @@
 #include <nui/elements/html_element.hpp>
 #include <nui/utility/inferance_helper.hpp>
 #include <nui/utility/functions.hpp>
+#include <nui/event_system/event_context.hpp>
+#include <nui/utility/tuple_for_each.hpp>
 
 #include <emscripten/val.h>
 
@@ -43,23 +45,19 @@ namespace Nui::Dom
         void setup(HtmlElement<T, Attributes...> const& element)
         {
             auto setSideEffect = [self = this](auto const& attribute) {
-                attribute.emplaceSideEffect(
-                    [weak = self->weak_from_this(), name = attribute.name()](auto const& value) {
-                        if (auto shared = weak.lock(); shared)
-                        {
-                            // TODO: non string_view able values
-                            shared->setAttribute(name, value);
-                            return true;
-                        }
-                        return false;
+                auto weak = self->weak_from_this();
+                attribute.createEvent(
+                    weak,
+                    [name = attribute.name()](
+                        std::shared_ptr<std::decay_t<decltype(*this)>> const& shared, auto const& value) {
+                        shared->setAttribute(name, value);
                     });
             };
 
-            std::apply(
-                [this, &setSideEffect](auto const&... attribute) {
-                    (..., (setAttribute(attribute.name(), attribute.value()), setSideEffect(attribute)));
-                },
-                element.attributes());
+            tupleForEach(element.attributes(), [this, &setSideEffect](auto const& attribute) {
+                setAttribute(attribute.name(), attribute.value());
+                setSideEffect(attribute);
+            });
         }
 
         template <typename T>

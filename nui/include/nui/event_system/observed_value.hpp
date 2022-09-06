@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nui/concepts.hpp>
+#include <nui/event_system/event_context.hpp>
 
 #include <memory>
 #include <vector>
@@ -55,9 +56,8 @@ namespace Nui
         template <typename T = ContainedT>
         Observed(T&& t)
             : contained_{std::forward<T>(t)}
-            , updating_{false}
-            , sideEffects_{}
-            , sideEffectsDelayed_{}
+            , instantUpdate_{false}
+            , attachedEvents_{}
         {}
 
         /**
@@ -74,6 +74,15 @@ namespace Nui
             return *this;
         }
 
+        void instantUpdate(bool instant)
+        {
+            instantUpdate_ = instant;
+        }
+        bool instantUpdate() const
+        {
+            return instantUpdate_;
+        }
+
         /**
          * @brief Can be used to make mutations to the underlying class that get commited when the returned proxy is
          * destroyed.
@@ -85,17 +94,19 @@ namespace Nui
             return ModificationProxy{*this};
         }
 
-        void emplaceSideEffect(std::invocable<ContainedT const&> auto&& sideEffect)
+        void attachEvent(EventContext::EventIdType eventId)
         {
-            sideEffectsToAppendTo().emplace_back(std::forward<std::decay_t<decltype(sideEffect)>>(sideEffect));
+            attachedEvents_.emplace_back(eventId);
         }
-
-        void emplaceSideEffect(std::invocable auto&& sideEffect)
+        void attachOneshotEvent(EventContext::EventIdType eventId)
         {
-            sideEffectsToAppendTo().emplace_back(
-                [sideEffect = std::forward<std::decay_t<decltype(sideEffect)>>(sideEffect)](ContainedT const&) {
-                    return sideEffect();
-                });
+            attachedOneshotEvents_.emplace_back(eventId);
+        }
+        void unattachEvent(EventContext::EventIdType eventId)
+        {
+            attachedEvents_.erase(
+                std::remove(std::begin(attachedEvents_), std::end(attachedEvents_), eventId),
+                std::end(attachedEvents_));
         }
 
         ContainedT& value()
@@ -118,37 +129,26 @@ namespace Nui
       private:
         void update()
         {
-            updating_ = true;
-            for (auto effect = std::begin(sideEffects_); effect != std::end(sideEffects_);)
+            for (auto& event : attachedEvents_)
             {
-                if (!(*effect)(contained_))
-                    effect = sideEffects_.erase(effect);
-                else
-                    ++effect;
+                if (!globalEventContext.activateEvent(event))
+                    event = EventRegistry::invalidEventId;
             }
-            updating_ = false;
-            transferDelayedSideEffects();
-        }
-
-        std::list<std::function<bool(ContainedT const&)>>& sideEffectsToAppendTo()
-        {
-            if (updating_)
-                return sideEffectsDelayed_;
-            else
-                return sideEffects_;
-        }
-
-        void transferDelayedSideEffects()
-        {
-            sideEffects_.splice(std::end(sideEffects_), sideEffectsDelayed_);
+            for (auto& event : attachedOneshotEvents_)
+                globalEventContext.activateEvent(event);
+            attachedOneshotEvents_.clear();
+            attachedEvents_.erase(
+                std::remove(std::begin(attachedEvents_), std::end(attachedEvents_), EventRegistry::invalidEventId),
+                std::end(attachedEvents_));
+            if (instantUpdate_)
+                globalEventContext.executeActiveEventsImmediately();
         }
 
       private:
         ContainedT contained_;
-        bool updating_;
-        // TODO: performance container:
-        std::list<std::function<bool(ContainedT const&)>> sideEffects_;
-        std::list<std::function<bool(ContainedT const&)>> sideEffectsDelayed_;
+        bool instantUpdate_;
+        std::vector<EventContext::EventIdType> attachedEvents_;
+        std::vector<EventContext::EventIdType> attachedOneshotEvents_;
     };
 
     namespace Detail

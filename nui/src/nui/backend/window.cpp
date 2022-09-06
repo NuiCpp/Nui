@@ -62,6 +62,11 @@ namespace Nui
         impl_->view.set_size(width, height, static_cast<int>(hint));
     }
     //---------------------------------------------------------------------------------------------------------------------
+    std::string Window::page(std::string_view front) const
+    {
+        return fmt::format(htmlTemplate, front);
+    }
+    //---------------------------------------------------------------------------------------------------------------------
     void Window::loadFrontend(std::string_view front)
     {
         impl_->view.set_html(fmt::format(htmlTemplate, front));

@@ -1,43 +1,26 @@
 #pragma once
 
-#include <nui/reactive.hpp>
+#include <nui/event_system/observed_value_combinator.hpp>
+#include <nui/event_system/event_context.hpp>
 
 #include <tuple>
 #include <utility>
 #include <concepts>
+#include <memory>
 
 namespace Nui
 {
     namespace Detail
     {
-        template <typename>
-        struct IsTuple : std::false_type
-        {};
-        template <typename... T>
-        struct IsTuple<std::tuple<T...>> : std::true_type
-        {};
+        // class ChildrenRefabricator
+        // {
+        // public:
+        //     void operator()()
+        //     {
+        //     }
 
-        template <typename... Parameters>
-        struct RefabricationSideEffect
-        {};
-        template <typename T, typename... Parameters>
-        struct RefabricationSideEffect<T, Parameters...>
-        {
-            static void apply(auto& observedValues, auto const& childrenRefabricator)
-            {
-                observedValues.emplaceSideEffects([childrenRefabricator]() -> bool {
-                    (*childrenRefabricator)();
-                    return false;
-                });
-                RefabricationSideEffect<Parameters...>::apply(observedValues, childrenRefabricator);
-            }
-        };
-        template <>
-        struct RefabricationSideEffect<>
-        {
-            static void apply(auto&&, auto const&)
-            {}
-        };
+        // private:
+        // };
     }
 
     template <typename Derived, typename... Attributes>
@@ -81,7 +64,8 @@ namespace Nui
         }
 
         template <typename... ObservedValues, std::invocable... GeneratorT>
-        constexpr auto operator()(Reactive<ObservedValues...>&& observedValues, GeneratorT&&... elementGenerators) &&
+        constexpr auto
+        operator()(ObservedValueCombinator<ObservedValues...>&& observedValues, GeneratorT&&... elementGenerators) &&
         {
             return [self = this->clone(),
                     observedValues = std::move(observedValues),
@@ -95,7 +79,6 @@ namespace Nui
                 // create the parent for the children, that is the "self" element.
                 auto& createdSelf = parentElement.appendElement(self);
 
-                // FIXME: mutable outer then move:
                 *childrenRefabricator =
                     [self,
                      observedValues,
@@ -103,7 +86,7 @@ namespace Nui
                      createdSelfWeak = std::weak_ptr<ElementType>{createdSelf},
                      childrenRefabricator =
                          std::weak_ptr<typename std::decay_t<decltype(childrenRefabricator)>::element_type>{
-                             childrenRefabricator}]() {
+                             childrenRefabricator}]() mutable {
                         std::apply(
                             [&observedValues, &childrenRefabricator, &createdSelfWeak](auto&&... elementGenerators) {
                                 auto parent = createdSelfWeak.lock();
@@ -113,16 +96,20 @@ namespace Nui
                                 // clear children
                                 parent->clearChildren();
 
-                                // regenerate children and (re)register side effect.
-                                std::apply(
-                                    [&observedValues,
-                                     &childrenRefabricator]<typename... GeneratedType>(GeneratedType&&...) mutable {
-                                        Detail::RefabricationSideEffect<GeneratedType...>::apply(
-                                            observedValues, childrenRefabricator.lock());
+                                const auto eventId = globalEventContext.registerEvent(Event{
+                                    [observedValues, childrenRefabricator = childrenRefabricator.lock()]() -> bool {
+                                        (*childrenRefabricator)();
+                                        return false;
                                     },
-                                    std::make_tuple(
-                                        std::weak_ptr<typename decltype(elementGenerators()(*parent))::element_type>(
-                                            elementGenerators()(*parent))...));
+                                    [createdSelfWeak]() {
+                                        return !createdSelfWeak.expired();
+                                    }});
+
+                                //  (re)register side effect.
+                                observedValues.attachOneshotEvent(eventId);
+
+                                // regenerate children
+                                (..., elementGenerators()(*parent));
                             },
                             elementGenerators);
                     };

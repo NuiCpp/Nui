@@ -1,6 +1,7 @@
 #pragma once
 
-#include <nui/observed.hpp>
+#include <nui/event_system/observed_value.hpp>
+#include <nui/event_system/event_context.hpp>
 #include <nui/utility/fixed_string.hpp>
 
 #include <utility>
@@ -35,7 +36,7 @@ namespace Nui
             return value_;
         }
 
-        void emplaceSideEffect(auto&&) const
+        void createEvent(auto&&, auto&&) const
         {}
 
       private:
@@ -68,9 +69,24 @@ namespace Nui
             return obs_;
         }
 
-        void emplaceSideEffect(std::invocable<T const&> auto&& sideEffect) const
+        template <typename ElementT>
+        void createEvent(
+            std::weak_ptr<ElementT> element,
+            std::invocable<std::shared_ptr<ElementT> const&, T const&> auto event) const
         {
-            obs_.emplaceSideEffect(std::forward<std::decay_t<decltype(sideEffect)>>(sideEffect));
+            const auto eventId = globalEventContext.registerEvent(Event{
+                [element, event = std::move(event), &obs = this->obs_]() {
+                    if (auto shared = element.lock(); shared)
+                    {
+                        event(shared, obs.value());
+                        return true;
+                    }
+                    return false;
+                },
+                [element]() {
+                    return !element.expired();
+                }});
+            obs_.attachEvent(eventId);
         }
 
       private:
@@ -88,9 +104,9 @@ namespace Nui
                 return #NAME; \
             }; \
             template <typename U> \
-            std::enable_if_t<!Detail::IsObserved_v<std::decay_t<U>>, Attribute<NAME##_, U>> operator=(U&& val) \
+            std::enable_if_t<!Detail::IsObserved_v<std::decay_t<U>>, Attribute<NAME##_, U>> operator=(U val) \
             { \
-                return Attribute<NAME##_, U>{std::forward<U>(val)}; \
+                return Attribute<NAME##_, U>{std::move(val)}; \
             } \
             template <typename U> \
             std::enable_if_t<Detail::IsObserved_v<std::decay_t<U>>, Attribute<NAME##_, std::decay_t<U>>> \
@@ -114,9 +130,12 @@ namespace Nui
                 return nameValue; \
             }; \
             Attribute<NAME##_, std::function<void(emscripten::val)>> \
-            operator=(std::function<void(emscripten::val)>&& func) \
+            operator=(std::function<void(emscripten::val)> func) \
             { \
-                return Attribute<NAME##_, std::function<void(emscripten::val)>>{std::move(func)}; \
+                return Attribute<NAME##_, std::function<void(emscripten::val)>>{[func](emscripten::val val) { \
+                    func(val); \
+                    globalEventContext.executeActiveEventsImmediately(); \
+                }}; \
             } \
         } NAME; \
     }
