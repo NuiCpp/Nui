@@ -38,7 +38,7 @@ namespace Nui
             registry_.deselectAll([](SelectablesRegistry<Event>::ItemWithId const& itemWithId) -> bool {
                 if (!itemWithId.item)
                     return false;
-                return itemWithId.item.value()();
+                return itemWithId.item.value()(itemWithId.id);
             });
         }
 

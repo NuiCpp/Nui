@@ -8,21 +8,21 @@ namespace Nui
 {
     struct EventImpl
     {
-        virtual bool call() const = 0;
+        virtual bool call(std::size_t eventId) const = 0;
         virtual bool valid() const = 0;
         virtual ~EventImpl() = default;
     };
 
     struct TwoFunctorEventImpl : public EventImpl
     {
-        TwoFunctorEventImpl(std::function<bool()> action, std::function<bool()> valid)
+        TwoFunctorEventImpl(std::function<bool(std::size_t eventId)> action, std::function<bool()> valid)
             : action_{std::move(action)}
             , valid_{std::move(valid)}
         {}
 
-        bool call() const override
+        bool call(std::size_t eventId) const override
         {
-            return action_();
+            return action_(eventId);
         }
 
         bool valid() const override
@@ -31,7 +31,7 @@ namespace Nui
         }
 
       private:
-        std::function<bool()> action_;
+        std::function<bool(std::size_t eventId)> action_;
         std::function<bool()> valid_;
     };
 
@@ -39,7 +39,7 @@ namespace Nui
     {
       public:
         Event(
-            std::function<bool()> action,
+            std::function<bool(std::size_t eventId)> action,
             std::function<bool()> valid =
                 [] {
                     return true;
@@ -51,9 +51,9 @@ namespace Nui
         {
             return impl_->valid();
         }
-        bool operator()() const
+        bool operator()(std::size_t eventId) const
         {
-            return impl_->call();
+            return impl_->call(eventId);
         }
 
       private:

@@ -2,4 +2,4 @@
 
 #include <nui/attributes/attribute.hpp>
 
-MAKE_HTML_STRING_ATTRIBUTE(id)
+MAKE_HTML_VALUE_ATTRIBUTE(id)

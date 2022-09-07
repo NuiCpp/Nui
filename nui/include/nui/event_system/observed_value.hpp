@@ -2,12 +2,14 @@
 
 #include <nui/concepts.hpp>
 #include <nui/event_system/event_context.hpp>
+#include <nui/utility/pick_first.hpp>
 
 #include <memory>
 #include <vector>
 #include <functional>
 #include <type_traits>
 #include <list>
+#include <utility>
 
 namespace Nui
 {
@@ -70,6 +72,37 @@ namespace Nui
         {
             contained_ = std::forward<T>(t);
             update();
+            return *this;
+        }
+
+        template <typename T>
+        requires Incrementable<T>
+        friend Observed<T>& operator++(Observed<T>& observedValue);
+
+        template <typename T>
+        requires Incrementable<T>
+        friend T operator++(Observed<T>& observedValue, int);
+
+        template <typename T>
+        requires Decrementable<T>
+        friend Observed<T>& operator--(Observed<T>& observedValue);
+
+        template <typename T>
+        requires Decrementable<T>
+        friend T operator--(Observed<T>& observedValue, int);
+
+        template <typename T = ContainedT, typename U>
+        requires PlusAssignable<T, U> Observed<T>
+        &operator+=(U const& rhs)
+        {
+            this->contained_ += rhs;
+            return *this;
+        }
+        template <typename T = ContainedT, typename U>
+        requires MinusAssignable<T, U> Observed<T>
+        &operator-=(U const& rhs)
+        {
+            this->contained_ -= rhs;
             return *this;
         }
 
@@ -154,6 +187,40 @@ namespace Nui
         std::vector<EventContext::EventIdType> attachedEvents_;
         std::vector<EventContext::EventIdType> attachedOneshotEvents_;
     };
+    template <typename T>
+    requires Incrementable<T>
+    inline Observed<T>& operator++(Observed<T>& observedValue)
+    {
+        ++observedValue.contained_;
+        observedValue.update();
+        return observedValue;
+    }
+    template <typename T>
+    requires Incrementable<T>
+    inline T operator++(Observed<T>& observedValue, int)
+    {
+        auto tmp = observedValue.contained_;
+        ++observedValue.contained_;
+        observedValue.update();
+        return tmp;
+    }
+
+    template <typename T>
+    inline auto operator--(Observed<T>& observedValue)
+        -> Observed<Detail::PickFirst_t<T, decltype(--std::declval<T>())>>&
+    {
+        --observedValue.contained_;
+        observedValue.update();
+        return observedValue;
+    }
+    template <typename T>
+    inline auto operator--(Observed<T>& observedValue, int) -> Detail::PickFirst_t<T, decltype(std::declval<T>()--)>
+    {
+        auto tmp = observedValue.contained_;
+        --observedValue.contained_;
+        observedValue.update();
+        return tmp;
+    }
 
     namespace Detail
     {
