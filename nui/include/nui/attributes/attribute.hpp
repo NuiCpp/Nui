@@ -2,10 +2,12 @@
 
 #include <nui/event_system/observed_value.hpp>
 #include <nui/event_system/event_context.hpp>
+#include <nui/event_system/observed_value_combinator.hpp>
 #include <nui/utility/fixed_string.hpp>
 
 #include <utility>
 #include <string>
+#include <type_traits>
 #include <any>
 
 namespace Nui
@@ -75,7 +77,7 @@ namespace Nui
             std::invocable<std::shared_ptr<ElementT> const&, T const&> auto event) const
         {
             const auto eventId = globalEventContext.registerEvent(Event{
-                [element, event = std::move(event), &obs = this->obs_]() {
+                [element, event = std::move(event), &obs = this->obs_](auto) {
                     if (auto shared = element.lock(); shared)
                     {
                         event(shared, obs.value());
@@ -92,9 +94,56 @@ namespace Nui
       private:
         Observed<T>& obs_;
     };
+
+    template <typename DiscreteAttribute, typename GeneratorType, typename... ObservedValueTypes>
+    class Attribute<DiscreteAttribute, ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValueTypes...>, void>
+    {
+      public:
+        using discrete_attribute = DiscreteAttribute;
+        constexpr static bool is_static_value = false;
+
+        Attribute(ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValueTypes...> value)
+            : combinator_{std::move(value)}
+        {}
+
+        constexpr static char const* name()
+        {
+            return discrete_attribute::name();
+        }
+
+        auto value() const
+        {
+            return combinator_();
+        }
+
+        template <typename ElementT>
+        void createEvent(
+            std::weak_ptr<ElementT> element,
+            std::invocable<std::shared_ptr<ElementT> const&, std::invoke_result_t<GeneratorType> const&> auto event)
+            const
+        {
+            const auto eventId = globalEventContext.registerEvent(Event{
+                [element, event = std::move(event), combinator_ = this->combinator_](auto eventId) {
+                    if (auto shared = element.lock(); shared)
+                    {
+                        event(shared, combinator_());
+                        return true;
+                    }
+                    combinator_.unattachEvent(eventId);
+                    return false;
+                },
+                [element]() {
+                    return !element.expired();
+                }});
+            combinator_.attachEvent(eventId);
+        }
+
+      private:
+        ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValueTypes...> combinator_;
+    };
 }
 
-#define MAKE_HTML_STRING_ATTRIBUTE(NAME) \
+#define MAKE_HTML_VALUE_ATTRIBUTE(NAME) \
     namespace Nui::Attributes \
     { \
         struct NAME##_ \
@@ -114,6 +163,13 @@ namespace Nui
             { \
                 return Attribute<NAME##_, std::decay_t<U>>{val}; \
             } \
+            template <typename GeneratorType, typename... ObservedValues> \
+            Attribute<NAME##_, ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValues...>> \
+            operator=(ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValues...> const& combinator) \
+            { \
+                return Attribute<NAME##_, ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValues...>>{ \
+                    combinator}; \
+            } \
         } NAME; \
     }
 
@@ -122,7 +178,6 @@ namespace Nui
     { \
         struct NAME##_ \
         { \
-\
             constexpr static auto nameValue = fixToLower(#NAME); \
 \
             consteval static char const* name() \

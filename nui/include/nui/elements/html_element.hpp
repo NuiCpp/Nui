@@ -65,7 +65,7 @@ namespace Nui
 
         template <typename... ObservedValues, std::invocable... GeneratorT>
         constexpr auto
-        operator()(ObservedValueCombinator<ObservedValues...>&& observedValues, GeneratorT&&... elementGenerators) &&
+        operator()(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&&... elementGenerators) &&
         {
             return [self = this->clone(),
                     observedValues = std::move(observedValues),
@@ -97,7 +97,7 @@ namespace Nui
                                 parent->clearChildren();
 
                                 const auto eventId = globalEventContext.registerEvent(Event{
-                                    [observedValues, childrenRefabricator = childrenRefabricator.lock()]() -> bool {
+                                    [observedValues, childrenRefabricator = childrenRefabricator.lock()](int) -> bool {
                                         (*childrenRefabricator)();
                                         return false;
                                     },
