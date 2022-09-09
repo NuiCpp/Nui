@@ -1,10 +1,13 @@
 #pragma once
 
 #include <nui/attributes/attribute.hpp>
-#include <nui/utility/meta/lazy_instantiate.hpp>
 #include <nui/utility/meta/tuple_filter.hpp>
 #include <nui/utility/meta/tuple_transform.hpp>
+#include <mplex/control/if.hpp>
+#include <mplex/functional/lift.hpp>
+#include <mplex/fundamental/integral.hpp>
 
+#include <tuple>
 #include <string>
 #include <sstream>
 #include <optional>
@@ -82,6 +85,48 @@ namespace Nui::Attributes
                 return nullptr;
             }
         };
+
+        template <typename IntegerSequence, typename CurrentIndex, typename... Properties>
+        struct BuildObservedPropertyIndexList;
+
+        template <unsigned... Indices, typename CurrentIndex, typename Property, typename... Properties>
+        struct BuildObservedPropertyIndexList<
+            std::integer_sequence<unsigned, Indices...>,
+            CurrentIndex,
+            Property,
+            Properties...>
+        {
+            // TODO: eliminate lift, by transforming this class to an mplex functor concept.
+            using type = mplex::lazy_if_vt<
+                IsDynamicStyleProperty<Property>::value,
+                mplex::then_<
+                    mplex::lift<BuildObservedPropertyIndexList>,
+                    std::integer_sequence<unsigned, Indices..., CurrentIndex::value>,
+                    mplex::unsigned_<CurrentIndex::value + 1u>,
+                    Properties...>,
+                mplex::else_<
+                    mplex::lift<BuildObservedPropertyIndexList>,
+                    std::integer_sequence<unsigned, Indices...>,
+                    mplex::unsigned_<CurrentIndex::value + 1u>,
+                    Properties...>>;
+        };
+
+        template <unsigned... Indices, typename CurrentIndex>
+        struct BuildObservedPropertyIndexList<std::integer_sequence<unsigned, Indices...>, CurrentIndex>
+        {
+            using type = std::integer_sequence<unsigned, Indices...>;
+        };
+
+        template <typename IndexList>
+        struct ExtractObservedValuesFromProperties;
+        template <unsigned... Indices>
+        struct ExtractObservedValuesFromProperties<std::integer_sequence<unsigned, Indices...>>
+        {
+            constexpr static auto apply(auto&& propertyTuple)
+            {
+                return std::tie(std::get<Indices>(propertyTuple).observed...);
+            }
+        };
     }
 
     struct StyleProperty
@@ -148,17 +193,12 @@ namespace Nui::Attributes
     namespace Detail
     {
         template <typename... Properties>
-        consteval auto stripObserved(Properties&... props)
+        constexpr auto stripObserved(Properties&... props)
         {
-            return std::apply(
-                [](auto... ts) {
-                    // NOTE to future me: cannot tuple_cat with reference members -.-
-                    return std::tuple_cat(std::conditional_t<
-                                          !std::is_same_v<decltype(ts), void*>,
-                                          std::tuple<decltype(ts)&>,
-                                          std::tuple<>>{}...);
-                },
-                std::make_tuple(StripPropertyObserved<Properties>::extract(props)...));
+            return ExtractObservedValuesFromProperties<typename BuildObservedPropertyIndexList<
+                std::integer_sequence<unsigned>,
+                mplex::unsigned_<0>,
+                Properties...>::type>::apply(std::tie(props...));
         }
     }
 
@@ -218,24 +258,21 @@ namespace Nui::Attributes
             return Attribute<style_, std::decay_t<U>>{val};
         }
         template <typename... T>
-        constexpr auto operator=(Style<T...> const& style)
+        constexpr auto operator=(Style<T...>&& style)
         {
-            // using X = ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValueTypes...>
-            // GeneratorType = Lambda that generates style string
-            // TODO:
             if constexpr (Style<T...>::isStatic())
             {
                 return Attribute<style_, std::string>{style.toString()};
             }
             else
             {
-                // std::conditional_t<!std::is_same_v<StylePropertyImpl<void>, T>, std::tuple<
                 return std::apply(
-                    [&style]<typename... ObservedValueTypes>(ObservedValueTypes&&... obs) {
-                        Attribute<
+                    [&style]<typename... ObservedValueTypes>(ObservedValueTypes&... obs) {
+                        return Attribute<
                             style_,
                             ObservedValueCombinatorWithGenerator<std::function<std::string()>, ObservedValueTypes...>>{
-                            ObservedValueCombinator{std::move(obs)...}.generate(std::move(style).ejectGenerator())};
+                            ObservedValueCombinator<ObservedValueTypes...>{obs...}.generate(
+                                std::move(style).ejectGenerator())};
                     },
                     std::move(style).ejectObservedValues());
             }
