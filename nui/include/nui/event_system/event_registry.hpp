@@ -28,7 +28,14 @@ namespace Nui
             return registry_.append(std::move(event));
         }
 
-        bool activateEvent(EventIdType id)
+        /**
+         * @brief Returns a pointer to the selected event (only valid until the next activation or event execution). May
+         * return nullptr when the event id was not found.
+         *
+         * @param id
+         * @return auto*
+         */
+        auto* activateEvent(EventIdType id)
         {
             return registry_.select(id);
         }

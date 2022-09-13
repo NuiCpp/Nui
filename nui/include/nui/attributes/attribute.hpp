@@ -123,7 +123,8 @@ namespace Nui
             const
         {
             const auto eventId = globalEventContext.registerEvent(Event{
-                [element, event = std::move(event), combinator_ = this->combinator_](auto eventId) {
+                [element, event = std::move(event), combinator_ = this->combinator_](
+                    auto eventId, EventImpl::meta_data_type const&) {
                     if (auto shared = element.lock(); shared)
                     {
                         event(shared, combinator_());

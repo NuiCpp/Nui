@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nui/event_system/observed_value_combinator.hpp>
+#include <nui/event_system/range.hpp>
 #include <nui/event_system/event_context.hpp>
 
 #include <tuple>
@@ -12,15 +13,6 @@ namespace Nui
 {
     namespace Detail
     {
-        // class ChildrenRefabricator
-        // {
-        // public:
-        //     void operator()()
-        //     {
-        //     }
-
-        // private:
-        // };
     }
 
     template <typename Derived, typename... Attributes>
@@ -97,7 +89,8 @@ namespace Nui
                                 parent->clearChildren();
 
                                 const auto eventId = globalEventContext.registerEvent(Event{
-                                    [observedValues, childrenRefabricator = childrenRefabricator.lock()](int) -> bool {
+                                    [observedValues, childrenRefabricator = childrenRefabricator.lock()](
+                                        int, EventImpl::meta_data_type const&) -> bool {
                                         (*childrenRefabricator)();
                                         return false;
                                     },
@@ -116,6 +109,19 @@ namespace Nui
                 (*childrenRefabricator)();
                 return createdSelf;
             };
+        }
+
+        template <typename ObservedValue, typename GeneratorT>
+        constexpr auto operator()(ObservedRange<ObservedValue> observedRange, GeneratorT&& elementGenerator) &&
+        {
+            return [self = this->clone(),
+                    observedRange = std::move(observedRange),
+                    elementGenerator = std::forward<GeneratorT>(elementGenerator)](auto& parentElement) {
+                using ElementType = std::decay_t<decltype(parentElement)>;
+                // auto childrenRefabricator = std::make_shared<std::function<void()>>();
+                auto& createdSelf = parentElement.appendElement(self);
+            };
+            // return this->operator()(ObservedRange{observedValue}, std::forward<GeneratorT>(elementGenerators));
         }
 
         std::tuple<Attributes...> const& attributes() const

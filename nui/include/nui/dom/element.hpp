@@ -133,6 +133,11 @@ namespace Nui::Dom
             children_.insert(where, std::move(elem));
         }
 
+        auto erase(iterator where)
+        {
+            return children_.erase(where);
+        }
+
         emscripten::val& val()
         {
             return element_;

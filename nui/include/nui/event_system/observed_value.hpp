@@ -10,6 +10,7 @@
 #include <type_traits>
 #include <list>
 #include <utility>
+#include <deque>
 
 namespace Nui
 {
@@ -171,7 +172,7 @@ namespace Nui
         {
             for (auto& event : attachedEvents_)
             {
-                if (!globalEventContext.activateEvent(event))
+                if (globalEventContext.activateEvent(event) == nullptr)
                     event = EventRegistry::invalidEventId;
             }
             for (auto& event : attachedOneshotEvents_)
@@ -187,6 +188,103 @@ namespace Nui
         std::vector<EventContext::EventIdType> attachedEvents_;
         std::vector<EventContext::EventIdType> attachedOneshotEvents_;
     };
+
+    template <typename ContainerT>
+    class ObservedContainer
+    {
+      public:
+        using value_type = typename ContainerT::value_type;
+        using allocator_type = typename ContainerT::allocator_type;
+        using size_type = typename ContainerT::size_type;
+        using difference_type = typename ContainerT::difference_type;
+        using reference = typename ContainerT::reference;
+        using const_reference = typename ContainerT::const_reference;
+        using pointer = typename ContainerT::pointer;
+        using const_pointer = typename ContainerT::const_pointer;
+
+        // TODO: need to wrap these:
+        using iterator = typename ContainerT::iterator;
+        using const_iterator = typename ContainerT::const_iterator;
+        using reverse_iterator = typename ContainerT::reverse_iterator;
+        using const_reverse_iterator = typename ContainerT::const_reverse_iterator;
+
+      public:
+        ObservedContainer() = default;
+        ObservedContainer(const ObservedContainer&) = delete;
+        ObservedContainer(ObservedContainer&&) = default;
+        ObservedContainer& operator=(const ObservedContainer&) = delete;
+        ObservedContainer& operator=(ObservedContainer&&) = default;
+        ~ObservedContainer() = default;
+
+        template <typename T = ContainerT>
+        ObservedContainer(T&& t)
+            : contained_{std::forward<T>(t)}
+            , attachedEvents_{}
+        {}
+
+        template <typename T = ContainerT>
+        ObservedContainer& operator=(T&& t)
+        {
+            contained_ = std::forward<T>(t);
+            // TODO: full update.
+            // Idea: encode update kind as function passed into event?
+            return *this;
+        }
+
+        void assign(size_type count, const value_type& value)
+        {
+            contained_.assign(count, value);
+            // TODO: full update.
+        }
+        template <typename Iterator>
+        void assign(Iterator first, Iterator last)
+        {
+            contained_.assign(first, last);
+            // TODO: full update.
+        }
+        void assign(std::initializer_list<value_type> ilist)
+        {
+            contained_.assign(ilist);
+            // TODO: full update.
+        }
+
+        // TODO: begin, end, ...
+
+        // TODO: return wrapper.
+        reference at(size_type pos)
+        {
+            reference ref = contained_.at(pos);
+            return ref;
+        }
+        // TODO: return wrapper.
+        const_reference at(size_type pos) const
+        {
+            const_reference ref = contained_.at(pos);
+            return ref;
+        }
+
+        // TODO: return wrapper.
+        reference operator[](size_type pos)
+        {}
+
+        // TODO: return wrapper:
+        const_reference operator[](size_type pos) const
+        {}
+
+      private:
+
+      private:
+        ContainerT contained_;
+        std::vector<EventContext::EventIdType> attachedEvents_;
+    };
+
+    template <typename... Parameters>
+    class Observed<std::vector<Parameters...>> : public ObservedContainer<std::vector<Parameters...>>
+    {};
+    template <typename... Parameters>
+    class Observed<std::deque<Parameters...>> : public ObservedContainer<std::deque<Parameters...>>
+    {};
+
     template <typename T>
     requires Incrementable<T>
     inline Observed<T>& operator++(Observed<T>& observedValue)

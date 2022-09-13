@@ -192,17 +192,17 @@ namespace Nui
             return p;
         }
 
-        bool select(IdType id)
+        ItemWithId* select(IdType id)
         {
             const auto iter = findItem(id);
             if (iter == std::end(items_) || !iter->item.has_value())
-                return false;
+                return nullptr;
 
             --itemCount_;
 
             selected_.push_back(std::move(*iter));
             iter->item.reset();
-            return true;
+            return &selected_.back();
         }
 
         void deselectAll(std::invocable<ItemWithId const&> auto callback)
