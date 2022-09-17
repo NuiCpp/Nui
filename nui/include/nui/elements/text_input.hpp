@@ -15,11 +15,11 @@
 namespace Nui
 {
     template <typename... Args>
-    class TextInput
+    class textInput
     {
       public:
-        constexpr TextInput(Observed<std::string>& modelText, Args&&... args)
-            : modelText(modelText)
+        constexpr textInput(Nui::Attribute<Nui::Attributes::value_, Observed<std::string>>&& value, Args&&... args)
+            : modelText(value.observed())
             , args(std::forward<Args>(args)...)
         {}
 
