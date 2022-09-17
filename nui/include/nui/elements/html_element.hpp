@@ -13,21 +13,43 @@
 
 namespace Nui
 {
-    enum class MaterializationStrategy
+    template <typename DerivedT>
+    class GeneratorOptions
     {
-        Append,
-        Replace
-    };
-    struct GeneratorOptions
-    {
-        MaterializationStrategy materializationStrategy = MaterializationStrategy::Append;
-
+      public:
         auto materialize(auto& element, auto const& htmlElement) const
         {
-            if (materializationStrategy == MaterializationStrategy::Append)
-                return element.appendElement(htmlElement);
-            else
-                return element.replaceElement(htmlElement);
+            return static_cast<DerivedT const*>(this)->materialize(element, htmlElement);
+        }
+    };
+    class AppendGeneratorOptions : public GeneratorOptions<AppendGeneratorOptions>
+    {
+      public:
+        auto materialize(auto& element, auto const& htmlElement) const
+        {
+            return element.appendElement(htmlElement);
+        }
+    };
+    class InsertGeneratorOptions : public GeneratorOptions<InsertGeneratorOptions>
+    {
+      public:
+        InsertGeneratorOptions(std::size_t where)
+            : where_{where}
+        {}
+        auto materialize(auto& element, auto const& htmlElement) const
+        {
+            return element.insert(where_, htmlElement);
+        }
+
+      private:
+        std::size_t where_;
+    };
+    class ReplaceGeneratorOptions : public GeneratorOptions<ReplaceGeneratorOptions>
+    {
+      public:
+        auto materialize(auto& element, auto const& htmlElement) const
+        {
+            return element.replaceElement(htmlElement);
         }
     };
 
@@ -55,8 +77,8 @@ namespace Nui
         template <typename... ElementT>
         constexpr auto operator()(ElementT&&... elements) &&
         {
-            return [self = this->clone(), children = std::make_tuple(std::forward<ElementT>(elements)...)](
-                       auto& parentElement, GeneratorOptions const& options) {
+            return [self = this->clone(), children = std::make_tuple(std::forward<ElementT>(elements)...)]<typename T>(
+                       auto& parentElement, GeneratorOptions<T> const& options) {
                 auto materialized = options.materialize(parentElement, self);
                 materialized->appendElements(children);
                 return materialized;
@@ -65,7 +87,7 @@ namespace Nui
 
         constexpr auto operator()() &&
         {
-            return [self = this->clone()](auto& parentElement, GeneratorOptions const& options) {
+            return [self = this->clone()]<typename T>(auto& parentElement, GeneratorOptions<T> const& options) {
                 return options.materialize(parentElement, self);
             };
         }
@@ -76,8 +98,8 @@ namespace Nui
         {
             return [self = this->clone(),
                     observedValues = std::move(observedValues),
-                    elementGenerators = std::make_tuple(std::forward<GeneratorT>(elementGenerators)...)](
-                       auto& parentElement, GeneratorOptions const& options) {
+                    elementGenerators = std::make_tuple(std::forward<GeneratorT>(elementGenerators)...)]<typename T>(
+                       auto& parentElement, GeneratorOptions<T> const& options) {
                 using ElementType = std::decay_t<decltype(parentElement)>;
 
                 // function is called when observed values change to refabricate the children.
@@ -116,7 +138,7 @@ namespace Nui
                                 observedValues.attachOneshotEvent(eventId);
 
                                 // regenerate children
-                                (..., elementGenerators()(*parent));
+                                (..., elementGenerators()(*parent, GeneratorOptions<AppendGeneratorOptions>{}));
                             },
                             elementGenerators);
                     };
@@ -130,8 +152,8 @@ namespace Nui
         {
             return [self = this->clone(),
                     &observedValue = observedRange.observedValue(),
-                    elementGenerator = std::forward<GeneratorT>(elementGenerator)](
-                       auto& parentElement, GeneratorOptions const& options) {
+                    elementGenerator = std::forward<GeneratorT>(elementGenerator)]<typename T>(
+                       auto& parentElement, GeneratorOptions<T> const& options) {
                 using ElementType = std::decay_t<decltype(parentElement)>;
                 auto childrenUpdater = std::make_shared<std::function<void()>>();
                 auto&& createdSelf = options.materialize(parentElement, self);
@@ -153,10 +175,9 @@ namespace Nui
                         // Regenerate all elements if necessary:
                         if (rangeContext.isFullRangeUpdate())
                         {
-                            std::cout << "Full Range Update\n";
                             parent->clearChildren();
                             for (auto const& element : observedValue.value())
-                                elementGenerator(element)(*parent, {MaterializationStrategy::Append});
+                                elementGenerator(element)(*parent, GeneratorOptions<AppendGeneratorOptions>{});
                             return;
                         }
 
@@ -176,12 +197,17 @@ namespace Nui
                                     for (auto i = range.low(), high = range.high(); i <= high; ++i)
                                     {
                                         elementGenerator(observedValue.value()[i])(
-                                            *(*parent)[i], {MaterializationStrategy::Replace});
+                                            *(*parent)[i], ReplaceGeneratorOptions{});
                                     }
                                     break;
                                 }
                                 case RangeStateType::Insert:
                                 {
+                                    for (auto i = range.low(), high = range.high(); i <= high; ++i)
+                                    {
+                                        elementGenerator(observedValue.value()[i])(
+                                            *parent, InsertGeneratorOptions{static_cast<std::size_t>(i)});
+                                    }
                                     break;
                                 }
                                 default:

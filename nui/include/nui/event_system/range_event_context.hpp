@@ -9,6 +9,7 @@
 #include <optional>
 
 #include <iostream>
+#include <iomanip>
 
 namespace Nui
 {
@@ -133,7 +134,7 @@ namespace Nui
                     case (RangeStateType::Keep | RangeStateType::Insert):
                     {
                         // Inserts push off of keep intervals
-                        joinExpandingInsertion(*this, other, RangeStateType::Keep);
+                        return joinExpandingInsertion(*this, other, RangeStateType::Keep);
                     }
                     case (RangeStateType::Modify | RangeStateType::Insert):
                     {
@@ -145,7 +146,7 @@ namespace Nui
                         else
                         {
                             // Insertions push off of modifications.
-                            joinExpandingInsertion(*this, other, RangeStateType::Modify);
+                            return joinExpandingInsertion(*this, other, RangeStateType::Modify);
                         }
                     }
                         // case (RangeStateType::Erase | RangeStateType::Erase):
@@ -178,7 +179,7 @@ namespace Nui
                         // }
                     default:
                     {
-                        std::cout << "Invalid insertion case\n";
+                        std::cout << "Invalid insertion case: " << std::bitset<4>(other.type_ | type_) << "\n";
                         throw std::runtime_error("Invalid insertion case");
                     }
                 }
@@ -233,7 +234,8 @@ namespace Nui
             , eraseInterval_{}
             , fullRangeUpdate_{true}
         {
-            modificationRanges_.insert({0l, dataSize, RangeStateType::Keep});
+            if (dataSize > 0)
+                modificationRanges_.insert({0l, dataSize, RangeStateType::Keep});
         }
         enum class InsertResult
         {
@@ -285,6 +287,7 @@ namespace Nui
         }
 
       private:
+        // FIXME: insertions would be faster on vector<> while performing binary_search for insert_overlap.
         lib_interval_tree::interval_tree<Detail::RangeStateInterval<long>> modificationRanges_;
         std::optional<Detail::RangeStateInterval<long>> eraseInterval_;
         bool fullRangeUpdate_;

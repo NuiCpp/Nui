@@ -361,7 +361,10 @@ namespace Nui
         using const_reverse_iterator = typename ContainerT::const_reverse_iterator;
 
       public:
-        ObservedContainer() = default;
+        ObservedContainer()
+            : contained_{}
+            , rangeContext_{0}
+        {}
         ObservedContainer(const ObservedContainer&) = delete;
         ObservedContainer(ObservedContainer&&) = default;
         ObservedContainer& operator=(const ObservedContainer&) = delete;
@@ -534,73 +537,73 @@ namespace Nui
         }
         iterator insert(const_iterator pos, const value_type& value)
         {
-            const auto distance = pos - begin();
-            iterator it = contained_.insert(pos, value);
+            const auto distance = pos - cbegin();
+            auto it = contained_.insert(pos, value);
             insertRangeChecked(distance, distance, RangeStateType::Insert);
             return iterator{this, it};
         }
         iterator insert(const_iterator pos, value_type&& value)
         {
-            const auto distance = pos - begin();
-            iterator it = contained_.insert(pos, std::move(value));
+            const auto distance = pos - cbegin();
+            auto it = contained_.insert(pos, std::move(value));
             insertRangeChecked(distance, distance, RangeStateType::Insert);
             return iterator{this, it};
         }
         iterator insert(const_iterator pos, size_type count, const value_type& value)
         {
-            const auto distance = pos - begin();
-            iterator it = contained_.insert(pos, count, value);
+            const auto distance = pos - cbegin();
+            auto it = contained_.insert(pos, count, value);
             insertRangeChecked(distance, distance + count, RangeStateType::Insert);
             return iterator{this, it};
         }
         template <typename Iterator>
         iterator insert(const_iterator pos, Iterator first, Iterator last)
         {
-            const auto distance = pos - begin();
-            iterator it = contained_.insert(pos, first, last);
+            const auto distance = pos - cbegin();
+            auto it = contained_.insert(pos, first, last);
             insertRangeChecked(distance, distance + std::distance(first, last), RangeStateType::Insert);
             return iterator{this, it};
         }
         iterator insert(const_iterator pos, std::initializer_list<value_type> ilist)
         {
-            const auto distance = pos - begin();
-            iterator it = contained_.insert(pos, ilist);
+            const auto distance = pos - cbegin();
+            auto it = contained_.insert(pos, ilist);
             insertRangeChecked(distance, distance + ilist.size(), RangeStateType::Insert);
             return iterator{this, it};
         }
         template <typename... Args>
         iterator emplace(const_iterator pos, Args&&... args)
         {
-            const auto distance = pos - begin();
-            iterator it = contained_.emplace(pos, std::forward<Args>(args)...);
+            const auto distance = pos - cbegin();
+            auto it = contained_.emplace(pos, std::forward<Args>(args)...);
             insertRangeChecked(distance, distance + sizeof...(Args), RangeStateType::Insert);
             return iterator{this, it};
         }
         iterator erase(iterator pos)
         {
-            const auto distance = pos - begin();
-            iterator it = contained_.erase(pos);
+            const auto distance = pos - cbegin();
+            auto it = contained_.erase(pos);
             eraseRangeChecked(distance, distance, RangeStateType::Erase);
             return iterator{this, it};
         }
         iterator erase(const_iterator pos)
         {
-            const auto distance = pos - begin();
-            iterator it = contained_.erase(pos);
+            const auto distance = pos - cbegin();
+            auto it = contained_.erase(pos);
             insertRangeChecked(distance, distance, RangeStateType::Erase);
             return iterator{this, it};
         }
         iterator erase(iterator first, iterator last)
         {
-            const auto distance = first - begin();
-            iterator it = contained_.erase(first, last);
+            const auto distance = first - cbegin();
+            auto it = contained_.erase(first, last);
             eraseRangeChecked(distance, distance + std::distance(first, last), RangeStateType::Erase);
             return iterator{this, it};
         }
         iterator erase(const_iterator first, const_iterator last)
         {
-            const auto distance = first - begin();
-            iterator it = contained_.erase(first, last);
+            const auto distance = first - cbegin();
+            auto it = contained_.erase(first, last);
             eraseRangeChecked(distance, distance + std::distance(first, last), RangeStateType::Erase);
             return iterator{this, it};
         }
@@ -630,13 +633,13 @@ namespace Nui
         void emplace_back(Args&&... args)
         {
             contained_.emplace_back(std::forward<Args>(args)...);
-            insertRangeChecked(size() - 1, size() - 1 + sizeof...(Args), RangeStateType::Insert);
+            insertRangeChecked(size() - 1, size() - 1, RangeStateType::Insert);
         }
         template <typename U = ContainerT, typename... Args>
         Detail::PickFirst_t<void, decltype(std::declval<U>().emplace_front())> emplace_front(Args&&... args)
         {
             contained_.emplace_front(std::forward<Args>(args)...);
-            insertRangeChecked(0, 0 + sizeof...(Args), RangeStateType::Insert);
+            insertRangeChecked(0, 0, RangeStateType::Insert);
         }
         void pop_back()
         {

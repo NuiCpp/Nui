@@ -63,9 +63,10 @@ namespace Nui::Dom
             return std::end(children_);
         }
 
-        void appendElement(std::invocable<Element&, GeneratorOptions const&> auto&& fn)
+        template <typename T = AppendGeneratorOptions>
+        void appendElement(std::invocable<Element&, GeneratorOptions<T> const&> auto&& fn)
         {
-            fn(*this, {});
+            fn(*this, GeneratorOptions<T>{});
         }
 
         template <typename U, typename... Attributes>
@@ -96,9 +97,20 @@ namespace Nui::Dom
         template <typename U, typename... Attributes>
         void insert(iterator where, HtmlElement<U, Attributes...> const& element)
         {
+            if (where == end())
+            {
+                appendElement(element);
+                return;
+            }
             auto elem = makeElement(element);
             element_.call<emscripten::val>("insertBefore", elem->element_, (*where)->element_);
             children_.insert(where, std::move(elem));
+        }
+
+        template <typename U, typename... Attributes>
+        void insert(std::size_t where, HtmlElement<U, Attributes...> const& element)
+        {
+            insert(begin() + where, element);
         }
 
         auto& operator[](std::size_t index)
