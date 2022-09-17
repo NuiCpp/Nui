@@ -35,4 +35,12 @@ namespace Nui
     {
         t += u;
     };
+
+    template <typename T, typename U>
+    concept InvocableReturns = requires(T func)
+    {
+        {
+            func()
+            } -> std::same_as<U>;
+    };
 }

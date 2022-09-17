@@ -3,6 +3,7 @@
 #include <nui/event_system/observed_value_combinator.hpp>
 #include <nui/event_system/range.hpp>
 #include <nui/event_system/event_context.hpp>
+#include <nui/concepts.hpp>
 
 #include <tuple>
 #include <utility>
@@ -74,6 +75,7 @@ namespace Nui
             return {attributes_};
         }
 
+        // Childrem:
         template <typename... ElementT>
         constexpr auto operator()(ElementT&&... elements) &&
         {
@@ -85,6 +87,7 @@ namespace Nui
             };
         }
 
+        // Trivial case:
         constexpr auto operator()() &&
         {
             return [self = this->clone()]<typename T>(auto& parentElement, GeneratorOptions<T> const& options) {
@@ -92,6 +95,51 @@ namespace Nui
             };
         }
 
+        // Text content functions:
+        constexpr auto operator()(char const* text) &&
+        {
+            return [self = this->clone(), text]<typename T>(auto& parentElement, GeneratorOptions<T> const& options) {
+                auto materialized = options.materialize(parentElement, self);
+                materialized->setTextContent(text);
+                return materialized;
+            };
+        }
+        auto operator()(std::string text) &&
+        {
+            return [self = this->clone(),
+                    text = std::move(text)]<typename T>(auto& parentElement, GeneratorOptions<T> const& options) {
+                auto materialized = options.materialize(parentElement, self);
+                materialized->setTextContent(text);
+                return materialized;
+            };
+        }
+        constexpr auto operator()(std::string_view view) &&
+        {
+            return [self = this->clone(), view]<typename T>(auto& parentElement, GeneratorOptions<T> const& options) {
+                auto materialized = options.materialize(parentElement, self);
+                materialized->setTextContent(view);
+                return materialized;
+            };
+        }
+        auto operator()(Observed<std::string>& observedString) &&
+        {
+            return std::move(*this).operator()(observe(observedString), [&observedString]() -> std::string {
+                return observedString.value();
+            });
+        }
+        template <typename GeneratorT>
+        requires InvocableReturns<GeneratorT, std::string>
+        constexpr auto operator()(GeneratorT&& textGenerator) &&
+        {
+            return [self = this->clone(), textGenerator = std::forward<GeneratorT>(textGenerator)]<typename T>(
+                       auto& parentElement, GeneratorOptions<T> const& options) {
+                auto materialized = options.materialize(parentElement, self);
+                materialized->setTextContent(textGenerator());
+                return materialized;
+            };
+        }
+
+        // Reactive functions:
         template <typename... ObservedValues, std::invocable... GeneratorT>
         constexpr auto
         operator()(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&&... elementGenerators) &&
@@ -138,7 +186,10 @@ namespace Nui
                                 observedValues.attachOneshotEvent(eventId);
 
                                 // regenerate children
-                                (..., elementGenerators()(*parent, GeneratorOptions<AppendGeneratorOptions>{}));
+                                if constexpr ((std::is_same_v<decltype(elementGenerators()), std::string> && ...))
+                                    (..., parent->setTextContent(elementGenerators()));
+                                else
+                                    (..., elementGenerators()(*parent, GeneratorOptions<AppendGeneratorOptions>{}));
                             },
                             elementGenerators);
                     };
@@ -146,7 +197,6 @@ namespace Nui
                 return createdSelf;
             };
         }
-
         template <typename ObservedValue, typename GeneratorT>
         constexpr auto operator()(ObservedRange<ObservedValue> observedRange, GeneratorT&& elementGenerator) &&
         {
