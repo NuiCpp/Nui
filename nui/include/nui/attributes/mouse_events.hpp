@@ -1,7 +1,5 @@
 #include "attribute.hpp"
 
-#include <emscripten/val.h>
-
 // click related
 MAKE_HTML_EVENT_ATTRIBUTE(onClick)
 MAKE_HTML_EVENT_ATTRIBUTE(onDblClick)

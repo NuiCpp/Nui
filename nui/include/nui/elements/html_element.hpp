@@ -292,3 +292,20 @@ namespace Nui
         std::tuple<Attributes...> attributes_;
     };
 }
+
+#define NUI_DECLARE_HTML_ELEMENT(NAME) \
+    namespace Nui \
+    { \
+        struct NAME##_ \
+        { \
+            constexpr static char const* name = #NAME; \
+        }; \
+\
+        template <typename... Attributes> \
+        struct NAME : HtmlElement<NAME##_, Attributes...> \
+        { \
+            using HtmlElement<NAME##_, Attributes...>::HtmlElement; \
+        }; \
+        template <typename... Attributes> \
+        NAME(Attributes&&...) -> NAME<Attributes...>; \
+    }
