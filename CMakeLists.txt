@@ -5,6 +5,9 @@ project(nui VERSION 0.1.0)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/common.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/options.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/boostpp.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/mplex.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/interval_tree.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/fmt.cmake)
 if (EMSCRIPTEN)
     message("CMake is called from emscripten")
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/libcpppre.cmake)
@@ -17,13 +20,17 @@ else()
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/backend/options.cmake)
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/backend/emscripten.cmake)
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/webview.cmake)
-    include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/fmt.cmake)
 endif()
 
 # Submodules
 
 # Project Native
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/nui/src/nui)
+
+if (NUI_ENABLE_TESTS)
+    include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/gtest.cmake)
+    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/nui/test/nui)
+endif()
 
 if (${NUI_BUILD_EXAMPLES})
     add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/examples)

@@ -1,10 +1,10 @@
 #pragma once
 
 #include <nui/elements/html_element.hpp>
-#include <nui/utility/inferance_helper.hpp>
 #include <nui/utility/functions.hpp>
 #include <nui/event_system/event_context.hpp>
 #include <nui/utility/tuple_for_each.hpp>
+#include <nui/dom/basic_element.hpp>
 
 #include <emscripten/val.h>
 
@@ -12,10 +12,11 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <functional>
 
 namespace Nui::Dom
 {
-    class Element : public std::enable_shared_from_this<Element>
+    class Element : public BasicElement
     {
       public:
         using collection_type = std::vector<std::shared_ptr<Element>>;
@@ -23,12 +24,14 @@ namespace Nui::Dom
         using const_iterator = collection_type::const_iterator;
 
         template <typename T, typename... Attributes>
-        Element(HtmlElement<T, Attributes...> const&)
-            : type_{T::name}
-            , element_{emscripten::val::global("document")
-                           .call<emscripten::val>("createElement", emscripten::val{type_})}
+        Element(HtmlElement<T, Attributes...> const& elem)
+            : BasicElement{elem}
             , children_{}
         {}
+        virtual ~Element()
+        {
+            element_.call<void>("remove");
+        }
 
         template <typename U, typename... Attributes>
         static std::shared_ptr<Element> makeElement(HtmlElement<U, Attributes...> const& element)
@@ -38,52 +41,10 @@ namespace Nui::Dom
             return elem;
         }
 
-        /**
-         * @brief Relies on weak_from_this and cannot be used from the constructor
-         */
-        template <typename T, typename... Attributes>
-        void setup(HtmlElement<T, Attributes...> const& element)
-        {
-            auto setSideEffect = [self = this](auto const& attribute) {
-                auto weak = self->weak_from_this();
-                attribute.createEvent(
-                    weak,
-                    [name = attribute.name()](
-                        std::shared_ptr<std::decay_t<decltype(*this)>> const& shared, auto const& value) {
-                        shared->setAttribute(name, value);
-                    });
-            };
-
-            tupleForEach(element.attributes(), [this, &setSideEffect](auto const& attribute) {
-                setAttribute(attribute.name(), attribute.value());
-                setSideEffect(attribute);
-            });
-        }
-
-        template <typename T>
-        Element(Utility::InferanceHelper<T>, emscripten::val val)
-            : type_{T::name}
-            , element_{std::move(val)}
+        Element(emscripten::val val)
+            : BasicElement{std::move(val)}
             , children_{}
         {}
-
-        ~Element()
-        {
-            element_.call<void>("remove");
-        }
-
-        // TODO: more overloads?
-        void setAttribute(std::string_view key, std::string_view value)
-        {
-            // FIXME: performance fix: val(string(...))
-            element_.call<emscripten::val>(
-                "setAttribute", emscripten::val{std::string{key}}, emscripten::val{std::string{value}});
-        }
-
-        void setAttribute(std::string_view key, std::invocable<emscripten::val> auto&& value)
-        {
-            element_.set(emscripten::val{std::string{key}}, Nui::bind(value, std::placeholders::_1));
-        }
 
         iterator begin()
         {
@@ -102,17 +63,25 @@ namespace Nui::Dom
             return std::end(children_);
         }
 
+        template <typename T = AppendGeneratorOptions>
+        void appendElement(std::invocable<Element&, GeneratorOptions<T> const&> auto&& fn)
+        {
+            fn(*this, GeneratorOptions<T>{});
+        }
+
         template <typename U, typename... Attributes>
-        auto& appendElement(HtmlElement<U, Attributes...> const& element)
+        auto appendElement(HtmlElement<U, Attributes...> const& element)
         {
             auto elem = makeElement(element);
             element_.call<emscripten::val>("appendChild", elem->element_);
             return children_.emplace_back(std::move(elem));
         }
 
-        void appendElement(std::invocable<Element&> auto&& fn)
+        template <typename U, typename... Attributes>
+        auto replaceElement(HtmlElement<U, Attributes...> const& element)
         {
-            fn(*this);
+            BasicElement::replaceElement(element);
+            return shared_from_base<Element>();
         }
 
         template <typename... Elements>
@@ -128,14 +97,37 @@ namespace Nui::Dom
         template <typename U, typename... Attributes>
         void insert(iterator where, HtmlElement<U, Attributes...> const& element)
         {
+            if (where == end())
+            {
+                appendElement(element);
+                return;
+            }
             auto elem = makeElement(element);
             element_.call<emscripten::val>("insertBefore", elem->element_, (*where)->element_);
             children_.insert(where, std::move(elem));
         }
 
-        emscripten::val& val()
+        template <typename U, typename... Attributes>
+        void insert(std::size_t where, HtmlElement<U, Attributes...> const& element)
         {
-            return element_;
+            if (where >= children_.size())
+                appendElement(element);
+            else
+                insert(begin() + where, element);
+        }
+
+        auto& operator[](std::size_t index)
+        {
+            return children_[index];
+        }
+        auto const& operator[](std::size_t index) const
+        {
+            return children_[index];
+        }
+
+        auto erase(iterator where)
+        {
+            return children_.erase(where);
         }
 
         void clearChildren()
@@ -144,8 +136,6 @@ namespace Nui::Dom
         }
 
       private:
-        char const* type_;
-        emscripten::val element_;
         collection_type children_;
     };
 }

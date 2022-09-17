@@ -16,6 +16,8 @@ if (EMSCRIPTEN)
         PUBLIC
             boost_preprocessor
             libcpppre
+            mplex
+            interval-tree
         PRIVATE
             project-warnings
     )

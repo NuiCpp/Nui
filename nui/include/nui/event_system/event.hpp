@@ -2,13 +2,13 @@
 
 #include <functional>
 #include <memory>
-#include <any>
+#include <vector>
 
 namespace Nui
 {
     struct EventImpl
     {
-        virtual bool call(std::size_t eventId) const = 0;
+        virtual bool call(std::size_t eventId) = 0;
         virtual bool valid() const = 0;
         virtual ~EventImpl() = default;
     };
@@ -20,9 +20,10 @@ namespace Nui
             , valid_{std::move(valid)}
         {}
 
-        bool call(std::size_t eventId) const override
+        bool call(std::size_t eventId) override
         {
-            return action_(eventId);
+            auto result = action_(eventId);
+            return result;
         }
 
         bool valid() const override
@@ -46,6 +47,10 @@ namespace Nui
                 })
             : impl_{std::make_unique<TwoFunctorEventImpl>(std::move(action), std::move(valid))}
         {}
+        Event(Event const&) = delete;
+        Event(Event&&) = default;
+        Event& operator=(Event const&) = delete;
+        Event& operator=(Event&&) = default;
 
         operator bool() const
         {

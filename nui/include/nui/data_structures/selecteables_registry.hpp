@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <variant>
 #include <limits>
+#include <set>
 
 #include <iostream>
 
@@ -22,6 +23,24 @@ namespace Nui
         {
             IdType id;
             std::optional<T> item;
+
+            ItemWithId(IdType id, T item)
+                : id{id}
+                , item{std::move(item)}
+            {}
+            ItemWithId(IdType id, std::optional<T> item)
+                : id{id}
+                , item{std::move(item)}
+            {}
+            ItemWithId(ItemWithId const&) = default;
+            ItemWithId(ItemWithId&&) = default;
+            ItemWithId& operator=(ItemWithId const&) = default;
+            ItemWithId& operator=(ItemWithId&&) = default;
+
+            bool operator<(ItemWithId const& other) const
+            {
+                return id < other.id;
+            }
         };
         using ItemContainerType = std::vector<ItemWithId>;
         constexpr static auto invalidId = std::numeric_limits<IdType>::max();
@@ -192,22 +211,24 @@ namespace Nui
             return p;
         }
 
-        bool select(IdType id)
+        std::optional<T>* select(IdType id)
         {
             const auto iter = findItem(id);
             if (iter == std::end(items_) || !iter->item.has_value())
-                return false;
+                return nullptr;
 
             --itemCount_;
 
-            selected_.push_back(std::move(*iter));
+            const auto selectedIter = selected_.insert(std::move(*iter)).first;
             iter->item.reset();
-            return true;
+            // having modifying access to the optional<T> does not mess with the set ordering. const casting is fine
+            // here.
+            return &(const_cast<ItemWithId&>(*selectedIter).item);
         }
 
         void deselectAll(std::invocable<ItemWithId const&> auto callback)
         {
-            for (auto& selected : selected_)
+            for (auto const& selected : selected_)
             {
                 auto const id = selected.id;
                 if (callback(selected))
@@ -215,11 +236,29 @@ namespace Nui
                     ++itemCount_;
                     auto entry = get(id);
                     if (entry != end())
-                        *entry = std::move(selected);
+                        entry->item = std::move(const_cast<ItemWithId&>(selected).item);
                 }
             }
             selected_.clear();
             condense();
+        }
+
+        void deselect(IdType id, std::invocable<ItemWithId const&> auto callback)
+        {
+            auto const iter = selected_.find(ItemWithId{id, std::nullopt});
+            if (iter == std::end(selected_))
+                return;
+
+            if (callback(*iter))
+            {
+                ++itemCount_;
+                auto entry = get(id);
+                if (entry != end())
+                    entry->item = std::move(const_cast<ItemWithId&>(*iter).item);
+            }
+            selected_.erase(iter);
+            if (selected_.empty())
+                condense();
         }
 
         IteratorType get(IdType id)
@@ -304,7 +343,7 @@ namespace Nui
       private:
         std::vector<ItemWithId> items_;
         // TODO: improve performance, id link backs are costly, each one is a binary search.
-        std::vector<ItemWithId> selected_;
+        std::set<ItemWithId> selected_;
         IdType itemCount_;
         IdType id_;
     };

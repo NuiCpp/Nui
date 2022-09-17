@@ -52,13 +52,17 @@ namespace Nui
         {
             return impl_->eventRegistry().registerEvent(std::move(event));
         }
-        bool activateEvent(EventIdType id)
+        auto* activateEvent(EventIdType id)
         {
             return impl_->eventRegistry().activateEvent(id);
         }
         void executeActiveEventsImmediately()
         {
             impl_->eventRegistry().executeActiveEvents();
+        }
+        void executeEvent(EventIdType id)
+        {
+            impl_->eventRegistry().executeEvent(id);
         }
 
       private:
