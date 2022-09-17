@@ -153,12 +153,12 @@ namespace Nui
                 return #NAME; \
             }; \
             template <typename U> \
-            std::enable_if_t<!Detail::IsObserved_v<std::decay_t<U>>, Attribute<NAME##_, U>> operator=(U val) \
+            std::enable_if_t<!::Nui::Detail::IsObserved_v<std::decay_t<U>>, Attribute<NAME##_, U>> operator=(U val) \
             { \
                 return Attribute<NAME##_, U>{std::move(val)}; \
             } \
             template <typename U> \
-            std::enable_if_t<Detail::IsObserved_v<std::decay_t<U>>, Attribute<NAME##_, std::decay_t<U>>> \
+            std::enable_if_t<::Nui::Detail::IsObserved_v<std::decay_t<U>>, Attribute<NAME##_, std::decay_t<U>>> \
             operator=(U& val) \
             { \
                 return Attribute<NAME##_, std::decay_t<U>>{val}; \
@@ -173,12 +173,12 @@ namespace Nui
         } NAME; \
     }
 
-#define MAKE_HTML_EVENT_ATTRIBUTE(NAME) \
+#define MAKE_HTML_EVENT_ATTRIBUTE_RENAME(NAME, HTML_ACTUAL) \
     namespace Nui::Attributes \
     { \
         struct NAME##_ \
         { \
-            constexpr static auto nameValue = fixToLower(#NAME); \
+            constexpr static auto nameValue = fixToLower(#HTML_ACTUAL); \
 \
             consteval static char const* name() \
             { \
@@ -194,3 +194,5 @@ namespace Nui
             } \
         } NAME; \
     }
+
+#define MAKE_HTML_EVENT_ATTRIBUTE(NAME) MAKE_HTML_EVENT_ATTRIBUTE_RENAME(NAME, NAME)
