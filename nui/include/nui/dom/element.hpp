@@ -84,6 +84,15 @@ namespace Nui::Dom
             return shared_from_base<Element>();
         }
 
+        void setTextContent(std::string const& text)
+        {
+            element_.set("textContent", text);
+        }
+        void setTextContent(char const* text)
+        {
+            element_.set("textContent", text);
+        }
+
         template <typename... Elements>
         void appendElements(std::tuple<Elements...> const& elements)
         {
