@@ -18,7 +18,8 @@ namespace Nui
         Keep = 0b0001,
         Modify = 0b0010,
         Insert = 0b0100,
-        Erase = 0b1000
+        Erase = 0b1000,
+        Extended = 0b0001'0000
     };
 
     namespace Detail
@@ -28,16 +29,8 @@ namespace Nui
 
         template <typename ValueType, typename IntervalKind = lib_interval_tree::closed>
         std::vector<RangeStateInterval<ValueType, IntervalKind>> cutIntervals(
-            RangeStateInterval<ValueType, IntervalKind> const& inTree,
-            RangeStateInterval<ValueType, IntervalKind> const& other,
-            RangeStateType typeOfBeingCut,
-            RangeStateType typeOfCutting);
-
-        template <typename ValueType, typename IntervalKind = lib_interval_tree::closed>
-        std::vector<RangeStateInterval<ValueType, IntervalKind>> joinExpandingInsertion(
-            RangeStateInterval<ValueType, IntervalKind> const& inTree,
-            RangeStateInterval<ValueType, IntervalKind> const& other,
-            RangeStateType type);
+            RangeStateInterval<ValueType, IntervalKind> const& k,
+            RangeStateInterval<ValueType, IntervalKind> const& m);
 
         template <typename ValueType, typename IntervalKind>
         class RangeStateInterval
@@ -52,6 +45,12 @@ namespace Nui
                 , high_{high}
                 , type_{type}
             {}
+            void reset(value_type low, value_type high, RangeStateType type)
+            {
+                low_ = low;
+                high_ = high;
+                type_ = type;
+            }
             friend bool operator==(RangeStateInterval const& lhs, RangeStateInterval const& rhs)
             {
                 return lhs.start_ == rhs.start_ && lhs.end_ == rhs.end_ && lhs.type_ == rhs.type_;
@@ -80,6 +79,10 @@ namespace Nui
             {
                 return overlaps(other.low_, other.high_);
             }
+            bool overlapsOrIsAdjacent(RangeStateInterval const& other) const
+            {
+                return low_ <= other.high_ + 1 && other.low_ - 1 <= high_;
+            }
             bool overlaps_exclusive(RangeStateInterval const& other) const
             {
                 return overlaps_exclusive(other.low_, other.high_);
@@ -107,79 +110,26 @@ namespace Nui
             }
             std::vector<RangeStateInterval> join(RangeStateInterval const& other) const
             {
-                // in context of insert_overlap:
-                // this = ival in the tree
-                // other = interval that is inserted
-                // merge set intervals are becoming other again.
-                switch (other.type_ | type_)
+                auto typeWithoutExtension = static_cast<RangeStateType>(other.type_ & ~RangeStateType::Extended);
+                long extensionFix = other.type_ & RangeStateType::Extended ? 1 : 0;
+                switch (typeWithoutExtension | type_)
                 {
-                    case (RangeStateType::Keep | RangeStateType::Keep):
-                    {
-                        return {{std::min(low_, other.low_), std::max(high_, other.high_), RangeStateType::Keep}};
-                    }
                     case (RangeStateType::Modify | RangeStateType::Modify):
                     {
-                        return {{std::min(low_, other.low_), std::max(high_, other.high_), RangeStateType::Modify}};
+                        return {
+                            {std::min(low_, other.low_ + extensionFix),
+                             std::max(high_, other.high_ - extensionFix),
+                             RangeStateType::Modify}};
                     }
                     case (RangeStateType::Keep | RangeStateType::Modify):
                     {
                         // Modifications cut out of the keep part.
-                        return cutIntervals(*this, other, RangeStateType::Keep, RangeStateType::Modify);
+                        return cutIntervals(
+                            *this, {other.low_ + extensionFix, other.high_ - extensionFix, typeWithoutExtension});
                     }
-                    case (RangeStateType::Insert | RangeStateType::Insert):
-                    {
-                        // Inserts cannot lose size by merge, but must extend to the full size.
-                        return {{std::min(low_, other.low_), size() + other.size(), RangeStateType::Insert}};
-                    }
-                    case (RangeStateType::Keep | RangeStateType::Insert):
-                    {
-                        // Inserts push off of keep intervals
-                        return joinExpandingInsertion(*this, other, RangeStateType::Keep);
-                    }
-                    case (RangeStateType::Modify | RangeStateType::Insert):
-                    {
-                        if (other.type_ == RangeStateType::Modify && within(other))
-                        {
-                            // Modifications on insertions are ignored.
-                            return {*this};
-                        }
-                        else
-                        {
-                            // Insertions push off of modifications.
-                            return joinExpandingInsertion(*this, other, RangeStateType::Modify);
-                        }
-                    }
-                        // case (RangeStateType::Erase | RangeStateType::Erase):
-                        // {
-                        //     // Erases cannot lose size by merge, but must extend to the full size.
-                        //     // Because consecutive erases will erase their full range
-                        //     return {{std::min(low_, other.low_), size() + other.size(), RangeStateType::Erase}};
-                        // }
-                        // case (RangeStateType::Erase | RangeStateType::Keep):
-                        // {
-                        //     // Erases cut out of the keep part.
-                        //     return cutIntervals(*this, other, RangeStateType::Keep, RangeStateType::Erase);
-                        // }
-                        // case (RangeStateType::Erase | RangeStateType::Modify):
-                        // {
-                        //     // Modifications on erase sections should not happen
-                        //     if (other.type_ == RangeStateType::Modify && within(other))
-                        //     {
-                        //         // Modifications on insertions are ignored.
-                        //         // TODO: this will probably happen...
-                        //         throw std::logic_error("Modification on erased section");
-                        //     }
-                        //     // Erases cut out of the modify part.
-                        //     return cutIntervals(*this, other, RangeStateType::Modify, RangeStateType::Erase);
-                        // }
-                        // case (RangeStateType::Erase | RangeStateType::Insert):
-                        // {
-                        //     // Erases cut out of the insert part.
-                        //     return cutIntervals(*this, other, RangeStateType::Insert, RangeStateType::Erase);
-                        // }
                     default:
                     {
-                        std::cout << "Invalid insertion case: " << std::bitset<4>(other.type_ | type_) << "\n";
+                        std::cout << "Invalid insertion case: " << std::bitset<4>(typeWithoutExtension | type_) << "\n";
                         throw std::runtime_error("Invalid insertion case");
                     }
                 }
@@ -195,34 +145,41 @@ namespace Nui
             RangeStateType type_;
         };
 
-        template <typename ValueType, typename IntervalKind>
-        std::vector<RangeStateInterval<ValueType, IntervalKind>> cutIntervals(
-            RangeStateInterval<ValueType, IntervalKind> const& inTree,
-            RangeStateInterval<ValueType, IntervalKind> const& other,
-            RangeStateType typeOfBeingCut,
-            RangeStateType typeOfCutting)
+        // stream iterator for intervals
+        template <typename T, typename Kind>
+        std::ostream& operator<<(std::ostream& os, RangeStateInterval<T, Kind> const& interval)
         {
-            auto const& k = other.type() == typeOfBeingCut ? other : inTree;
-            auto const& m = other.type() == typeOfCutting ? other : inTree;
-            std::vector<RangeStateInterval<ValueType, IntervalKind>> result;
-            if (k.low() <= m.low() - 1)
-                result.emplace_back(k.low(), m.low() - 1, typeOfBeingCut);
-            result.emplace_back(m.low(), m.high(), typeOfCutting);
-            if (k.high() >= m.high() + 1)
-                result.emplace_back(m.high() + 1, k.high(), typeOfBeingCut);
-            return result;
+            os << "[" << interval.low() << ", " << interval.high() << "]";
+            switch (interval.type())
+            {
+                case RangeStateType::Keep:
+                    os << "k";
+                    break;
+                case RangeStateType::Modify:
+                    os << "m";
+                    break;
+                case RangeStateType::Insert:
+                    os << "i";
+                    break;
+                default:
+                    os << "?";
+                    break;
+            }
+            return os;
         }
 
         template <typename ValueType, typename IntervalKind>
-        std::vector<RangeStateInterval<ValueType, IntervalKind>> joinExpandingInsertion(
-            RangeStateInterval<ValueType, IntervalKind> const& inTree,
-            RangeStateInterval<ValueType, IntervalKind> const& other,
-            RangeStateType type)
+        std::vector<RangeStateInterval<ValueType, IntervalKind>> cutIntervals(
+            RangeStateInterval<ValueType, IntervalKind> const& k,
+            RangeStateInterval<ValueType, IntervalKind> const& m)
         {
-            auto extendedInterval = RangeStateInterval<ValueType, IntervalKind>{
-                std::min(inTree.low(), other.low()), inTree.size() + other.size(), type};
-            auto const& i = other.type() == RangeStateType::Insert ? other : inTree;
-            return cutIntervals(extendedInterval, i, type, RangeStateType::Insert);
+            std::vector<RangeStateInterval<ValueType, IntervalKind>> result;
+            if (k.low() <= m.low() - 1)
+                result.emplace_back(k.low(), m.low() - 1, RangeStateType::Keep);
+            result.emplace_back(m.low(), m.high(), RangeStateType::Modify);
+            if (k.high() >= m.high() + 1)
+                result.emplace_back(m.high() + 1, k.high(), RangeStateType::Keep);
+            return result;
         }
     }
 
@@ -231,29 +188,58 @@ namespace Nui
       public:
         RangeEventContext(long dataSize)
             : modificationRanges_{}
-            , eraseInterval_{}
             , fullRangeUpdate_{true}
         {
-            if (dataSize > 0)
-                modificationRanges_.insert({0l, dataSize, RangeStateType::Keep});
+            reset(dataSize, true);
         }
         enum class InsertResult
         {
             Final, // Final, cannot accept further updates, must update immediately
-            Accepted // Accepted, update can be deferred.
+            Accepted, // Accepted, update can be deferred.
+            Retry // Must update immediately and reissue this.
         };
         InsertResult insertModificationRange(long elementCount, long low, long high, RangeStateType type)
         {
-            // TODO: improve: multiple mergeable erases are fine. So check with eraseInterval_.
             if (type == RangeStateType::Erase)
             {
-                // eraseInterval_ = {low, high, type};
-                // FIXME: optimize erase, uncomment above.
+                // FIXME: optimize erase like insert.
                 reset(elementCount, true);
                 return InsertResult::Final;
             }
+            else if (type == RangeStateType::Insert)
+            {
+                if (modificationRanges_.size() > 1)
+                    return InsertResult::Retry;
+                if (!insertInterval_)
+                {
+                    insertInterval_ = {low, high, type};
+                    return InsertResult::Accepted;
+                }
+                else
+                {
+                    if (insertInterval_->overlapsOrIsAdjacent({low, high, type}))
+                    {
+                        auto lowmin = std::min(low, insertInterval_->low());
+                        insertInterval_->reset(lowmin, lowmin + insertInterval_->size() + (high - low + 1), type);
+                        return InsertResult::Accepted;
+                    }
+                    else
+                    {
+                        if (high < insertInterval_->low())
+                        {
+                            const auto size = high - low + 1;
+                            insertInterval_->reset(
+                                insertInterval_->low() + size, insertInterval_->high() + size, insertInterval_->type());
+                        }
+                        return InsertResult::Retry;
+                    }
+                }
+            }
+            if (insertInterval_)
+                return InsertResult::Retry;
 
-            modificationRanges_.insert_overlap({low, high, type});
+            auto iter = modificationRanges_.insert_overlap(
+                {low - 1, high + 1, static_cast<RangeStateType>(type | RangeStateType::Extended)}, false, true);
             return InsertResult::Accepted;
         }
         InsertResult
@@ -265,17 +251,18 @@ namespace Nui
         void reset(long dataSize, bool requireFullRangeUpdate)
         {
             modificationRanges_.clear();
-            modificationRanges_.insert({0l, dataSize, RangeStateType::Keep});
-            eraseInterval_ = std::nullopt;
+            if (dataSize > 0)
+                modificationRanges_.insert({0l, dataSize - 1, RangeStateType::Keep});
+            insertInterval_ = std::nullopt;
             fullRangeUpdate_ = requireFullRangeUpdate;
         }
         bool isFullRangeUpdate() const noexcept
         {
             return fullRangeUpdate_;
         }
-        std::optional<Detail::RangeStateInterval<long>> const& eraseInterval() const
+        std::optional<Detail::RangeStateInterval<long>> const& insertInterval() const
         {
-            return eraseInterval_;
+            return insertInterval_;
         }
         auto begin() const
         {
@@ -287,9 +274,8 @@ namespace Nui
         }
 
       private:
-        // FIXME: insertions would be faster on vector<> while performing binary_search for insert_overlap.
         lib_interval_tree::interval_tree<Detail::RangeStateInterval<long>> modificationRanges_;
-        std::optional<Detail::RangeStateInterval<long>> eraseInterval_;
+        std::optional<Detail::RangeStateInterval<long>> insertInterval_;
         bool fullRangeUpdate_;
     };
 }

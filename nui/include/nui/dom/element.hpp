@@ -110,7 +110,10 @@ namespace Nui::Dom
         template <typename U, typename... Attributes>
         void insert(std::size_t where, HtmlElement<U, Attributes...> const& element)
         {
-            insert(begin() + where, element);
+            if (where >= children_.size())
+                appendElement(element);
+            else
+                insert(begin() + where, element);
         }
 
         auto& operator[](std::size_t index)

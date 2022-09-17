@@ -40,6 +40,15 @@ namespace Nui
             return registry_.select(id);
         }
 
+        void executeEvent(EventIdType id)
+        {
+            return registry_.deselect(id, [](SelectablesRegistry<Event>::ItemWithId const& itemWithId) -> bool {
+                if (!itemWithId.item)
+                    return false;
+                return itemWithId.item.value()(itemWithId.id);
+            });
+        }
+
         void executeActiveEvents()
         {
             registry_.deselectAll([](SelectablesRegistry<Event>::ItemWithId const& itemWithId) -> bool {

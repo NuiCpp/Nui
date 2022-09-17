@@ -47,6 +47,10 @@ namespace Nui
                 })
             : impl_{std::make_unique<TwoFunctorEventImpl>(std::move(action), std::move(valid))}
         {}
+        Event(Event const&) = delete;
+        Event(Event&&) = default;
+        Event& operator=(Event const&) = delete;
+        Event& operator=(Event&&) = default;
 
         operator bool() const
         {

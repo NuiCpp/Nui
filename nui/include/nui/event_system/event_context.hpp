@@ -60,6 +60,10 @@ namespace Nui
         {
             impl_->eventRegistry().executeActiveEvents();
         }
+        void executeEvent(EventIdType id)
+        {
+            impl_->eventRegistry().executeEvent(id);
+        }
 
       private:
         std::shared_ptr<EventEngine> impl_;

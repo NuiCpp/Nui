@@ -170,7 +170,6 @@ namespace Nui
                         return;
 
                     auto& rangeContext = observedValue.rangeContext();
-
                     auto updateChildren = [&]() {
                         // Regenerate all elements if necessary:
                         if (rangeContext.isFullRangeUpdate())
@@ -181,11 +180,20 @@ namespace Nui
                             return;
                         }
 
+                        // Insertions:
+                        if (const auto insertInterval = rangeContext.insertInterval(); insertInterval)
+                        {
+                            for (auto i = insertInterval->low(); i <= insertInterval->high(); ++i)
+                            {
+                                elementGenerator(observedValue.value()[i])(
+                                    *parent, InsertGeneratorOptions{static_cast<std::size_t>(i)});
+                            }
+                            return;
+                        }
+
                         // Update existing elements:
-                        std::cout << "---\n";
                         for (auto const& range : rangeContext)
                         {
-                            std::cout << '[' << range.low() << ", " << range.high() << "] = " << range.type() << "\n";
                             switch (range.type())
                             {
                                 case RangeStateType::Keep:
@@ -198,15 +206,6 @@ namespace Nui
                                     {
                                         elementGenerator(observedValue.value()[i])(
                                             *(*parent)[i], ReplaceGeneratorOptions{});
-                                    }
-                                    break;
-                                }
-                                case RangeStateType::Insert:
-                                {
-                                    for (auto i = range.low(), high = range.high(); i <= high; ++i)
-                                    {
-                                        elementGenerator(observedValue.value()[i])(
-                                            *parent, InsertGeneratorOptions{static_cast<std::size_t>(i)});
                                     }
                                     break;
                                 }
@@ -232,7 +231,6 @@ namespace Nui
                 (*childrenUpdater)();
                 return createdSelf;
             };
-            // return this->operator()(ObservedRange{observedValue}, std::forward<GeneratorT>(elementGenerators));
         }
 
         std::tuple<Attributes...> const& attributes() const

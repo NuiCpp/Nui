@@ -690,12 +690,28 @@ namespace Nui
       private:
         void insertRangeChecked(std::size_t low, std::size_t high, RangeStateType type)
         {
-            if (rangeContext_.insertModificationRange(contained_.size(), low, high, type) ==
-                RangeEventContext::InsertResult::Final)
+            const auto result = rangeContext_.insertModificationRange(contained_.size(), low, high, type);
+            if (result == RangeEventContext::InsertResult::Final)
             {
                 update();
-                // FIXME: only perform THIS event.
                 globalEventContext.executeActiveEventsImmediately();
+            }
+            else if (result == RangeEventContext::InsertResult::Retry)
+            {
+                update();
+                globalEventContext.executeActiveEventsImmediately();
+                const auto innerResult = rangeContext_.insertModificationRange(contained_.size(), low, high, type);
+                if (innerResult == RangeEventContext::InsertResult::Final)
+                {
+                    update();
+                    globalEventContext.executeActiveEventsImmediately();
+                }
+                else if (innerResult == RangeEventContext::InsertResult::Retry)
+                {
+                    std::cout << "RangeEventContext::insertModificationRange() returned Retry twice in a row.\n";
+                }
+                else
+                    update();
             }
             else
                 update();
