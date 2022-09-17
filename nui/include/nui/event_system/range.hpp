@@ -10,6 +10,11 @@ namespace Nui
             : observedValue_{observedValues}
         {}
 
+        ObservedValue& observedValue() const
+        {
+            return observedValue_;
+        }
+
       private:
         ObservedValue& observedValue_;
     };
