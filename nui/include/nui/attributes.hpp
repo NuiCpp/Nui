@@ -5,6 +5,7 @@
 #include <nui/attributes/style.hpp>
 #include <nui/attributes/value.hpp>
 #include <nui/attributes/type.hpp>
+#include <nui/attributes/class.hpp>
 
 // events
 #include <nui/attributes/mouse_events.hpp>

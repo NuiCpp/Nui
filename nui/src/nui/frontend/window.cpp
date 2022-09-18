@@ -54,12 +54,7 @@ namespace Nui
         // TODO: could make this work
     }
     //---------------------------------------------------------------------------------------------------------------------
-    std::string Window::page(std::string_view) const
-    {
-        return "";
-    }
-    //---------------------------------------------------------------------------------------------------------------------
-    void Window::loadFrontend(std::string_view)
+    void Window::setHtml(std::string_view)
     {
         // noop
     }
