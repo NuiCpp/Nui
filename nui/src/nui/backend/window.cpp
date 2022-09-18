@@ -50,9 +50,6 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setHtml(std::string_view html)
     {
-        auto wide = webview::detail::widen_string(std::string{html});
-        std::cout << wide.size() << "\n";
-        std::cout << GetLastError() << "\n";
         impl_->view.set_html(std::string{html});
     }
     //---------------------------------------------------------------------------------------------------------------------
