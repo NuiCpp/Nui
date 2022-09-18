@@ -43,7 +43,7 @@ function(nui_add_emscripten_target)
     cmake_parse_arguments(
         NUI_ADD_EMSCRIPTEN_TARGET_ARGS
         ""
-        "TARGET;PREJS;SOURCE_DIR;STATIC"
+        "TARGET;PREJS;SOURCE_DIR"
         "CMAKE_OPTIONS;MAKE_OPTIONS"
         ${ARGN}
     )    
@@ -62,10 +62,6 @@ function(nui_add_emscripten_target)
         set(SOURCE_DIR ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_SOURCE_DIR})
     endif()
 
-    if (NOT NUI_ADD_EMSCRIPTEN_TARGET_ARGS_STATIC)
-        set(NUI_ADD_EMSCRIPTEN_TARGET_ARGS_STATIC ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_SOURCE_DIR}/static)
-    endif()
-
     string(REPLACE "-" "_" targetNormalized ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET})
 
     message(STATUS "emcmake: ${EMCMAKE}")
@@ -75,8 +71,7 @@ function(nui_add_emscripten_target)
         SOURCE_DIR "${SOURCE_DIR}"
         CONFIGURE_COMMAND ${EMCMAKE} cmake -DCMAKE_CXX_STANDARD=20 -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS} ${SOURCE_DIR}
         COMMAND $<TARGET_FILE:parcel-adapter> ${CMAKE_BINARY_DIR}/module_build/package.json
-        BUILD_COMMAND ${EMMAKE} make ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_MAKE_OPTIONS} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_STATIC} ${CMAKE_BINARY_DIR}/module_build/static
+        BUILD_COMMAND ${EMMAKE} make ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_MAKE_OPTIONS} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
         COMMAND $<TARGET_FILE:bin2hpp> ${CMAKE_BINARY_DIR}/module_build/bin/${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}.html ${CMAKE_BINARY_DIR}/include/${targetNormalized}.hpp ${targetNormalized}
         BINARY_DIR "${CMAKE_BINARY_DIR}/module_build"
         BUILD_ALWAYS 1

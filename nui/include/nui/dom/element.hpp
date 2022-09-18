@@ -104,25 +104,22 @@ namespace Nui::Dom
         }
 
         template <typename U, typename... Attributes>
-        void insert(iterator where, HtmlElement<U, Attributes...> const& element)
+        auto insert(iterator where, HtmlElement<U, Attributes...> const& element)
         {
             if (where == end())
-            {
-                appendElement(element);
-                return;
-            }
+                return appendElement(element);
             auto elem = makeElement(element);
             element_.call<emscripten::val>("insertBefore", elem->element_, (*where)->element_);
-            children_.insert(where, std::move(elem));
+            return *children_.insert(where, std::move(elem));
         }
 
         template <typename U, typename... Attributes>
-        void insert(std::size_t where, HtmlElement<U, Attributes...> const& element)
+        auto insert(std::size_t where, HtmlElement<U, Attributes...> const& element)
         {
             if (where >= children_.size())
-                appendElement(element);
+                return appendElement(element);
             else
-                insert(begin() + where, element);
+                return insert(begin() + where, element);
         }
 
         auto& operator[](std::size_t index)
