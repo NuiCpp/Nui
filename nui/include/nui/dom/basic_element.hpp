@@ -25,6 +25,11 @@ namespace Nui
         {
             return std::static_pointer_cast<Derived>(shared_from_this());
         }
+        template <class Derived>
+        std::weak_ptr<Derived> weak_from_base()
+        {
+            return std::weak_ptr<Derived>(shared_from_base<Derived>());
+        }
 
         template <typename T, typename... Attributes>
         static BasicElement createElement(HtmlElement<T, Attributes...> const&)

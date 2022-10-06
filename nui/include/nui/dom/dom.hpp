@@ -6,18 +6,6 @@
 
 #include <optional>
 
-/*
-void render()
-{
-    return <div>
-        <button></button>
-    </div>;
-
-    // auto x1 = p.addElement(div)
-    // x1.addElement(button)
-}
-*/
-
 namespace Nui::Dom
 {
     class Dom
@@ -31,8 +19,13 @@ namespace Nui::Dom
         ~Dom() = default;
 
         Element& root();
+        template <typename T>
+        void setBody(T&& body)
+        {
+            root().replaceElement(std::forward<T>(body));
+        }
 
       private:
-        Element root_;
+        std::shared_ptr<Element> root_;
     };
 }

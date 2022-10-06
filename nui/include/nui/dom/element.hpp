@@ -1,8 +1,8 @@
 #pragma once
 
 #include <nui/elements/html_element.hpp>
-#include <nui/utility/functions.hpp>
 #include <nui/event_system/event_context.hpp>
+#include <nui/utility/functions.hpp>
 #include <nui/utility/tuple_for_each.hpp>
 #include <nui/dom/basic_element.hpp>
 
@@ -63,12 +63,10 @@ namespace Nui::Dom
             return std::end(children_);
         }
 
-        template <typename T = AppendGeneratorOptions>
-        void appendElement(std::invocable<Element&, GeneratorOptions<T> const&> auto&& fn)
+        void appendElement(std::invocable<Element&, Generator const&> auto&& fn)
         {
-            fn(*this, GeneratorOptions<T>{});
+            fn(*this, Generator{.type = GeneratorType::Append});
         }
-
         template <typename U, typename... Attributes>
         auto appendElement(HtmlElement<U, Attributes...> const& element)
         {
@@ -76,7 +74,10 @@ namespace Nui::Dom
             element_.call<emscripten::val>("appendChild", elem->element_);
             return children_.emplace_back(std::move(elem));
         }
-
+        void replaceElement(std::invocable<Element&, Generator const&> auto&& fn)
+        {
+            fn(*this, Generator{.type = GeneratorType::Replace});
+        }
         template <typename U, typename... Attributes>
         auto replaceElement(HtmlElement<U, Attributes...> const& element)
         {
