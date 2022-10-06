@@ -17,7 +17,7 @@ namespace Nui
         constexpr auto operator()(ElementT&&... elements) &&
         {
             return [children = std::make_tuple(std::forward<ElementT>(elements)...)]<typename T>(
-                       auto& parentElement, GeneratorOptions<T> const& options) {
+                       auto& parentElement, RendererOptions<T> const& options) {
                 parentElement.appendElements(children);
                 return parentElement.shared_from_this();
             };

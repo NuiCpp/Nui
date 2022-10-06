@@ -6,7 +6,7 @@ namespace Nui
 {
     auto nil()
     {
-        return []<typename T>(auto& parentElement, GeneratorOptions<T> const&) {
+        return [](auto& parentElement, Renderer const&) {
             return std::shared_ptr<std::decay_t<decltype(parentElement)>>(nullptr);
         };
     }

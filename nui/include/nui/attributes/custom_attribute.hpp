@@ -32,7 +32,7 @@ namespace Nui
         class InvalidAttribute
         {
           public:
-            int extract() &&
+            int get() const
             {
                 return 0;
             }
@@ -101,12 +101,12 @@ namespace Nui
         { \
             return {param}; \
         } \
-        template <typename GeneratorType, typename... ObservedValues> \
-        CustomAttribute<ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValues...>, NAME##Tag> \
-        operator=(ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValues...> const& combinator) const \
+        template <typename RendererType, typename... ObservedValues> \
+        CustomAttribute<ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>, NAME##Tag> \
+        operator=(ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...> const& combinator) const \
         { \
-            return CustomAttribute<ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValues...>, NAME##Tag>{ \
+            return CustomAttribute<ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>, NAME##Tag>{ \
                 combinator}; \
         } \
-    } static constexpr NAME;
+    } static constexpr NAME
 }

@@ -8,5 +8,5 @@
 
 namespace Nui
 {
-    using ElementGenerator = std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Generator const&)>;
+    using ElementRenderer = std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>;
 }

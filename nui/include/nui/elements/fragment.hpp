@@ -23,8 +23,8 @@ namespace Nui
     constexpr auto fragment(ParametersT&&... params)
     {
         return [generator = HtmlElement<Detail::fragment_>{}(std::forward<ParametersT>(params)...)](
-                   auto& parentElement, Generator const&) {
-            return generator(parentElement, Generator{.type = GeneratorType::Inplace});
+                   auto& parentElement, Renderer const&) {
+            return generator(parentElement, Renderer{.type = RendererType::Inplace});
         };
     }
 }

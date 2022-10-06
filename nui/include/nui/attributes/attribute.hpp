@@ -95,14 +95,14 @@ namespace Nui
         Observed<T>& obs_;
     };
 
-    template <typename DiscreteAttribute, typename GeneratorType, typename... ObservedValueTypes>
-    class Attribute<DiscreteAttribute, ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValueTypes...>, void>
+    template <typename DiscreteAttribute, typename RendererType, typename... ObservedValueTypes>
+    class Attribute<DiscreteAttribute, ObservedValueCombinatorWithGenerator<RendererType, ObservedValueTypes...>, void>
     {
       public:
         using discrete_attribute = DiscreteAttribute;
         constexpr static bool is_static_value = false;
 
-        Attribute(ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValueTypes...> value)
+        Attribute(ObservedValueCombinatorWithGenerator<RendererType, ObservedValueTypes...> value)
             : combinator_{std::move(value)}
         {}
 
@@ -119,7 +119,7 @@ namespace Nui
         template <typename ElementT>
         void createEvent(
             std::weak_ptr<ElementT> element,
-            std::invocable<std::shared_ptr<ElementT> const&, std::invoke_result_t<GeneratorType> const&> auto event)
+            std::invocable<std::shared_ptr<ElementT> const&, std::invoke_result_t<RendererType> const&> auto event)
             const
         {
             const auto eventId = globalEventContext.registerEvent(Event{
@@ -139,7 +139,7 @@ namespace Nui
         }
 
       private:
-        ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValueTypes...> combinator_;
+        ObservedValueCombinatorWithGenerator<RendererType, ObservedValueTypes...> combinator_;
     };
 }
 
@@ -164,11 +164,11 @@ namespace Nui
             { \
                 return Attribute<NAME##Tag, std::decay_t<U>>{val}; \
             } \
-            template <typename GeneratorType, typename... ObservedValues> \
-            Attribute<NAME##Tag, ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValues...>> \
-            operator=(ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValues...> const& combinator) const \
+            template <typename RendererType, typename... ObservedValues> \
+            Attribute<NAME##Tag, ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>> \
+            operator=(ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...> const& combinator) const \
             { \
-                return Attribute<NAME##Tag, ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValues...>>{ \
+                return Attribute<NAME##Tag, ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>>{ \
                     combinator}; \
             } \
         } static constexpr NAME; \

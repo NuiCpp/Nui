@@ -63,9 +63,9 @@ namespace Nui::Dom
             return std::end(children_);
         }
 
-        void appendElement(std::invocable<Element&, Generator const&> auto&& fn)
+        void appendElement(std::invocable<Element&, Renderer const&> auto&& fn)
         {
-            fn(*this, Generator{.type = GeneratorType::Append});
+            fn(*this, Renderer{.type = RendererType::Append});
         }
         template <typename U, typename... Attributes>
         auto appendElement(HtmlElement<U, Attributes...> const& element)
@@ -74,9 +74,9 @@ namespace Nui::Dom
             element_.call<emscripten::val>("appendChild", elem->element_);
             return children_.emplace_back(std::move(elem));
         }
-        void replaceElement(std::invocable<Element&, Generator const&> auto&& fn)
+        void replaceElement(std::invocable<Element&, Renderer const&> auto&& fn)
         {
-            fn(*this, Generator{.type = GeneratorType::Replace});
+            fn(*this, Renderer{.type = RendererType::Replace});
         }
         template <typename U, typename... Attributes>
         auto replaceElement(HtmlElement<U, Attributes...> const& element)

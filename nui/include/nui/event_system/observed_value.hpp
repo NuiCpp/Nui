@@ -293,11 +293,11 @@ namespace Nui
             }
             friend IteratorWrapper operator+(IteratorWrapper const& wrap, difference_type n)
             {
-                return IteratorWrapper{wrap.it_ + n};
+                return IteratorWrapper{wrap.owner_, wrap.it_ + n};
             }
             friend IteratorWrapper operator-(IteratorWrapper const& wrap, difference_type n)
             {
-                return IteratorWrapper{wrap.it_ - n};
+                return IteratorWrapper{wrap.owner_, wrap.it_ - n};
             }
             difference_type operator-(IteratorWrapper const& other) const
             {
@@ -309,7 +309,7 @@ namespace Nui
             }
             IteratorWrapper operator[](std::size_t offset) const
             {
-                return IteratorWrapper{it_[offset]};
+                return IteratorWrapper{owner_, it_[offset]};
             }
             bool operator<(IteratorWrapper const& other) const
             {
@@ -330,6 +330,10 @@ namespace Nui
             bool operator==(IteratorWrapper const& other) const
             {
                 return it_ == other.it_;
+            }
+            WrappedIterator getWrapped() const
+            {
+                return it_;
             }
 
           private:
@@ -579,13 +583,15 @@ namespace Nui
             insertRangeChecked(distance, distance + sizeof...(Args), RangeStateType::Insert);
             return iterator{this, it};
         }
+        // FIXME: does not work correctly
         iterator erase(iterator pos)
         {
-            const auto distance = pos - cbegin();
-            auto it = contained_.erase(pos);
-            eraseRangeChecked(distance, distance, RangeStateType::Erase);
+            const auto distance = pos - begin();
+            auto it = contained_.erase(pos.getWrapped());
+            insertRangeChecked(distance, distance, RangeStateType::Erase);
             return iterator{this, it};
         }
+        // FIXME: does not work correctly
         iterator erase(const_iterator pos)
         {
             const auto distance = pos - cbegin();
@@ -593,18 +599,20 @@ namespace Nui
             insertRangeChecked(distance, distance, RangeStateType::Erase);
             return iterator{this, it};
         }
+        // FIXME: does not work correctly
         iterator erase(iterator first, iterator last)
         {
             const auto distance = first - cbegin();
-            auto it = contained_.erase(first, last);
-            eraseRangeChecked(distance, distance + std::distance(first, last), RangeStateType::Erase);
+            auto it = contained_.erase(first.getWrapped(), last.getWrapped());
+            insertRangeChecked(distance, distance + std::distance(first, last), RangeStateType::Erase);
             return iterator{this, it};
         }
+        // FIXME: does not work correctly
         iterator erase(const_iterator first, const_iterator last)
         {
             const auto distance = first - cbegin();
             auto it = contained_.erase(first, last);
-            eraseRangeChecked(distance, distance + std::distance(first, last), RangeStateType::Erase);
+            insertRangeChecked(distance, distance + std::distance(first, last), RangeStateType::Erase);
             return iterator{this, it};
         }
         void push_back(const value_type& value)

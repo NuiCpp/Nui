@@ -6,6 +6,8 @@
 #include <nui/attributes/value.hpp>
 #include <nui/attributes/type.hpp>
 #include <nui/attributes/class.hpp>
+#include <nui/attributes/colspan.hpp>
+#include <nui/attributes/rowspan.hpp>
 
 // events
 #include <nui/attributes/mouse_events.hpp>
