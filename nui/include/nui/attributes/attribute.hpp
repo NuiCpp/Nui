@@ -199,6 +199,13 @@ namespace Nui
                     globalEventContext.executeActiveEventsImmediately(); \
                 }}; \
             } \
+            Attribute<NAME##Tag, std::function<void(emscripten::val)>> operator=(std::function<void()> func) const \
+            { \
+                return Attribute<NAME##Tag, std::function<void(emscripten::val)>>{[func](emscripten::val) { \
+                    func(); \
+                    globalEventContext.executeActiveEventsImmediately(); \
+                }}; \
+            } \
         } static constexpr NAME; \
     }
 

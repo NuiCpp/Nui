@@ -195,6 +195,14 @@ namespace Nui
             return contained_;
         }
 
+        /**
+         * @brief Sets the value without making an update.
+         */
+        void assignWithoutUpdate(ContainedT&& t)
+        {
+            contained_ = std::forward<ContainedT>(t);
+        }
+
       protected:
         ContainedT contained_;
     };

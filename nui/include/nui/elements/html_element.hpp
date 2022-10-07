@@ -5,6 +5,7 @@
 #include <nui/event_system/event_context.hpp>
 #include <nui/concepts.hpp>
 #include <nui/utility/scope_exit.hpp>
+#include <nui/dom/reference.hpp>
 #include <nui/elements/detail/fragment_context.hpp>
 
 #include <emscripten/val.h>
@@ -149,12 +150,26 @@ namespace Nui
 
         // Children:
         template <typename... ElementT>
-        constexpr auto operator()(ElementT&&... elements) &&
+        requires(Dom::IsNotReferencePasser<ElementT>&&...) constexpr auto operator()(ElementT&&... elements) &&
         {
             return [self = this->clone(), children = std::make_tuple(std::forward<ElementT>(elements)...)](
                        auto& parentElement, Renderer const& gen) {
                 auto materialized = renderElement(gen, parentElement, self);
                 materialized->appendElements(children);
+                return materialized;
+            };
+        }
+        template <typename ReferencePasserT, typename... ElementT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(ReferencePasserT&& referencePasser, ElementT&&... elements) &&
+        {
+            return [self = this->clone(),
+                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
+                    children = std::make_tuple(std::forward<ElementT>(elements)...)](
+                       auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->appendElements(children);
+                referencePasser(materialized);
                 return materialized;
             };
         }
@@ -164,6 +179,17 @@ namespace Nui
         {
             return [self = this->clone()](auto& parentElement, Renderer const& gen) {
                 return renderElement(gen, parentElement, self);
+            };
+        }
+        template <typename ReferencePasserT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(ReferencePasserT&& referencePasser)
+        {
+            return [self = this->clone(), referencePasser = std::forward<ReferencePasserT>(referencePasser)](
+                       auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                referencePasser(materialized);
+                return materialized;
             };
         }
 
@@ -176,11 +202,36 @@ namespace Nui
                 return materialized;
             };
         }
+        template <typename ReferencePasserT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(ReferencePasserT&& referencePasser, char const* text) &&
+        {
+            return [self = this->clone(), referencePasser = std::forward<ReferencePasserT>(referencePasser), text](
+                       auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(text);
+                referencePasser(materialized);
+                return materialized;
+            };
+        }
         auto operator()(std::string text) &&
         {
             return [self = this->clone(), text = std::move(text)](auto& parentElement, Renderer const& gen) {
                 auto materialized = renderElement(gen, parentElement, self);
                 materialized->setTextContent(text);
+                return materialized;
+            };
+        }
+        template <typename ReferencePasserT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        auto operator()(ReferencePasserT&& referencePasser, std::string text) &&
+        {
+            return [self = this->clone(),
+                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
+                    text = std::move(text)](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(text);
+                referencePasser(materialized);
                 return materialized;
             };
         }
@@ -192,11 +243,34 @@ namespace Nui
                 return materialized;
             };
         }
+        template <typename ReferencePasserT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(ReferencePasserT&& referencePasser, std::string_view view) &&
+        {
+            return [self = this->clone(), referencePasser = std::forward<ReferencePasserT>(referencePasser), view](
+                       auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(view);
+                referencePasser(materialized);
+                return materialized;
+            };
+        }
         auto operator()(Observed<std::string>& observedString) &&
         {
             return std::move(*this).operator()(observe(observedString), [&observedString]() -> std::string {
                 return observedString.value();
             });
+        }
+        template <typename ReferencePasserT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        auto operator()(ReferencePasserT&& referencePasser, Observed<std::string>& observedString) &&
+        {
+            return std::move(*this).operator()(
+                std::forward<ReferencePasserT>(referencePasser),
+                observe(observedString),
+                [&observedString]() -> std::string {
+                    return observedString.value();
+                });
         }
         template <typename GeneratorT>
         requires InvocableReturns<GeneratorT, std::string>
@@ -206,6 +280,19 @@ namespace Nui
                     textGenerator = std::forward<GeneratorT>(textGenerator)](auto& parentElement, Renderer const& gen) {
                 auto materialized = renderElement(gen, parentElement, self);
                 materialized->setTextContent(textGenerator());
+                return materialized;
+            };
+        }
+        template <typename ReferencePasserT, typename GeneratorT>
+        requires Dom::IsReferencePasser<ReferencePasserT> && InvocableReturns<GeneratorT, std::string>
+        constexpr auto operator()(ReferencePasserT&& referencePasser, GeneratorT&& textGenerator) &&
+        {
+            return [self = this->clone(),
+                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
+                    textGenerator = std::forward<GeneratorT>(textGenerator)](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(textGenerator());
+                referencePasser(materialized);
                 return materialized;
             };
         }
@@ -219,11 +306,15 @@ namespace Nui
         }
 
         // Reactive functions:
-        template <typename... ObservedValues, std::invocable GeneratorT>
-        constexpr auto
-        operator()(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& ElementRenderer) &&
+        template <typename ReferencePasserT, typename... ObservedValues, std::invocable GeneratorT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(
+            ReferencePasserT&& referencePasser,
+            ObservedValueCombinator<ObservedValues...> observedValues,
+            GeneratorT&& ElementRenderer) &&
         {
             return [self = this->clone(),
+                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
                     observedValues = std::move(observedValues),
                     ElementRenderer =
                         std::forward<GeneratorT>(ElementRenderer)](auto& parentElement, Renderer const& gen) {
@@ -233,6 +324,7 @@ namespace Nui
                 auto childrenRefabricator = std::make_shared<std::function<void()>>();
 
                 auto&& createdSelf = renderElement(gen, parentElement, self);
+                referencePasser(createdSelf);
 
                 if (gen.type == RendererType::Inplace)
                 {
@@ -291,10 +383,21 @@ namespace Nui
                 return createdSelf;
             };
         }
-        template <typename ObservedValue, typename GeneratorT>
-        constexpr auto operator()(ObservedRange<ObservedValue> observedRange, GeneratorT&& ElementRenderer) &&
+        template <typename... ObservedValues, std::invocable GeneratorT>
+        constexpr auto
+        operator()(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& ElementRenderer) &&
+        {
+            return operator()()([](auto&&) {}, std::move(observedValues), std::forward<GeneratorT>(ElementRenderer));
+        }
+
+        template <typename ReferencePasserT, typename ObservedValue, typename GeneratorT>
+        constexpr auto operator()(
+            ReferencePasserT&& referencePasser,
+            ObservedRange<ObservedValue> observedRange,
+            GeneratorT&& ElementRenderer) &&
         {
             return [self = this->clone(),
+                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
                     &observedValue = observedRange.observedValue(),
                     ElementRenderer =
                         std::forward<GeneratorT>(ElementRenderer)](auto& parentElement, Renderer const& gen) {
@@ -304,6 +407,7 @@ namespace Nui
                 using ElementType = std::decay_t<decltype(parentElement)>;
                 auto childrenUpdater = std::make_shared<std::function<void()>>();
                 auto&& createdSelf = renderElement(gen, parentElement, self);
+                referencePasser(createdSelf);
 
                 *childrenUpdater = [self,
                                     &observedValue,
@@ -389,6 +493,11 @@ namespace Nui
                 (*childrenUpdater)();
                 return createdSelf;
             };
+        }
+        template <typename ObservedValue, typename GeneratorT>
+        constexpr auto operator()(ObservedRange<ObservedValue> observedRange, GeneratorT&& ElementRenderer) &&
+        {
+            return operator()()([](auto&&) {}, std::move(observedRange), std::forward<GeneratorT>(ElementRenderer));
         }
 
         std::tuple<Attributes...> const& attributes() const

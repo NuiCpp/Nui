@@ -4,7 +4,7 @@
 #include <nui/event_system/event_context.hpp>
 #include <nui/utility/functions.hpp>
 #include <nui/utility/tuple_for_each.hpp>
-#include <nui/dom/basic_element.hpp>
+#include <nui/dom/childless_element.hpp>
 
 #include <emscripten/val.h>
 
@@ -16,7 +16,7 @@
 
 namespace Nui::Dom
 {
-    class Element : public BasicElement
+    class Element : public ChildlessElement
     {
       public:
         using collection_type = std::vector<std::shared_ptr<Element>>;
@@ -25,7 +25,7 @@ namespace Nui::Dom
 
         template <typename T, typename... Attributes>
         Element(HtmlElement<T, Attributes...> const& elem)
-            : BasicElement{elem}
+            : ChildlessElement{elem}
             , children_{}
         {}
         virtual ~Element()
@@ -42,7 +42,7 @@ namespace Nui::Dom
         }
 
         Element(emscripten::val val)
-            : BasicElement{std::move(val)}
+            : ChildlessElement{std::move(val)}
             , children_{}
         {}
 
@@ -81,7 +81,7 @@ namespace Nui::Dom
         template <typename U, typename... Attributes>
         auto replaceElement(HtmlElement<U, Attributes...> const& element)
         {
-            BasicElement::replaceElement(element);
+            ChildlessElement::replaceElement(element);
             return shared_from_base<Element>();
         }
 
@@ -97,11 +97,15 @@ namespace Nui::Dom
         template <typename... Elements>
         void appendElements(std::tuple<Elements...> const& elements)
         {
+#pragma clang diagnostic push
+// 'this' may be unused when the tuple is empty? anyway this warning cannot be fixed.
+#pragma clang diagnostic ignored "-Wunused-lambda-capture"
             std::apply(
                 [this](auto const&... element) {
                     (appendElement(element), ...);
                 },
                 elements);
+#pragma clang diagnostic pop
         }
 
         template <typename U, typename... Attributes>
@@ -120,7 +124,7 @@ namespace Nui::Dom
             if (where >= children_.size())
                 return appendElement(element);
             else
-                return insert(begin() + where, element);
+                return insert(begin() + static_cast<decltype(children_)::difference_type>(where), element);
         }
 
         auto& operator[](std::size_t index)

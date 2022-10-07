@@ -80,7 +80,7 @@ namespace Nui::Attributes
         struct StripPropertyObserved<StylePropertyImpl<T, void>>
         {
             using type = void;
-            constexpr static void* extract(StylePropertyImpl<T, void>& prop)
+            constexpr static void* extract(StylePropertyImpl<T, void>&)
             {
                 return nullptr;
             }
@@ -247,18 +247,19 @@ namespace Nui::Attributes
             return "style";
         };
         template <typename U>
-        constexpr std::enable_if_t<!::Nui::Detail::IsObserved_v<std::decay_t<U>>, Attribute<style_, U>> operator=(U val)
+        constexpr std::enable_if_t<!::Nui::Detail::IsObserved_v<std::decay_t<U>>, Attribute<style_, U>>
+        operator=(U val) const
         {
             return Attribute<style_, U>{std::move(val)};
         }
         template <typename U>
         constexpr std::enable_if_t<::Nui::Detail::IsObserved_v<std::decay_t<U>>, Attribute<style_, std::decay_t<U>>>
-        operator=(U& val)
+        operator=(U& val) const
         {
             return Attribute<style_, std::decay_t<U>>{val};
         }
         template <typename... T>
-        constexpr auto operator=(Style<T...>&& style)
+        constexpr auto operator=(Style<T...>&& style) const
         {
             if constexpr (Style<T...>::isStatic())
             {
@@ -277,5 +278,5 @@ namespace Nui::Attributes
                     std::move(style).ejectObservedValues());
             }
         }
-    } style;
+    } static constexpr style;
 }
