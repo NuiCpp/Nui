@@ -2,6 +2,7 @@
 
 #include <nui/event_system/observed_value.hpp>
 #include <nui/event_system/observed_value_combinator.hpp>
+#include <nui/utility/meta/is_tuple.hpp>
 
 #include <utility>
 #include <tuple>
@@ -32,9 +33,9 @@ namespace Nui
         class InvalidAttribute
         {
           public:
-            int get() const
+            InvalidAttribute get() const
             {
-                return 0;
+                return {};
             }
         };
 
@@ -70,18 +71,51 @@ namespace Nui
     }
 
     template <typename Tag, typename... Attributes>
-    constexpr auto* extractOptionalAttribute(Attributes&... attributes)
+    constexpr auto* extractOptionalAttributePtr(Attributes&... attributes)
     {
         return Detail::extractAttributeImpl<Tag>(attributes...);
+    }
+
+    /**
+     * @brief This function takes less compiler effort if you pass the expected output type.
+     */
+    template <typename Tag, typename ExpectedType, typename... Attributes>
+    constexpr std::optional<ExpectedType> extractOptionalAttributeFast(Attributes&... attributes)
+    {
+        auto attribute = extractOptionalAttributePtr<Tag>(attributes...);
+        if constexpr (std::is_same_v<Detail::InvalidAttribute*, decltype(attribute)>)
+            return std::nullopt;
+        else
+            return attribute->get();
+    }
+
+    template <typename Tag, typename... Attributes>
+    constexpr auto extractAttributeAsTuple(Attributes&... attributes)
+    {
+        auto attribute = extractOptionalAttributePtr<Tag>(attributes...);
+        if constexpr (std::is_same_v<Detail::InvalidAttribute*, decltype(attribute)>)
+            return std::tuple<>{};
+        else if constexpr (IsTuple_v<decltype(attribute->get())>)
+            return attribute->get();
+        else
+            return std::make_tuple(attribute->get());
+    }
+
+    template <typename Tag, typename... Attributes>
+    constexpr auto extractOptionalAttribute(Attributes&... attributes)
+    {
+        return extractOptionalAttributeFast<
+            Tag,
+            std::decay_t<decltype(extractOptionalAttributePtr<Tag>(attributes...)->get())>>(attributes...);
     }
 
     template <typename Tag, typename... Attributes>
     constexpr auto extractAttribute(Attributes&... attributes)
     {
-        auto* const attr = extractOptionalAttribute<Tag>(attributes...);
+        auto attr = extractOptionalAttributePtr<Tag>(attributes...);
         // If you land here, a component expects an attribute to be passed, but didnt.
         static_assert(
-            !std::is_same_v<Detail::InvalidAttribute* const, decltype(attr)>,
+            !std::is_same_v<Detail::InvalidAttribute*, decltype(attr)>,
             "Attribute is required. Look for a 'extractAttribute<TAG_HERE>' in the error log");
         return attr->get();
     }

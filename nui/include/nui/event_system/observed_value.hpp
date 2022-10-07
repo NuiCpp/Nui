@@ -38,7 +38,7 @@ namespace Nui
         }
 
       protected:
-        void update()
+        virtual void update(bool /*force*/ = false)
         {
             for (auto& event : attachedEvents_)
             {
@@ -59,20 +59,20 @@ namespace Nui
     };
 
     template <typename ContainedT>
-    class Observed : public ObservedBase
+    class ModifiableObserved : public ObservedBase
     {
       public:
         class ModificationProxy
         {
           public:
-            explicit ModificationProxy(Observed& observed)
+            explicit ModificationProxy(ModifiableObserved& observed)
                 : observed_{observed}
             {}
             ~ModificationProxy()
             {
                 try
                 {
-                    observed_.update();
+                    observed_.update(true);
                 }
                 catch (...)
                 {
@@ -89,19 +89,19 @@ namespace Nui
             }
 
           private:
-            Observed& observed_;
+            ModifiableObserved& observed_;
         };
 
       public:
-        Observed() = default;
-        Observed(const Observed&) = delete;
-        Observed(Observed&&) = default;
-        Observed& operator=(const Observed&) = delete;
-        Observed& operator=(Observed&&) = default;
-        ~Observed() = default;
+        ModifiableObserved() = default;
+        ModifiableObserved(const ModifiableObserved&) = delete;
+        ModifiableObserved(ModifiableObserved&&) = default;
+        ModifiableObserved& operator=(const ModifiableObserved&) = delete;
+        ModifiableObserved& operator=(ModifiableObserved&&) = default;
+        ~ModifiableObserved() = default;
 
         template <typename T = ContainedT>
-        Observed(T&& t)
+        ModifiableObserved(T&& t)
             : contained_{std::forward<T>(t)}
         {}
 
@@ -109,10 +109,10 @@ namespace Nui
          * @brief Assign a completely new value.
          *
          * @param t
-         * @return Observed&
+         * @return ModifiableObserved&
          */
         template <typename T = ContainedT>
-        Observed& operator=(T&& t)
+        ModifiableObserved& operator=(T&& t)
         {
             contained_ = std::forward<T>(t);
             update();
@@ -121,29 +121,29 @@ namespace Nui
 
         template <typename T>
         requires Incrementable<T>
-        friend Observed<T>& operator++(Observed<T>& observedValue);
+        friend ModifiableObserved<T>& operator++(ModifiableObserved<T>& observedValue);
 
         template <typename T>
         requires Incrementable<T>
-        friend T operator++(Observed<T>& observedValue, int);
+        friend T operator++(ModifiableObserved<T>& observedValue, int);
 
         template <typename T>
         requires Decrementable<T>
-        friend Observed<T>& operator--(Observed<T>& observedValue);
+        friend ModifiableObserved<T>& operator--(ModifiableObserved<T>& observedValue);
 
         template <typename T>
         requires Decrementable<T>
-        friend T operator--(Observed<T>& observedValue, int);
+        friend T operator--(ModifiableObserved<T>& observedValue, int);
 
         template <typename T = ContainedT, typename U>
-        requires PlusAssignable<T, U> Observed<T>
+        requires PlusAssignable<T, U> ModifiableObserved<T>
         &operator+=(U const& rhs)
         {
             this->contained_ += rhs;
             return *this;
         }
         template <typename T = ContainedT, typename U>
-        requires MinusAssignable<T, U> Observed<T>
+        requires MinusAssignable<T, U> ModifiableObserved<T>
         &operator-=(U const& rhs)
         {
             this->contained_ -= rhs;
@@ -151,13 +151,13 @@ namespace Nui
         }
 
         template <typename T = ContainedT>
-        requires std::equality_comparable<T> && Fundamental<T> Observed& operator=(T&& t)
+        requires std::equality_comparable<T> && Fundamental<T> ModifiableObserved& operator=(T&& t)
         {
             return assignChecked(t);
         }
 
         template <typename T = ContainedT>
-        requires std::equality_comparable<T> Observed& assignChecked(T&& other)
+        requires std::equality_comparable<T> ModifiableObserved& assignChecked(T&& other)
         {
             if (contained_ != other)
             {
@@ -195,7 +195,7 @@ namespace Nui
             return contained_;
         }
 
-      private:
+      protected:
         ContainedT contained_;
     };
 
@@ -343,7 +343,7 @@ namespace Nui
     };
 
     template <typename ContainerT>
-    class ObservedContainer : public ObservedBase
+    class ObservedContainer : public ModifiableObserved<ContainerT>
     {
       public:
         friend class ContainerWrapUtility::ReferenceWrapper<typename ContainerT::value_type, ContainerT>;
@@ -357,29 +357,41 @@ namespace Nui
         using pointer = typename ContainerT::pointer;
         using const_pointer = typename ContainerT::const_pointer;
 
-        // TODO: need to wrap these:
         using iterator = ContainerWrapUtility::IteratorWrapper<typename ContainerT::iterator, ContainerT>;
         using const_iterator = typename ContainerT::const_iterator;
         using reverse_iterator =
             ContainerWrapUtility::IteratorWrapper<typename ContainerT::reverse_iterator, ContainerT>;
         using const_reverse_iterator = typename ContainerT::const_reverse_iterator;
 
+        using ModifiableObserved<ContainerT>::contained_;
+        using ModifiableObserved<ContainerT>::update;
+
       public:
         ObservedContainer()
-            : contained_{}
+            : ModifiableObserved<ContainerT>{}
             , rangeContext_{0}
         {}
+        template <typename T = ContainerT>
+        ObservedContainer(T&& t)
+            : ModifiableObserved<ContainerT>{std::forward<T>(t)}
+            , rangeContext_{static_cast<long>(contained_.size())}
+        {}
+        ObservedContainer(RangeEventContext&& rangeContext)
+            : ModifiableObserved<ContainerT>{}
+            , rangeContext_{std::move(rangeContext)}
+        {}
+        template <typename T = ContainerT>
+        ObservedContainer(T&& t, RangeEventContext&& rangeContext)
+            : ModifiableObserved<ContainerT>{std::forward<T>(t)}
+            , rangeContext_{std::move(rangeContext)}
+        {}
+
         ObservedContainer(const ObservedContainer&) = delete;
         ObservedContainer(ObservedContainer&&) = default;
         ObservedContainer& operator=(const ObservedContainer&) = delete;
         ObservedContainer& operator=(ObservedContainer&&) = default;
         ~ObservedContainer() = default;
 
-        template <typename T = ContainerT>
-        ObservedContainer(T&& t)
-            : contained_{std::forward<T>(t)}
-            , rangeContext_{static_cast<long>(contained_.size())}
-        {}
         template <typename T = ContainerT>
         ObservedContainer& operator=(T&& t)
         {
@@ -583,15 +595,14 @@ namespace Nui
             insertRangeChecked(distance, distance + sizeof...(Args), RangeStateType::Insert);
             return iterator{this, it};
         }
-        // FIXME: does not work correctly
         iterator erase(iterator pos)
         {
+            // TODO: move item to delete to end and then pop back? or is vector erase clever enough?
             const auto distance = pos - begin();
             auto it = contained_.erase(pos.getWrapped());
             insertRangeChecked(distance, distance, RangeStateType::Erase);
             return iterator{this, it};
         }
-        // FIXME: does not work correctly
         iterator erase(const_iterator pos)
         {
             const auto distance = pos - cbegin();
@@ -599,7 +610,6 @@ namespace Nui
             insertRangeChecked(distance, distance, RangeStateType::Erase);
             return iterator{this, it};
         }
-        // FIXME: does not work correctly
         iterator erase(iterator first, iterator last)
         {
             const auto distance = first - cbegin();
@@ -607,7 +617,6 @@ namespace Nui
             insertRangeChecked(distance, distance + std::distance(first, last), RangeStateType::Erase);
             return iterator{this, it};
         }
-        // FIXME: does not work correctly
         iterator erase(const_iterator first, const_iterator last)
         {
             const auto distance = first - cbegin();
@@ -695,6 +704,14 @@ namespace Nui
             return rangeContext_;
         }
 
+      protected:
+        void update(bool force) override
+        {
+            if (force)
+                rangeContext_.reset(contained_.size(), true);
+            ObservedBase::update(force);
+        }
+
       private:
         void insertRangeChecked(std::size_t low, std::size_t high, RangeStateType type)
         {
@@ -726,16 +743,43 @@ namespace Nui
         }
 
       private:
-        ContainerT contained_;
         mutable RangeEventContext rangeContext_;
     };
 
+    template <typename T>
+    class Observed : public ModifiableObserved<T>
+    {
+        using ModifiableObserved<T>::ModifiableObserved;
+    };
     template <typename... Parameters>
     class Observed<std::vector<Parameters...>> : public ObservedContainer<std::vector<Parameters...>>
-    {};
+    {
+      public:
+        static constexpr auto isRandomAccess = true;
+    };
     template <typename... Parameters>
     class Observed<std::deque<Parameters...>> : public ObservedContainer<std::deque<Parameters...>>
-    {};
+    {
+      public:
+        static constexpr auto isRandomAccess = true;
+    };
+    template <typename... Parameters>
+    class Observed<std::set<Parameters...>> : public ObservedContainer<std::set<Parameters...>>
+    {
+      public:
+        static constexpr auto isRandomAccess = false;
+
+      public:
+        Observed()
+            : ObservedContainer<std::set<Parameters...>>{RangeEventContext{0, true}}
+        {}
+        template <typename T = std::set<Parameters...>>
+        Observed(T&& t)
+            : ObservedContainer<std::set<Parameters...>>{
+                  std::forward<T>(t),
+                  RangeEventContext{static_cast<long>(t.size()), true}}
+        {}
+    };
 
     template <typename T>
     requires Incrementable<T>

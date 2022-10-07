@@ -9,6 +9,7 @@
 #include <string>
 #include <type_traits>
 #include <any>
+#include <tuple>
 
 namespace Nui
 {
@@ -19,6 +20,9 @@ namespace Nui
         using discrete_attribute = DiscreteAttribute;
         constexpr static bool is_static_value = true;
 
+        Attribute()
+            : value_{}
+        {}
         Attribute(T value)
             : value_{std::move(value)}
         {}

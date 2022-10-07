@@ -189,7 +189,16 @@ namespace Nui
         RangeEventContext(long dataSize)
             : modificationRanges_{}
             , fullRangeUpdate_{true}
+            , disableOptimizations_{false}
         {
+            reset(dataSize, true);
+        }
+        RangeEventContext(long dataSize, bool disableOptimizations)
+            : modificationRanges_{}
+            , fullRangeUpdate_{true}
+            , disableOptimizations_{disableOptimizations}
+        {
+            std::cout << "disableopts: " << disableOptimizations_ << std::endl;
             reset(dataSize, true);
         }
         enum class InsertResult
@@ -200,6 +209,13 @@ namespace Nui
         };
         InsertResult insertModificationRange(long elementCount, long low, long high, RangeStateType type)
         {
+            std::cout << "imodrange\n";
+            if (disableOptimizations_)
+            {
+                std::cout << "disable opts\n";
+                fullRangeUpdate_ = true;
+                return InsertResult::Final;
+            }
             if (type == RangeStateType::Erase)
             {
                 // FIXME: optimize erase like insert.
@@ -277,5 +293,6 @@ namespace Nui
         lib_interval_tree::interval_tree<Detail::RangeStateInterval<long>> modificationRanges_;
         std::optional<Detail::RangeStateInterval<long>> insertInterval_;
         bool fullRangeUpdate_;
+        bool disableOptimizations_;
     };
 }

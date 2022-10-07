@@ -15,6 +15,7 @@
 #include <memory>
 #include <functional>
 #include <iostream>
+#include <optional>
 
 namespace Nui
 {
@@ -130,7 +131,10 @@ namespace Nui
 
         constexpr HtmlElement(HtmlElement const&) = default;
         constexpr HtmlElement(HtmlElement&&) = default;
-        constexpr HtmlElement(std::tuple<Attributes...> attributes)
+        constexpr HtmlElement(std::tuple<Attributes...> const& attributes)
+            : attributes_{attributes}
+        {}
+        constexpr HtmlElement(std::tuple<Attributes...>&& attributes)
             : attributes_{std::move(attributes)}
         {}
         template <typename... T>
@@ -321,18 +325,27 @@ namespace Nui
                             parent->clearChildren();
                             long counter = 0;
                             for (auto const& element : observedValue.value())
-                                ElementRenderer(++counter, element)(*parent, Renderer{.type = RendererType::Append});
+                                ElementRenderer(counter++, element)(*parent, Renderer{.type = RendererType::Append});
                             return;
                         }
 
                         // Insertions:
                         if (const auto insertInterval = rangeContext.insertInterval(); insertInterval)
                         {
-                            for (auto i = insertInterval->low(); i <= insertInterval->high(); ++i)
+                            if constexpr (ObservedValue::isRandomAccess)
                             {
-                                ElementRenderer(i, observedValue.value()[i])(
-                                    *parent,
-                                    Renderer{.type = RendererType::Insert, .metadata = static_cast<std::size_t>(i)});
+                                for (auto i = insertInterval->low(); i <= insertInterval->high(); ++i)
+                                {
+                                    ElementRenderer(i, observedValue.value()[i])(
+                                        *parent,
+                                        Renderer{
+                                            .type = RendererType::Insert, .metadata = static_cast<std::size_t>(i)});
+                                }
+                            }
+                            else
+                            {
+                                // There is no optimization enabled for non random access containers
+                                return;
                             }
                             return;
                         }
@@ -348,10 +361,18 @@ namespace Nui
                                 }
                                 case RangeStateType::Modify:
                                 {
-                                    for (auto i = range.low(), high = range.high(); i <= high; ++i)
+                                    if constexpr (ObservedValue::isRandomAccess)
                                     {
-                                        ElementRenderer(i, observedValue.value()[i])(
-                                            *(*parent)[i], Renderer{.type = RendererType::Replace});
+                                        for (auto i = range.low(), high = range.high(); i <= high; ++i)
+                                        {
+                                            ElementRenderer(i, observedValue.value()[i])(
+                                                *(*parent)[i], Renderer{.type = RendererType::Replace});
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // There is no optimization enabled for non random access containers
+                                        return;
                                     }
                                     break;
                                 }
@@ -395,4 +416,6 @@ namespace Nui
         }; \
         template <typename... Attributes> \
         NAME(Attributes&&...) -> NAME<Attributes...>; \
+        template <typename... Attributes> \
+        NAME(std::tuple<Attributes...>) -> NAME<Attributes...>; \
     }

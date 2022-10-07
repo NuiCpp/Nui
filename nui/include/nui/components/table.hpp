@@ -7,6 +7,7 @@
 #include <nui/elements/table.hpp>
 #include <nui/attributes/custom_attribute.hpp>
 #include <nui/generator_typedefs.hpp>
+#include <nui/utility/meta/extract_value_type.hpp>
 
 // FIXME: removem me
 #include <nui/elements/div.hpp>
@@ -23,8 +24,12 @@ namespace Nui::Components
         NUI_MAKE_CUSTOM_ATTRIBUTE(footerRenderer);
         NUI_MAKE_CUSTOM_ATTRIBUTE(rowRenderer);
         NUI_MAKE_CUSTOM_ATTRIBUTE(tableCaption);
+        NUI_MAKE_CUSTOM_ATTRIBUTE(tableAttributes);
+        NUI_MAKE_CUSTOM_ATTRIBUTE(tableHeaderAttributes);
+        NUI_MAKE_CUSTOM_ATTRIBUTE(tableBodyAttributes);
+        NUI_MAKE_CUSTOM_ATTRIBUTE(tableFooterAttributes);
     }
-    template <template <typename...> typename ContainerT, typename RowDataT, typename... ForwardedArgs>
+    template <template <typename...> typename ContainerT, typename RowDataT>
     class Table
     {
       public:
@@ -36,7 +41,7 @@ namespace Nui::Components
             : tableModel_{model.get()}
             , captionModel_{[&]() -> decltype(captionModel_) {
                 // TODO: I need a better pattern for this. optional<static or observed>
-                auto attribute = extractOptionalAttribute<tableCaptionTag>(args...);
+                auto attribute = extractOptionalAttributePtr<tableCaptionTag>(args...);
                 if constexpr (std::is_same_v<Detail::InvalidAttribute* const, decltype(attribute)>)
                     return {};
                 else if constexpr (std::is_same_v<std::string, decltype(attribute->get())>)
@@ -47,29 +52,22 @@ namespace Nui::Components
                     return {};
             }()}
             , rowRenderer_{extractAttribute<rowRendererTag>(args...)}
-            , headerRenderer_{[&]() -> decltype(headerRenderer_) {
-                auto attribute = extractOptionalAttribute<headerRendererTag>(args...);
-                if constexpr (std::is_same_v<Detail::InvalidAttribute* const, decltype(attribute)>)
-                    return std::nullopt;
-                else
-                    return attribute->get();
-            }()}
-            , footerRenderer_{[&]() -> decltype(footerRenderer_) {
-                auto attribute = extractOptionalAttribute<footerRendererTag>(args...);
-                if constexpr (std::is_same_v<Detail::InvalidAttribute* const, decltype(attribute)>)
-                    return std::nullopt;
-                else
-                    return attribute->get();
-            }()}
+            , headerRenderer_{extractOptionalAttributeFast<
+                  headerRendererTag,
+                  ExtractValueType_t<decltype(headerRenderer_)>>(args...)}
+            , footerRenderer_{
+                  extractOptionalAttributeFast<footerRendererTag, ExtractValueType_t<decltype(footerRenderer_)>>(
+                      args...)}
         {}
 
       public:
-        // Do not capture this in this function.
-        // Rerenders might be caused after this short living class is destroyed.
-        constexpr auto operator()() &&
+        // Do not capture this in this function. Components are temporaray objects that produce functions which render
+        // actual elements.
+        template <typename... PassedArgs>
+        constexpr auto operator()(PassedArgs&&... passedArgs) &&
         {
             // clang-format off
-            return table{}(
+            return table{extractAttributeAsTuple<tableAttributesTag>(passedArgs...)}(
                 // caption
                 [cap = std::move(captionModel_)]() -> Nui::ElementRenderer {
                     return visitOverloaded(cap,
@@ -85,16 +83,15 @@ namespace Nui::Components
                     );
                 }(),
                 // header
-                [headerRenderer = std::move(headerRenderer_)]() -> Nui::ElementRenderer {
+                [headerRenderer = std::move(headerRenderer_), &passedArgs...]() -> Nui::ElementRenderer {
                     if (headerRenderer)
-                        return thead{}((*headerRenderer)());
+                        return thead{extractAttributeAsTuple<tableHeaderAttributesTag>(passedArgs...)}((*headerRenderer)());
                     else
                         return nil();
                 }(),
                 // body
-                tbody{}(
+                tbody{extractAttributeAsTuple<tableBodyAttributesTag>(passedArgs...)}(
                     range(tableModel_),
-                    // careful: this is no longer valid on subsequent calls
                     [renderer = std::move(rowRenderer_)](long i, auto const& row) {
                         return tr{}(
                             renderer(i, row)
@@ -102,9 +99,9 @@ namespace Nui::Components
                     }
                 ),
                 // footer                
-                [footerRenderer = std::move(footerRenderer_)]() -> Nui::ElementRenderer {
+                [footerRenderer = std::move(footerRenderer_), &passedArgs...]() -> Nui::ElementRenderer {
                     if (footerRenderer)
-                        return thead{}((*footerRenderer)());
+                        return tfoot{extractAttributeAsTuple<tableFooterAttributesTag>(passedArgs...)}((*footerRenderer)());
                     else
                         return nil();
                 }()
@@ -122,5 +119,5 @@ namespace Nui::Components
 
     template <template <typename...> typename ContainerT, typename RowDataT, typename... Arguments>
     Table(CustomAttribute<Observed<ContainerT<RowDataT>>&, tableModelTag>&&, Arguments&&...)
-        -> Table<ContainerT, RowDataT, Arguments...>;
+        -> Table<ContainerT, RowDataT>;
 }
