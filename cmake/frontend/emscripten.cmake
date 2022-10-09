@@ -17,9 +17,8 @@ function(nui_prepare_emscripten_target)
 
     add_custom_target(
         ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel 
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_STATIC} ${CMAKE_BINARY_DIR}/module_build/static
-        COMMAND ${CMAKE_BINARY_DIR}/node_modules/.bin/parcel build
-        COMMAND ${CMAKE_COMMAND} -E rename ${CMAKE_BINARY_DIR}/dist/index.html ${CMAKE_BINARY_DIR}/bin/${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}.html
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_STATIC} ${CMAKE_BINARY_DIR}/static
+        COMMAND ${CMAKE_BINARY_DIR}/node_modules/.bin/parcel build --dist-dir ${CMAKE_BINARY_DIR}/bin
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         BYPRODUCTS ${CMAKE_BINARY_DIR}/bin/${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}.html
         DEPENDS ${CMAKE_BINARY_DIR}/bin/${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}.js
