@@ -1,17 +1,17 @@
-#include "attribute.hpp"
+#pragma once
 
 // click related
-MAKE_HTML_EVENT_ATTRIBUTE(onClick)
-MAKE_HTML_EVENT_ATTRIBUTE(onDblClick)
-MAKE_HTML_EVENT_ATTRIBUTE(onMouseUp)
-MAKE_HTML_EVENT_ATTRIBUTE(onMouseDown)
+#include <nui/attributes/on_click.hpp>
+#include <nui/attributes/on_dbl_click.hpp>
+#include <nui/attributes/on_mouse_down.hpp>
+#include <nui/attributes/on_mouse_up.hpp>
 
 // cursor related
-MAKE_HTML_EVENT_ATTRIBUTE(onMouseMove)
-MAKE_HTML_EVENT_ATTRIBUTE(onMouseOut)
-MAKE_HTML_EVENT_ATTRIBUTE(onMouseOver)
-MAKE_HTML_EVENT_ATTRIBUTE(onMouseLeave)
-MAKE_HTML_EVENT_ATTRIBUTE(onMouseEnter)
+#include <nui/attributes/on_mouse_enter.hpp>
+#include <nui/attributes/on_mouse_leave.hpp>
+#include <nui/attributes/on_mouse_move.hpp>
+#include <nui/attributes/on_mouse_over.hpp>
+#include <nui/attributes/on_mouse_out.hpp>
 
 // other
-MAKE_HTML_EVENT_ATTRIBUTE(onWheel)
+#include <nui/attributes/on_mouse_wheel.hpp>
