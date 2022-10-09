@@ -1,10 +1,10 @@
 #pragma once
 
 #include <nui/elements/html_element.hpp>
-#include <nui/utility/functions.hpp>
 #include <nui/event_system/event_context.hpp>
+#include <nui/utility/functions.hpp>
 #include <nui/utility/tuple_for_each.hpp>
-#include <nui/dom/basic_element.hpp>
+#include <nui/dom/childless_element.hpp>
 
 #include <emscripten/val.h>
 
@@ -16,7 +16,7 @@
 
 namespace Nui::Dom
 {
-    class Element : public BasicElement
+    class Element : public ChildlessElement
     {
       public:
         using collection_type = std::vector<std::shared_ptr<Element>>;
@@ -25,7 +25,7 @@ namespace Nui::Dom
 
         template <typename T, typename... Attributes>
         Element(HtmlElement<T, Attributes...> const& elem)
-            : BasicElement{elem}
+            : ChildlessElement{elem}
             , children_{}
         {}
         virtual ~Element()
@@ -42,7 +42,7 @@ namespace Nui::Dom
         }
 
         Element(emscripten::val val)
-            : BasicElement{std::move(val)}
+            : ChildlessElement{std::move(val)}
             , children_{}
         {}
 
@@ -63,12 +63,10 @@ namespace Nui::Dom
             return std::end(children_);
         }
 
-        template <typename T = AppendGeneratorOptions>
-        void appendElement(std::invocable<Element&, GeneratorOptions<T> const&> auto&& fn)
+        void appendElement(std::invocable<Element&, Renderer const&> auto&& fn)
         {
-            fn(*this, GeneratorOptions<T>{});
+            fn(*this, Renderer{.type = RendererType::Append});
         }
-
         template <typename U, typename... Attributes>
         auto appendElement(HtmlElement<U, Attributes...> const& element)
         {
@@ -76,11 +74,14 @@ namespace Nui::Dom
             element_.call<emscripten::val>("appendChild", elem->element_);
             return children_.emplace_back(std::move(elem));
         }
-
+        void replaceElement(std::invocable<Element&, Renderer const&> auto&& fn)
+        {
+            fn(*this, Renderer{.type = RendererType::Replace});
+        }
         template <typename U, typename... Attributes>
         auto replaceElement(HtmlElement<U, Attributes...> const& element)
         {
-            BasicElement::replaceElement(element);
+            ChildlessElement::replaceElement(element);
             return shared_from_base<Element>();
         }
 
@@ -96,33 +97,34 @@ namespace Nui::Dom
         template <typename... Elements>
         void appendElements(std::tuple<Elements...> const& elements)
         {
+#pragma clang diagnostic push
+// 'this' may be unused when the tuple is empty? anyway this warning cannot be fixed.
+#pragma clang diagnostic ignored "-Wunused-lambda-capture"
             std::apply(
                 [this](auto const&... element) {
                     (appendElement(element), ...);
                 },
                 elements);
+#pragma clang diagnostic pop
         }
 
         template <typename U, typename... Attributes>
-        void insert(iterator where, HtmlElement<U, Attributes...> const& element)
+        auto insert(iterator where, HtmlElement<U, Attributes...> const& element)
         {
             if (where == end())
-            {
-                appendElement(element);
-                return;
-            }
+                return appendElement(element);
             auto elem = makeElement(element);
             element_.call<emscripten::val>("insertBefore", elem->element_, (*where)->element_);
-            children_.insert(where, std::move(elem));
+            return *children_.insert(where, std::move(elem));
         }
 
         template <typename U, typename... Attributes>
-        void insert(std::size_t where, HtmlElement<U, Attributes...> const& element)
+        auto insert(std::size_t where, HtmlElement<U, Attributes...> const& element)
         {
             if (where >= children_.size())
-                appendElement(element);
+                return appendElement(element);
             else
-                insert(begin() + where, element);
+                return insert(begin() + static_cast<decltype(children_)::difference_type>(where), element);
         }
 
         auto& operator[](std::size_t index)

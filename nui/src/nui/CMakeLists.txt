@@ -1,10 +1,11 @@
 if (EMSCRIPTEN)
     add_library(nui-frontend
         STATIC
+            frontend/components/dialog.cpp
             frontend/dom/dom.cpp
-            frontend/window.cpp
-            frontend/utility/functions.cpp
             frontend/event_system/event_context.cpp
+            frontend/utility/functions.cpp
+            frontend/window.cpp
     )
     target_include_directories(
         nui-frontend

@@ -9,6 +9,7 @@
 #include <string>
 #include <type_traits>
 #include <any>
+#include <tuple>
 
 namespace Nui
 {
@@ -19,6 +20,9 @@ namespace Nui
         using discrete_attribute = DiscreteAttribute;
         constexpr static bool is_static_value = true;
 
+        Attribute()
+            : value_{}
+        {}
         Attribute(T value)
             : value_{std::move(value)}
         {}
@@ -95,14 +99,14 @@ namespace Nui
         Observed<T>& obs_;
     };
 
-    template <typename DiscreteAttribute, typename GeneratorType, typename... ObservedValueTypes>
-    class Attribute<DiscreteAttribute, ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValueTypes...>, void>
+    template <typename DiscreteAttribute, typename RendererType, typename... ObservedValueTypes>
+    class Attribute<DiscreteAttribute, ObservedValueCombinatorWithGenerator<RendererType, ObservedValueTypes...>, void>
     {
       public:
         using discrete_attribute = DiscreteAttribute;
         constexpr static bool is_static_value = false;
 
-        Attribute(ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValueTypes...> value)
+        Attribute(ObservedValueCombinatorWithGenerator<RendererType, ObservedValueTypes...> value)
             : combinator_{std::move(value)}
         {}
 
@@ -119,7 +123,7 @@ namespace Nui
         template <typename ElementT>
         void createEvent(
             std::weak_ptr<ElementT> element,
-            std::invocable<std::shared_ptr<ElementT> const&, std::invoke_result_t<GeneratorType> const&> auto event)
+            std::invocable<std::shared_ptr<ElementT> const&, std::invoke_result_t<RendererType> const&> auto event)
             const
         {
             const auto eventId = globalEventContext.registerEvent(Event{
@@ -139,44 +143,47 @@ namespace Nui
         }
 
       private:
-        ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValueTypes...> combinator_;
+        ObservedValueCombinatorWithGenerator<RendererType, ObservedValueTypes...> combinator_;
     };
 }
 
-#define MAKE_HTML_VALUE_ATTRIBUTE(NAME) \
+#define MAKE_HTML_VALUE_ATTRIBUTE_RENAME(NAME, HTML_NAME) \
     namespace Nui::Attributes \
     { \
-        struct NAME##_ \
+        struct NAME##Tag \
         { \
             constexpr static char const* name() \
             { \
-                return #NAME; \
+                return #HTML_NAME; \
             }; \
             template <typename U> \
-            std::enable_if_t<!::Nui::Detail::IsObserved_v<std::decay_t<U>>, Attribute<NAME##_, U>> operator=(U val) \
+            std::enable_if_t<!::Nui::Detail::IsObserved_v<std::decay_t<U>>, Attribute<NAME##Tag, U>> \
+            operator=(U val) const \
             { \
-                return Attribute<NAME##_, U>{std::move(val)}; \
+                return Attribute<NAME##Tag, U>{std::move(val)}; \
             } \
             template <typename U> \
-            std::enable_if_t<::Nui::Detail::IsObserved_v<std::decay_t<U>>, Attribute<NAME##_, std::decay_t<U>>> \
-            operator=(U& val) \
+            std::enable_if_t<::Nui::Detail::IsObserved_v<std::decay_t<U>>, Attribute<NAME##Tag, std::decay_t<U>>> \
+            operator=(U& val) const \
             { \
-                return Attribute<NAME##_, std::decay_t<U>>{val}; \
+                return Attribute<NAME##Tag, std::decay_t<U>>{val}; \
             } \
-            template <typename GeneratorType, typename... ObservedValues> \
-            Attribute<NAME##_, ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValues...>> \
-            operator=(ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValues...> const& combinator) \
+            template <typename RendererType, typename... ObservedValues> \
+            Attribute<NAME##Tag, ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>> \
+            operator=(ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...> const& combinator) const \
             { \
-                return Attribute<NAME##_, ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValues...>>{ \
+                return Attribute<NAME##Tag, ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>>{ \
                     combinator}; \
             } \
-        } NAME; \
+        } static constexpr NAME; \
     }
+
+#define MAKE_HTML_VALUE_ATTRIBUTE(NAME) MAKE_HTML_VALUE_ATTRIBUTE_RENAME(NAME, NAME)
 
 #define MAKE_HTML_EVENT_ATTRIBUTE_RENAME(NAME, HTML_ACTUAL) \
     namespace Nui::Attributes \
     { \
-        struct NAME##_ \
+        struct NAME##Tag \
         { \
             constexpr static auto nameValue = fixToLower(#HTML_ACTUAL); \
 \
@@ -184,15 +191,22 @@ namespace Nui
             { \
                 return nameValue; \
             }; \
-            Attribute<NAME##_, std::function<void(emscripten::val)>> \
-            operator=(std::function<void(emscripten::val)> func) \
+            Attribute<NAME##Tag, std::function<void(emscripten::val)>> \
+            operator=(std::function<void(emscripten::val)> func) const \
             { \
-                return Attribute<NAME##_, std::function<void(emscripten::val)>>{[func](emscripten::val val) { \
+                return Attribute<NAME##Tag, std::function<void(emscripten::val)>>{[func](emscripten::val val) { \
                     func(val); \
                     globalEventContext.executeActiveEventsImmediately(); \
                 }}; \
             } \
-        } NAME; \
+            Attribute<NAME##Tag, std::function<void(emscripten::val)>> operator=(std::function<void()> func) const \
+            { \
+                return Attribute<NAME##Tag, std::function<void(emscripten::val)>>{[func](emscripten::val) { \
+                    func(); \
+                    globalEventContext.executeActiveEventsImmediately(); \
+                }}; \
+            } \
+        } static constexpr NAME; \
     }
 
 #define MAKE_HTML_EVENT_ATTRIBUTE(NAME) MAKE_HTML_EVENT_ATTRIBUTE_RENAME(NAME, NAME)

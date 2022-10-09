@@ -49,13 +49,13 @@ namespace Nui
     template <typename... ObservedValues>
     ObservedValueCombinatorBase(ObservedValues&...) -> ObservedValueCombinatorBase<ObservedValues...>;
 
-    template <typename GeneratorType, typename... ObservedValues>
+    template <typename RendererType, typename... ObservedValues>
     class ObservedValueCombinatorWithGenerator : public ObservedValueCombinatorBase<ObservedValues...>
     {
       public:
         constexpr ObservedValueCombinatorWithGenerator(
             std::tuple<ObservedValues&...> observedValues,
-            GeneratorType generator)
+            RendererType generator)
             : ObservedValueCombinatorBase<ObservedValues...>{std::move(observedValues)}
             , generator_{std::move(generator)}
         {}
@@ -65,13 +65,13 @@ namespace Nui
             return generator_();
         }
 
-        GeneratorType generator() const
+        RendererType generator() const
         {
             return generator_;
         }
 
       private:
-        const GeneratorType generator_;
+        const RendererType generator_;
     };
 
     template <typename... ObservedValues>
@@ -81,13 +81,13 @@ namespace Nui
         using ObservedValueCombinatorBase<ObservedValues...>::ObservedValueCombinatorBase;
         using ObservedValueCombinatorBase<ObservedValues...>::observedValues_;
 
-        template <typename GeneratorType>
-        requires std::invocable<GeneratorType>
-        constexpr ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValues...>
-        generate(GeneratorType&& generator)
+        template <typename RendererType>
+        requires std::invocable<RendererType>
+        constexpr ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>
+        generate(RendererType&& generator)
         {
-            return ObservedValueCombinatorWithGenerator<GeneratorType, ObservedValues...>{
-                observedValues_, std::forward<GeneratorType>(generator)};
+            return ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>{
+                observedValues_, std::forward<RendererType>(generator)};
         }
     };
     template <typename... ObservedValues>

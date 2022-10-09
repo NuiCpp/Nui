@@ -4,6 +4,11 @@
 #include <nui/event_system/range.hpp>
 #include <nui/event_system/event_context.hpp>
 #include <nui/concepts.hpp>
+#include <nui/utility/scope_exit.hpp>
+#include <nui/dom/reference.hpp>
+#include <nui/elements/detail/fragment_context.hpp>
+
+#include <emscripten/val.h>
 
 #include <tuple>
 #include <utility>
@@ -11,11 +16,29 @@
 #include <memory>
 #include <functional>
 #include <iostream>
+#include <optional>
 
 namespace Nui
 {
+    namespace Detail
+    {
+        inline void createUpdateEvent(auto& observedValues, auto& childrenRefabricator, auto& createdSelfWeak)
+        {
+            const auto eventId = globalEventContext.registerEvent(Event{
+                [childrenRefabricator](int) -> bool {
+                    (*childrenRefabricator)();
+                    return false;
+                },
+                [createdSelfWeak]() {
+                    return !createdSelfWeak.expired();
+                }});
+            observedValues.attachOneshotEvent(eventId);
+        }
+    }
+
+    // TODO: refactor, not anymore needed as classes:
     template <typename DerivedT>
-    class GeneratorOptions
+    class RendererOptions
     {
       public:
         auto materialize(auto& element, auto const& htmlElement) const
@@ -23,7 +46,7 @@ namespace Nui
             return static_cast<DerivedT const*>(this)->materialize(element, htmlElement);
         }
     };
-    class AppendGeneratorOptions : public GeneratorOptions<AppendGeneratorOptions>
+    class AppendRendererOptions : public RendererOptions<AppendRendererOptions>
     {
       public:
         auto materialize(auto& element, auto const& htmlElement) const
@@ -31,10 +54,20 @@ namespace Nui
             return element.appendElement(htmlElement);
         }
     };
-    class InsertGeneratorOptions : public GeneratorOptions<InsertGeneratorOptions>
+    class FragmentRendererOptions : public RendererOptions<FragmentRendererOptions>
     {
       public:
-        InsertGeneratorOptions(std::size_t where)
+        auto materialize(auto& element, auto const& htmlElement) const
+        {
+            auto elem = element.makeElement(htmlElement);
+            element.val().template call<emscripten::val>("appendChild", elem->val());
+            return elem;
+        }
+    };
+    class InsertRendererOptions : public RendererOptions<InsertRendererOptions>
+    {
+      public:
+        InsertRendererOptions(std::size_t where)
             : where_{where}
         {}
         auto materialize(auto& element, auto const& htmlElement) const
@@ -45,12 +78,49 @@ namespace Nui
       private:
         std::size_t where_;
     };
-    class ReplaceGeneratorOptions : public GeneratorOptions<ReplaceGeneratorOptions>
+    class ReplaceRendererOptions : public RendererOptions<ReplaceRendererOptions>
     {
       public:
         auto materialize(auto& element, auto const& htmlElement) const
         {
             return element.replaceElement(htmlElement);
+        }
+    };
+    class InplaceRendererOptions : public RendererOptions<InplaceRendererOptions>
+    {
+      public:
+        auto materialize(auto& element, auto const&) const
+        {
+            return element.template shared_from_base<std::decay_t<decltype(element)>>();
+        }
+    };
+    enum class RendererType
+    {
+        Append,
+        Fragment,
+        Insert,
+        Replace,
+        Inplace
+    };
+    struct Renderer
+    {
+        RendererType type;
+        std::size_t metadata;
+    };
+    auto renderElement(Renderer const& gen, auto& element, auto const& htmlElement)
+    {
+        switch (gen.type)
+        {
+            case RendererType::Append:
+                return AppendRendererOptions{}.materialize(element, htmlElement);
+            case RendererType::Fragment:
+                return FragmentRendererOptions{}.materialize(element, htmlElement);
+            case RendererType::Insert:
+                return InsertRendererOptions{gen.metadata}.materialize(element, htmlElement);
+            case RendererType::Replace:
+                return ReplaceRendererOptions{}.materialize(element, htmlElement);
+            case RendererType::Inplace:
+                return InplaceRendererOptions{}.materialize(element, htmlElement);
         }
     };
 
@@ -62,7 +132,10 @@ namespace Nui
 
         constexpr HtmlElement(HtmlElement const&) = default;
         constexpr HtmlElement(HtmlElement&&) = default;
-        constexpr HtmlElement(std::tuple<Attributes...> attributes)
+        constexpr HtmlElement(std::tuple<Attributes...> const& attributes)
+            : attributes_{attributes}
+        {}
+        constexpr HtmlElement(std::tuple<Attributes...>&& attributes)
             : attributes_{std::move(attributes)}
         {}
         template <typename... T>
@@ -75,14 +148,28 @@ namespace Nui
             return {attributes_};
         }
 
-        // Childrem:
+        // Children:
         template <typename... ElementT>
-        constexpr auto operator()(ElementT&&... elements) &&
+        requires(Dom::IsNotReferencePasser<ElementT>&&...) constexpr auto operator()(ElementT&&... elements) &&
         {
-            return [self = this->clone(), children = std::make_tuple(std::forward<ElementT>(elements)...)]<typename T>(
-                       auto& parentElement, GeneratorOptions<T> const& options) {
-                auto materialized = options.materialize(parentElement, self);
+            return [self = this->clone(), children = std::make_tuple(std::forward<ElementT>(elements)...)](
+                       auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
                 materialized->appendElements(children);
+                return materialized;
+            };
+        }
+        template <typename ReferencePasserT, typename... ElementT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(ReferencePasserT&& referencePasser, ElementT&&... elements) &&
+        {
+            return [self = this->clone(),
+                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
+                    children = std::make_tuple(std::forward<ElementT>(elements)...)](
+                       auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->appendElements(children);
+                referencePasser(materialized);
                 return materialized;
             };
         }
@@ -90,34 +177,81 @@ namespace Nui
         // Trivial case:
         constexpr auto operator()() &&
         {
-            return [self = this->clone()]<typename T>(auto& parentElement, GeneratorOptions<T> const& options) {
-                return options.materialize(parentElement, self);
+            return [self = this->clone()](auto& parentElement, Renderer const& gen) {
+                return renderElement(gen, parentElement, self);
+            };
+        }
+        template <typename ReferencePasserT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(ReferencePasserT&& referencePasser)
+        {
+            return [self = this->clone(), referencePasser = std::forward<ReferencePasserT>(referencePasser)](
+                       auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                referencePasser(materialized);
+                return materialized;
             };
         }
 
         // Text content functions:
         constexpr auto operator()(char const* text) &&
         {
-            return [self = this->clone(), text]<typename T>(auto& parentElement, GeneratorOptions<T> const& options) {
-                auto materialized = options.materialize(parentElement, self);
+            return [self = this->clone(), text](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
                 materialized->setTextContent(text);
+                return materialized;
+            };
+        }
+        template <typename ReferencePasserT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(ReferencePasserT&& referencePasser, char const* text) &&
+        {
+            return [self = this->clone(), referencePasser = std::forward<ReferencePasserT>(referencePasser), text](
+                       auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(text);
+                referencePasser(materialized);
                 return materialized;
             };
         }
         auto operator()(std::string text) &&
         {
-            return [self = this->clone(),
-                    text = std::move(text)]<typename T>(auto& parentElement, GeneratorOptions<T> const& options) {
-                auto materialized = options.materialize(parentElement, self);
+            return [self = this->clone(), text = std::move(text)](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
                 materialized->setTextContent(text);
+                return materialized;
+            };
+        }
+        template <typename ReferencePasserT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        auto operator()(ReferencePasserT&& referencePasser, std::string text) &&
+        {
+            return [self = this->clone(),
+                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
+                    text = std::move(text)](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(text);
+                referencePasser(materialized);
                 return materialized;
             };
         }
         constexpr auto operator()(std::string_view view) &&
         {
-            return [self = this->clone(), view]<typename T>(auto& parentElement, GeneratorOptions<T> const& options) {
-                auto materialized = options.materialize(parentElement, self);
+            return [self = this->clone(), view](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
                 materialized->setTextContent(view);
+                return materialized;
+            };
+        }
+        template <typename ReferencePasserT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(ReferencePasserT&& referencePasser, std::string_view view) &&
+        {
+            return [self = this->clone(), referencePasser = std::forward<ReferencePasserT>(referencePasser), view](
+                       auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(view);
+                referencePasser(materialized);
                 return materialized;
             };
         }
@@ -127,97 +261,204 @@ namespace Nui
                 return observedString.value();
             });
         }
+        template <typename ReferencePasserT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        auto operator()(ReferencePasserT&& referencePasser, Observed<std::string>& observedString) &&
+        {
+            return std::move(*this).operator()(
+                std::forward<ReferencePasserT>(referencePasser),
+                observe(observedString),
+                [&observedString]() -> std::string {
+                    return observedString.value();
+                });
+        }
         template <typename GeneratorT>
         requires InvocableReturns<GeneratorT, std::string>
         constexpr auto operator()(GeneratorT&& textGenerator) &&
         {
-            return [self = this->clone(), textGenerator = std::forward<GeneratorT>(textGenerator)]<typename T>(
-                       auto& parentElement, GeneratorOptions<T> const& options) {
-                auto materialized = options.materialize(parentElement, self);
+            return [self = this->clone(),
+                    textGenerator = std::forward<GeneratorT>(textGenerator)](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
                 materialized->setTextContent(textGenerator());
                 return materialized;
             };
         }
-
-        // Reactive functions:
-        template <typename... ObservedValues, std::invocable... GeneratorT>
-        constexpr auto
-        operator()(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&&... elementGenerators) &&
+        template <typename ReferencePasserT, typename GeneratorT>
+        requires Dom::IsReferencePasser<ReferencePasserT> && InvocableReturns<GeneratorT, std::string>
+        constexpr auto operator()(ReferencePasserT&& referencePasser, GeneratorT&& textGenerator) &&
         {
             return [self = this->clone(),
+                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
+                    textGenerator = std::forward<GeneratorT>(textGenerator)](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(textGenerator());
+                referencePasser(materialized);
+                return materialized;
+            };
+        }
+        template <std::invocable GeneratorT>
+        constexpr auto operator()(GeneratorT&& ElementRenderer) &&
+        {
+            return [self = this->clone(), ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](
+                       auto& parentElement, Renderer const& gen) {
+                return ElementRenderer()(parentElement, gen);
+            };
+        }
+
+        // Reactive functions:
+        template <typename ReferencePasserT, typename... ObservedValues, std::invocable GeneratorT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(
+            ReferencePasserT&& referencePasser,
+            ObservedValueCombinator<ObservedValues...> observedValues,
+            GeneratorT&& ElementRenderer) &&
+        {
+            return std::move(*this).reactiveRender(
+                std::forward<ReferencePasserT>(referencePasser),
+                std::move(observedValues),
+                std::forward<GeneratorT>(ElementRenderer));
+        }
+        template <typename... ObservedValues, std::invocable GeneratorT>
+        constexpr auto
+        operator()(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& ElementRenderer) &&
+        {
+            return std::move(*this).reactiveRender(
+                Dom::ReferencePasser{[](auto&&) {}},
+                std::move(observedValues),
+                std::forward<GeneratorT>(ElementRenderer));
+        }
+
+        template <typename ReferencePasserT, typename ObservedValue, typename GeneratorT>
+        constexpr auto operator()(
+            ReferencePasserT&& referencePasser,
+            ObservedRange<ObservedValue> observedRange,
+            GeneratorT&& ElementRenderer) &&
+        {
+            return std::move(*this).rangeRender(
+                std::forward<ReferencePasserT>(referencePasser),
+                std::move(observedRange),
+                std::forward<GeneratorT>(ElementRenderer));
+        }
+        template <typename ObservedValue, typename GeneratorT>
+        constexpr auto operator()(ObservedRange<ObservedValue> observedRange, GeneratorT&& ElementRenderer) &&
+        {
+            return std::move(*this).rangeRender(
+                Dom::ReferencePasser{[](auto&&) {}},
+                std::move(observedRange),
+                std::forward<GeneratorT>(ElementRenderer));
+        }
+
+        std::tuple<Attributes...> const& attributes() const
+        {
+            return attributes_;
+        }
+
+      private:
+        template <typename ReferencePasserT, typename... ObservedValues, std::invocable GeneratorT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto reactiveRender(
+            ReferencePasserT&& referencePasser,
+            ObservedValueCombinator<ObservedValues...> observedValues,
+            GeneratorT&& ElementRenderer) &&
+        {
+            return [self = this->clone(),
+                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
                     observedValues = std::move(observedValues),
-                    elementGenerators = std::make_tuple(std::forward<GeneratorT>(elementGenerators)...)]<typename T>(
-                       auto& parentElement, GeneratorOptions<T> const& options) {
+                    ElementRenderer =
+                        std::forward<GeneratorT>(ElementRenderer)](auto& parentElement, Renderer const& gen) {
                 using ElementType = std::decay_t<decltype(parentElement)>;
 
                 // function is called when observed values change to refabricate the children.
                 auto childrenRefabricator = std::make_shared<std::function<void()>>();
 
-                // create the parent for the children, that is the "self" element.
-                auto&& createdSelf = options.materialize(parentElement, self);
+                auto&& createdSelf = renderElement(gen, parentElement, self);
+                referencePasser(createdSelf);
 
-                *childrenRefabricator =
-                    [self,
-                     observedValues,
-                     elementGenerators,
-                     createdSelfWeak = std::weak_ptr<ElementType>{createdSelf},
-                     childrenRefabricator =
-                         std::weak_ptr<typename std::decay_t<decltype(childrenRefabricator)>::element_type>{
-                             childrenRefabricator}]() mutable {
-                        std::apply(
-                            [&observedValues, &childrenRefabricator, &createdSelfWeak](auto&&... elementGenerators) {
-                                auto parent = createdSelfWeak.lock();
-                                if (!parent)
-                                    return;
+                if (gen.type == RendererType::Inplace)
+                {
+                    *childrenRefabricator = [observedValues,
+                                             ElementRenderer,
+                                             fragmentContext = Detail::FragmentContext<ElementType>{},
+                                             createdSelfWeak = std::weak_ptr<ElementType>(createdSelf),
+                                             childrenRefabricator]() mutable {
+                        fragmentContext.clear();
 
-                                // clear children
-                                parent->clearChildren();
+                        auto parent = createdSelfWeak.lock();
+                        if (!parent)
+                        {
+                            childrenRefabricator.reset();
+                            return;
+                        }
 
-                                const auto eventId = globalEventContext.registerEvent(Event{
-                                    [observedValues, childrenRefabricator = childrenRefabricator.lock()](int) -> bool {
-                                        (*childrenRefabricator)();
-                                        return false;
-                                    },
-                                    [createdSelfWeak]() {
-                                        return !createdSelfWeak.expired();
-                                    }});
+                        Detail::createUpdateEvent(observedValues, childrenRefabricator, createdSelfWeak);
 
-                                //  (re)register side effect.
-                                observedValues.attachOneshotEvent(eventId);
-
-                                // regenerate children
-                                if constexpr ((std::is_same_v<decltype(elementGenerators()), std::string> && ...))
-                                    (..., parent->setTextContent(elementGenerators()));
-                                else
-                                    (..., elementGenerators()(*parent, GeneratorOptions<AppendGeneratorOptions>{}));
-                            },
-                            elementGenerators);
+                        // regenerate children
+                        if constexpr ((std::is_same_v<decltype(ElementRenderer()), std::string>))
+                            parent->setTextContent(ElementRenderer());
+                        else
+                            fragmentContext.push(ElementRenderer()(*parent, Renderer{.type = RendererType::Fragment}));
                     };
+                }
+                else
+                {
+                    *childrenRefabricator = [observedValues,
+                                             ElementRenderer,
+                                             createdSelfWeak = std::weak_ptr<ElementType>(createdSelf),
+                                             childrenRefabricator]() mutable {
+                        auto parent = createdSelfWeak.lock();
+                        if (!parent)
+                        {
+                            childrenRefabricator.reset();
+                            return;
+                        }
+
+                        // clear children
+                        parent->clearChildren();
+
+                        Detail::createUpdateEvent(observedValues, childrenRefabricator, createdSelfWeak);
+
+                        // regenerate children
+                        if constexpr ((std::is_same_v<decltype(ElementRenderer()), std::string>))
+                            parent->setTextContent(ElementRenderer());
+                        else
+                            ElementRenderer()(*parent, Renderer{.type = RendererType::Append});
+                    };
+                }
+
                 (*childrenRefabricator)();
                 return createdSelf;
             };
         }
-        template <typename ObservedValue, typename GeneratorT>
-        constexpr auto operator()(ObservedRange<ObservedValue> observedRange, GeneratorT&& elementGenerator) &&
+
+        template <typename ReferencePasserT, typename ObservedValue, typename GeneratorT>
+        constexpr auto rangeRender(
+            ReferencePasserT&& referencePasser,
+            ObservedRange<ObservedValue> observedRange,
+            GeneratorT&& ElementRenderer) &&
         {
             return [self = this->clone(),
+                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
                     &observedValue = observedRange.observedValue(),
-                    elementGenerator = std::forward<GeneratorT>(elementGenerator)]<typename T>(
-                       auto& parentElement, GeneratorOptions<T> const& options) {
+                    ElementRenderer =
+                        std::forward<GeneratorT>(ElementRenderer)](auto& parentElement, Renderer const& gen) {
+                if (gen.type == RendererType::Inplace)
+                    throw std::runtime_error("fragments are not supported for range generators");
+
                 using ElementType = std::decay_t<decltype(parentElement)>;
                 auto childrenUpdater = std::make_shared<std::function<void()>>();
-                auto&& createdSelf = options.materialize(parentElement, self);
+                auto&& createdSelf = renderElement(gen, parentElement, self);
+                referencePasser(createdSelf);
 
-                *childrenUpdater = [self,
-                                    &observedValue,
-                                    elementGenerator,
-                                    createdSelfWeak = std::weak_ptr<ElementType>{createdSelf},
-                                    childrenUpdater =
-                                        std::weak_ptr<typename std::decay_t<decltype(childrenUpdater)>::element_type>{
-                                            childrenUpdater}]() mutable {
+                *childrenUpdater = [&observedValue,
+                                    ElementRenderer,
+                                    createdSelfWeak = std::weak_ptr<ElementType>(createdSelf),
+                                    childrenUpdater]() mutable {
                     auto parent = createdSelfWeak.lock();
                     if (!parent)
+                    {
+                        childrenUpdater.reset();
                         return;
+                    }
 
                     auto& rangeContext = observedValue.rangeContext();
                     auto updateChildren = [&]() {
@@ -225,18 +466,29 @@ namespace Nui
                         if (rangeContext.isFullRangeUpdate())
                         {
                             parent->clearChildren();
+                            long counter = 0;
                             for (auto const& element : observedValue.value())
-                                elementGenerator(element)(*parent, GeneratorOptions<AppendGeneratorOptions>{});
+                                ElementRenderer(counter++, element)(*parent, Renderer{.type = RendererType::Append});
                             return;
                         }
 
                         // Insertions:
                         if (const auto insertInterval = rangeContext.insertInterval(); insertInterval)
                         {
-                            for (auto i = insertInterval->low(); i <= insertInterval->high(); ++i)
+                            if constexpr (ObservedValue::isRandomAccess)
                             {
-                                elementGenerator(observedValue.value()[i])(
-                                    *parent, InsertGeneratorOptions{static_cast<std::size_t>(i)});
+                                for (auto i = insertInterval->low(); i <= insertInterval->high(); ++i)
+                                {
+                                    ElementRenderer(i, observedValue.value()[i])(
+                                        *parent,
+                                        Renderer{
+                                            .type = RendererType::Insert, .metadata = static_cast<std::size_t>(i)});
+                                }
+                            }
+                            else
+                            {
+                                // There is no optimization enabled for non random access containers
+                                return;
                             }
                             return;
                         }
@@ -252,10 +504,18 @@ namespace Nui
                                 }
                                 case RangeStateType::Modify:
                                 {
-                                    for (auto i = range.low(), high = range.high(); i <= high; ++i)
+                                    if constexpr (ObservedValue::isRandomAccess)
                                     {
-                                        elementGenerator(observedValue.value()[i])(
-                                            *(*parent)[i], ReplaceGeneratorOptions{});
+                                        for (auto i = range.low(), high = range.high(); i <= high; ++i)
+                                        {
+                                            ElementRenderer(i, observedValue.value()[i])(
+                                                *(*parent)[i], Renderer{.type = RendererType::Replace});
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // There is no optimization enabled for non random access containers
+                                        return;
                                     }
                                     break;
                                 }
@@ -267,25 +527,11 @@ namespace Nui
 
                     updateChildren();
                     rangeContext.reset(observedValue.value().size(), false);
-
-                    const auto eventId = globalEventContext.registerEvent(Event{
-                        [&observedValue, childrenUpdater = childrenUpdater.lock()](int) -> bool {
-                            (*childrenUpdater)();
-                            return false;
-                        },
-                        [createdSelfWeak]() {
-                            return !createdSelfWeak.expired();
-                        }});
-                    observedValue.attachOneshotEvent(eventId);
+                    Detail::createUpdateEvent(observedValue, childrenUpdater, createdSelfWeak);
                 };
                 (*childrenUpdater)();
                 return createdSelf;
             };
-        }
-
-        std::tuple<Attributes...> const& attributes() const
-        {
-            return attributes_;
         }
 
       private:
@@ -308,4 +554,6 @@ namespace Nui
         }; \
         template <typename... Attributes> \
         NAME(Attributes&&...) -> NAME<Attributes...>; \
+        template <typename... Attributes> \
+        NAME(std::tuple<Attributes...>) -> NAME<Attributes...>; \
     }

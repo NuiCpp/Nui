@@ -11,16 +11,22 @@ int main(int argc, char** argv)
 {
     if (argc != 4)
     {
-        std::cout << "Expected 3 arguments: <input file> <output file> <name>, but got " << argc-1 << "\n";
-        std::cout << "Usage: " << argv[0] << " <input file> <output file> <name>" << "\n";
+        std::cout << "Expected 3 arguments: <input file> <output file> <name>, but got " << argc - 1 << "\n";
+        std::cout << "Usage: " << argv[0] << " <input file> <output file> <name>"
+                  << "\n";
         return 1;
     }
 
     std::ifstream input(argv[1], std::ios_base::binary);
     std::ofstream output(argv[2], std::ios_base::binary);
-    if (!input.is_open() || !output.is_open())
+    if (!input.is_open())
     {
-        std::cout << "Could not open files" << "\n";
+        std::cout << "Could not open file \"" << argv[1] << "\"\n";
+        return 1;
+    }
+    if (!output.is_open())
+    {
+        std::cout << "Could not open file \"" << argv[2] << "\"\n";
         return 1;
     }
 
@@ -42,10 +48,10 @@ int main(int argc, char** argv)
             std::streamsize j = 0;
             output << "\t\"";
             std::size_t widthUsed = 0;
-            for (; (widthUsed < (lineWidth - 9)) && (j+i != input.gcount()); ++j)
+            for (; (widthUsed < (lineWidth - 9)) && (j + i != input.gcount()); ++j)
             {
-                char c = buffer[i+j]; 
-                if(c < 32 || c == '"' || c == '\\')
+                char c = buffer[i + j];
+                if (c < 32 || c == '"' || c == '\\')
                 {
                     output << '\\' << std::oct << std::setw(3) << std::setfill('0') << static_cast<int>(c);
                     widthUsed += 4;
@@ -68,7 +74,8 @@ int main(int argc, char** argv)
     output << "\tstatic std::string memo;\n";
     output << "\tif(!memo.empty())\n";
     output << "\t\treturn memo;\n";
-    output << "\tfor (std::size_t i = 0; i != sizeof(" << argv[3] << "_data) / sizeof(std::string_view)" << "; ++i) {\n";
+    output << "\tfor (std::size_t i = 0; i != sizeof(" << argv[3] << "_data) / sizeof(std::string_view)"
+           << "; ++i) {\n";
     output << "\t\tmemo += " << argv[3] << "_data[i];\n";
     output << "\t}\n";
     output << "\treturn memo;\n";

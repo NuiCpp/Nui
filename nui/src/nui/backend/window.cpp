@@ -1,25 +1,11 @@
 #include <nui/window.hpp>
 
-#include <fmt/format.h>
 #include <webview.h>
+
+#include <iostream>
 
 namespace Nui
 {
-    namespace
-    {
-        constexpr std::string_view htmlTemplate = R"NUIX(
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Nui</title>
-                <script defer>{}</script>
-            </head>
-            <body>
-            </body>
-        )NUIX";
-    }
     //#####################################################################################################################
     struct Window::Implementation
     {
@@ -62,14 +48,9 @@ namespace Nui
         impl_->view.set_size(width, height, static_cast<int>(hint));
     }
     //---------------------------------------------------------------------------------------------------------------------
-    std::string Window::page(std::string_view front) const
+    void Window::setHtml(std::string_view html)
     {
-        return fmt::format(htmlTemplate, front);
-    }
-    //---------------------------------------------------------------------------------------------------------------------
-    void Window::loadFrontend(std::string_view front)
-    {
-        impl_->view.set_html(fmt::format(htmlTemplate, front));
+        impl_->view.set_html(std::string{html});
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::navigate(const std::string& url)
