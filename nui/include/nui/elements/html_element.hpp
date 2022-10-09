@@ -539,12 +539,12 @@ namespace Nui
     };
 }
 
-#define NUI_DECLARE_HTML_ELEMENT(NAME) \
+#define NUI_DECLARE_HTML_ELEMENT_RENAME(NAME, HTML_ACTUAL) \
     namespace Nui \
     { \
         struct NAME##_ \
         { \
-            constexpr static char const* name = #NAME; \
+            constexpr static char const* name = #HTML_ACTUAL; \
         }; \
 \
         template <typename... Attributes> \
@@ -557,3 +557,5 @@ namespace Nui
         template <typename... Attributes> \
         NAME(std::tuple<Attributes...>) -> NAME<Attributes...>; \
     }
+
+#define NUI_DECLARE_HTML_ELEMENT(NAME) NUI_DECLARE_HTML_ELEMENT_RENAME(NAME, NAME)

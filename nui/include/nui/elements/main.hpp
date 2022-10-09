@@ -2,4 +2,4 @@
 
 #include <nui/elements/html_element.hpp>
 
-NUI_DECLARE_HTML_ELEMENT(main_)
+NUI_DECLARE_HTML_ELEMENT_RENAME(main_, main)
