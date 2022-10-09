@@ -42,6 +42,7 @@ namespace Nui::Components
     Nui::ElementRenderer Dialog(DialogController& controller)
     {
         using namespace Nui::Attributes;
+        using namespace Nui::Elements;
 
         // clang-format off
         return dialog{

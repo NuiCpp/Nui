@@ -540,7 +540,7 @@ namespace Nui
 }
 
 #define NUI_DECLARE_HTML_ELEMENT_RENAME(NAME, HTML_ACTUAL) \
-    namespace Nui \
+    namespace Nui::Elements \
     { \
         struct NAME##_ \
         { \

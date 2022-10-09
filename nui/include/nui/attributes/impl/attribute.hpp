@@ -154,7 +154,7 @@ namespace Nui
         { \
             constexpr static char const* name() \
             { \
-                return #HTML_NAME; \
+                return HTML_NAME; \
             }; \
             template <typename U> \
             std::enable_if_t<!::Nui::Detail::IsObserved_v<std::decay_t<U>>, Attribute<NAME##Tag, U>> \
@@ -178,7 +178,7 @@ namespace Nui
         } static constexpr NAME; \
     }
 
-#define MAKE_HTML_VALUE_ATTRIBUTE(NAME) MAKE_HTML_VALUE_ATTRIBUTE_RENAME(NAME, NAME)
+#define MAKE_HTML_VALUE_ATTRIBUTE(NAME) MAKE_HTML_VALUE_ATTRIBUTE_RENAME(NAME, #NAME)
 
 #define MAKE_HTML_EVENT_ATTRIBUTE_RENAME(NAME, HTML_ACTUAL) \
     namespace Nui::Attributes \

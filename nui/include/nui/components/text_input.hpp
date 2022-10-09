@@ -26,7 +26,7 @@ namespace Nui
         template <typename... Children>
         constexpr auto operator()(Children&&... children) &&
         {
-            using Nui::input;
+            using Nui::Elements::input;
             namespace attr = Nui::Attributes;
             using namespace attr::Literals;
             using attr::type;

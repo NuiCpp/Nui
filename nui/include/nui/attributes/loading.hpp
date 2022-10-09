@@ -2,4 +2,4 @@
 
 #include <nui/attributes/impl/attribute.hpp>
 
-MAKE_HTML_VALUE_ATTRIBUTE(colspan)
+MAKE_HTML_VALUE_ATTRIBUTE(loading)

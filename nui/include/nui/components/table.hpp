@@ -66,6 +66,8 @@ namespace Nui::Components
         template <typename... PassedArgs>
         constexpr auto operator()(PassedArgs&&... passedArgs) &&
         {
+            using namespace Elements;
+
             // clang-format off
             return table{extractAttributeAsTuple<tableAttributesTag>(passedArgs...)}(
                 // caption
