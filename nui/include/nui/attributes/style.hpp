@@ -1,6 +1,6 @@
 #pragma once
 
-#include <nui/attributes/attribute.hpp>
+#include <nui/attributes/impl/attribute.hpp>
 #include <nui/utility/meta/tuple_filter.hpp>
 #include <nui/utility/meta/tuple_transform.hpp>
 #include <mplex/control/if.hpp>

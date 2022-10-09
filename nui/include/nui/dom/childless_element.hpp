@@ -2,7 +2,7 @@
 
 #include <nui/dom/basic_element.hpp>
 
-#include <nui/elements/html_element.hpp>
+#include <nui/elements/impl/html_element.hpp>
 
 namespace Nui::Dom
 {

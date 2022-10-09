@@ -185,7 +185,7 @@ namespace Nui
     { \
         struct NAME##Tag \
         { \
-            constexpr static auto nameValue = fixToLower(#HTML_ACTUAL); \
+            constexpr static auto nameValue = fixToLower(HTML_ACTUAL); \
 \
             consteval static char const* name() \
             { \
@@ -209,4 +209,4 @@ namespace Nui
         } static constexpr NAME; \
     }
 
-#define MAKE_HTML_EVENT_ATTRIBUTE(NAME) MAKE_HTML_EVENT_ATTRIBUTE_RENAME(NAME, NAME)
+#define MAKE_HTML_EVENT_ATTRIBUTE(NAME) MAKE_HTML_EVENT_ATTRIBUTE_RENAME(NAME, #NAME)

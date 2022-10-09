@@ -5,7 +5,7 @@
 #include <nui/elements/fragment.hpp>
 #include <nui/elements/caption.hpp>
 #include <nui/elements/table.hpp>
-#include <nui/attributes/custom_attribute.hpp>
+#include <nui/attributes/impl/custom_attribute.hpp>
 #include <nui/generator_typedefs.hpp>
 #include <nui/utility/meta/extract_value_type.hpp>
 
