@@ -2,13 +2,13 @@
 
 #include <nui/elements/html_element.hpp>
 #include <nui/elements/caption.hpp>
+#include <nui/elements/col.hpp>
+#include <nui/elements/colgroup.hpp>
+#include <nui/elements/tbody.hpp>
+#include <nui/elements/td.hpp>
+#include <nui/elements/thead.hpp>
+#include <nui/elements/tfoot.hpp>
+#include <nui/elements/tr.hpp>
+#include <nui/elements/th.hpp>
 
 NUI_DECLARE_HTML_ELEMENT(table)
-NUI_DECLARE_HTML_ELEMENT(thead)
-NUI_DECLARE_HTML_ELEMENT(tbody)
-NUI_DECLARE_HTML_ELEMENT(tfoot)
-NUI_DECLARE_HTML_ELEMENT(tr)
-NUI_DECLARE_HTML_ELEMENT(th)
-NUI_DECLARE_HTML_ELEMENT(td)
-NUI_DECLARE_HTML_ELEMENT(colgroup)
-NUI_DECLARE_HTML_ELEMENT(col)

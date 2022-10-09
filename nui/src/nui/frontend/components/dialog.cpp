@@ -4,7 +4,7 @@
 #include <nui/elements/form.hpp>
 #include <nui/elements/p.hpp>
 #include <nui/elements/menu.hpp>
-#include <nui/elements/head.hpp>
+#include <nui/elements/heading.hpp>
 #include <nui/elements/button.hpp>
 #include <nui/elements/fragment.hpp>
 #include <nui/attributes/open.hpp>
