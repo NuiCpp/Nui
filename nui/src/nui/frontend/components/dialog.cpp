@@ -6,7 +6,9 @@
 #include <nui/elements/menu.hpp>
 #include <nui/elements/head.hpp>
 #include <nui/elements/button.hpp>
+#include <nui/elements/fragment.hpp>
 #include <nui/attributes/open.hpp>
+#include <nui/attributes/class.hpp>
 #include <nui/attributes/method.hpp>
 #include <nui/attributes/type.hpp>
 #include <nui/attributes/mouse_events.hpp>
@@ -17,19 +19,17 @@
 namespace Nui::Components
 {
     //#####################################################################################################################
-    DialogController::DialogController()
+    DialogController::DialogController(ConstructionArgs&& args)
         : isOpen_{false}
         , element_{}
+        , args_{std::move(args)}
     {}
     //---------------------------------------------------------------------------------------------------------------------
     void DialogController::showModal()
     {
         isOpen_ = true;
         if (auto element = element_.lock())
-        {
-            emscripten::val::global("console").call<void>("log", element->val());
             element->val().call<void>("showModal");
-        }
     }
     //---------------------------------------------------------------------------------------------------------------------
     void DialogController::show()
@@ -42,30 +42,72 @@ namespace Nui::Components
     Nui::ElementRenderer Dialog(DialogController& controller)
     {
         using namespace Nui::Attributes;
+
         // clang-format off
-        return dialog{}(
+        return dialog{
+            class_ = controller.args_.className_
+        }(
             Dom::reference([&controller](auto element){
                 controller.element_ = std::static_pointer_cast<Dom::Element>(element.lock());
             }),
             form{
-                method = "dialog",
-                style = "background-color: red"
+                method = "dialog"
             }(
-                h1{}("Dialog"),
-                p{}("This is a dialog"),
+                h1{}(
+                    controller.args_.titel_
+                ),
+                p{}(
+                    controller.args_.body_
+                ),
                 menu{}(
-                    button{
-                        type = "submit",
-                        onClick = [&controller](auto const&){
-                            controller.isOpen_ = false;
+                    observe(controller.args_.buttonConfiguration_),
+                    [&controller, &conf = controller.args_.buttonConfiguration_]() -> Nui::ElementRenderer {
+                        switch (conf.value()) {
+                            case(DialogController::ButtonConfiguration::Ok):
+                            {
+                                return button{
+                                    type = "submit",
+                                    onClick = [&controller](){
+                                        controller.isOpen_ = false;
+                                    }
+                                }("Ok");
+                            }
+                            case(DialogController::ButtonConfiguration::OkCancel):
+                            {
+                                return fragment(
+                                    button{
+                                        type = "submit",
+                                        onClick = [&controller](){
+                                            controller.isOpen_ = false;
+                                        }
+                                    }("Ok"),
+                                    button{
+                                        type = "cancel",
+                                        onClick = [&controller](){
+                                            controller.isOpen_ = false;
+                                        }
+                                    }("Cancel")
+                                );
+                            }
+                            case(DialogController::ButtonConfiguration::YesNo):
+                            {
+                                return fragment(
+                                    button{
+                                        type = "submit",
+                                        onClick = [&controller](){
+                                            controller.isOpen_ = false;
+                                        }
+                                    }("Yes"),
+                                    button{
+                                        type = "cancel",
+                                        onClick = [&controller](){
+                                            controller.isOpen_ = false;
+                                        }
+                                    }("No")
+                                );
+                            }
                         }
-                    }("OK"), 
-                    button{
-                        type = "cancel",
-                        onClick = [&controller](auto const&){
-                            controller.isOpen_ = false;
-                        }
-                    }("Cancel")
+                    }
                 )
             )
         );

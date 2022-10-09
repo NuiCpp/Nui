@@ -313,6 +313,54 @@ namespace Nui
             ObservedValueCombinator<ObservedValues...> observedValues,
             GeneratorT&& ElementRenderer) &&
         {
+            return std::move(*this).reactiveRender(
+                std::forward<ReferencePasserT>(referencePasser),
+                std::move(observedValues),
+                std::forward<GeneratorT>(ElementRenderer));
+        }
+        template <typename... ObservedValues, std::invocable GeneratorT>
+        constexpr auto
+        operator()(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& ElementRenderer) &&
+        {
+            return std::move(*this).reactiveRender(
+                Dom::ReferencePasser{[](auto&&) {}},
+                std::move(observedValues),
+                std::forward<GeneratorT>(ElementRenderer));
+        }
+
+        template <typename ReferencePasserT, typename ObservedValue, typename GeneratorT>
+        constexpr auto operator()(
+            ReferencePasserT&& referencePasser,
+            ObservedRange<ObservedValue> observedRange,
+            GeneratorT&& ElementRenderer) &&
+        {
+            return std::move(*this).rangeRender(
+                std::forward<ReferencePasserT>(referencePasser),
+                std::move(observedRange),
+                std::forward<GeneratorT>(ElementRenderer));
+        }
+        template <typename ObservedValue, typename GeneratorT>
+        constexpr auto operator()(ObservedRange<ObservedValue> observedRange, GeneratorT&& ElementRenderer) &&
+        {
+            return std::move(*this).rangeRender(
+                Dom::ReferencePasser{[](auto&&) {}},
+                std::move(observedRange),
+                std::forward<GeneratorT>(ElementRenderer));
+        }
+
+        std::tuple<Attributes...> const& attributes() const
+        {
+            return attributes_;
+        }
+
+      private:
+        template <typename ReferencePasserT, typename... ObservedValues, std::invocable GeneratorT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto reactiveRender(
+            ReferencePasserT&& referencePasser,
+            ObservedValueCombinator<ObservedValues...> observedValues,
+            GeneratorT&& ElementRenderer) &&
+        {
             return [self = this->clone(),
                     referencePasser = std::forward<ReferencePasserT>(referencePasser),
                     observedValues = std::move(observedValues),
@@ -328,8 +376,7 @@ namespace Nui
 
                 if (gen.type == RendererType::Inplace)
                 {
-                    *childrenRefabricator = [self,
-                                             observedValues,
+                    *childrenRefabricator = [observedValues,
                                              ElementRenderer,
                                              fragmentContext = Detail::FragmentContext<ElementType>{},
                                              createdSelfWeak = std::weak_ptr<ElementType>(createdSelf),
@@ -354,8 +401,7 @@ namespace Nui
                 }
                 else
                 {
-                    *childrenRefabricator = [self,
-                                             observedValues,
+                    *childrenRefabricator = [observedValues,
                                              ElementRenderer,
                                              createdSelfWeak = std::weak_ptr<ElementType>(createdSelf),
                                              childrenRefabricator]() mutable {
@@ -383,15 +429,9 @@ namespace Nui
                 return createdSelf;
             };
         }
-        template <typename... ObservedValues, std::invocable GeneratorT>
-        constexpr auto
-        operator()(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& ElementRenderer) &&
-        {
-            return operator()()([](auto&&) {}, std::move(observedValues), std::forward<GeneratorT>(ElementRenderer));
-        }
 
         template <typename ReferencePasserT, typename ObservedValue, typename GeneratorT>
-        constexpr auto operator()(
+        constexpr auto rangeRender(
             ReferencePasserT&& referencePasser,
             ObservedRange<ObservedValue> observedRange,
             GeneratorT&& ElementRenderer) &&
@@ -409,8 +449,7 @@ namespace Nui
                 auto&& createdSelf = renderElement(gen, parentElement, self);
                 referencePasser(createdSelf);
 
-                *childrenUpdater = [self,
-                                    &observedValue,
+                *childrenUpdater = [&observedValue,
                                     ElementRenderer,
                                     createdSelfWeak = std::weak_ptr<ElementType>(createdSelf),
                                     childrenUpdater]() mutable {
@@ -493,16 +532,6 @@ namespace Nui
                 (*childrenUpdater)();
                 return createdSelf;
             };
-        }
-        template <typename ObservedValue, typename GeneratorT>
-        constexpr auto operator()(ObservedRange<ObservedValue> observedRange, GeneratorT&& ElementRenderer) &&
-        {
-            return operator()()([](auto&&) {}, std::move(observedRange), std::forward<GeneratorT>(ElementRenderer));
-        }
-
-        std::tuple<Attributes...> const& attributes() const
-        {
-            return attributes_;
         }
 
       private:

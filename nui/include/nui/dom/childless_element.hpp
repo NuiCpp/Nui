@@ -74,6 +74,24 @@ namespace Nui::Dom
         {
             element_.call<emscripten::val>("setAttribute", emscripten::val{std::string{key}}, emscripten::val{value});
         }
+        void setAttribute(std::string_view key, int value)
+        {
+            element_.call<emscripten::val>("setAttribute", emscripten::val{std::string{key}}, emscripten::val{value});
+        }
+        void setAttribute(std::string_view key, double value)
+        {
+            element_.call<emscripten::val>("setAttribute", emscripten::val{std::string{key}}, emscripten::val{value});
+        }
+        void setAttribute(std::string_view key, emscripten::val value)
+        {
+            element_.call<emscripten::val>("setAttribute", emscripten::val{std::string{key}}, value);
+        }
+        template <typename T>
+        void setAttribute(std::string_view key, std::optional<T> const& value)
+        {
+            if (value)
+                setAttribute(key, *value);
+        }
 
       protected:
         template <typename U, typename... Attributes>
