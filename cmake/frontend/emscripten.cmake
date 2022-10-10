@@ -16,6 +16,12 @@ function(nui_prepare_emscripten_target)
     nui_set_target_output_directories(${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET})
 
     add_custom_target(
+        ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-npm-install 
+        COMMAND npm install
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+
+    add_custom_target(
         ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel 
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_STATIC} ${CMAKE_BINARY_DIR}/static
         COMMAND ${CMAKE_BINARY_DIR}/node_modules/.bin/parcel build --dist-dir ${CMAKE_BINARY_DIR}/bin
@@ -32,5 +38,6 @@ function(nui_prepare_emscripten_target)
             LINK_FLAGS
             "-sSINGLE_FILE -sNO_EXIT_RUNTIME=1 ${EMSCRIPTEN_LINK} --no-entry --bind --pre-js=\"${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PREJS}\""
     )
+    add_dependencies(${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-npm-install)
     add_dependencies(${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET})
 endfunction()

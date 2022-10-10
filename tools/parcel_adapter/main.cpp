@@ -1,5 +1,6 @@
 #include <nlohmann/json.hpp>
 
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include <iostream>
@@ -23,6 +24,20 @@ void disablePolyfillIfNotSet(nlohmann::json& alias, std::string_view aliasName)
         alias[aliasName] = false;
 }
 
+void createPackageJsonIfMissing(std::filesystem::path const& where, std::string const& targetName)
+{
+    using nlohmann::json;
+    if (!std::filesystem::exists(where))
+    {
+        std::ofstream createPackageJson{where, std::ios_base::binary};
+        auto initialPackage = json::object();
+        initialPackage["name"] = targetName;
+        initialPackage["version"] = "1.0.0";
+        initialPackage["description"] = "";
+        createPackageJson << initialPackage.dump(4);
+    }
+}
+
 int main(int argc, char** argv)
 {
     using nlohmann::json;
@@ -36,6 +51,7 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    createPackageJsonIfMissing(argv[1], argv[3]);
     std::ifstream ifs(argv[1], std::ios_base::binary);
     if (!ifs.is_open())
     {
@@ -50,6 +66,14 @@ int main(int argc, char** argv)
     {
         package["targets"] = json::object();
         package["targets"]["main"] = false;
+    }
+
+    if (!package.contains("devDependencies"))
+        package["devDependencies"] = json::object();
+    if (!package["devDependencies"].contains("parcel"))
+    {
+        std::cout << "WARNING! Please install parcel as a dev dependency in your project.\n";
+        package["devDependencies"]["parcel"] = "^2.7.0";
     }
 
     if (!package.contains("alias"))
