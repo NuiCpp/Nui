@@ -61,9 +61,9 @@ cmake \
   -DCMAKE_CXX_STANDARD=23 \
   ../..
 
-if [ ! -d ./_deps/emscripten-src/upstream ]; then
-  make emscripten_setup
-fi
+# if [ ! -d ./_deps/emscripten-src/upstream ]; then
+#   make emscripten_setup
+# fi
 
 cd ../..
 node ./scripts/copy_compile_commands.js

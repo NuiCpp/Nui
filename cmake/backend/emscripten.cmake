@@ -12,23 +12,25 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(emscripten)
 
 if(UNIX)
-    add_custom_target(
-        emscripten_setup
-        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/emscripten-src"
-        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" install latest --build=Release
-        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" activate latest
-        COMMAND_EXPAND_LISTS
+    add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten
+        COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk install latest --build=Release
+        COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk activate latest
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/_deps/emscripten-src
     )
 else()
-    add_custom_target(
-        emscripten_setup
-        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/emscripten-src"
-        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" install latest --build=Release
-        #FIXME: properly generate config / get activate to work.
-        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcc --generate-config"
-        COMMAND_EXPAND_LISTS
+    # FIXME: fix config.
+    add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten
+        COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk install latest --build=Release
+        COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcc --generate-config
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/_deps/emscripten-src
     )
 endif()
+add_custom_target(
+    emscripten-setup
+    DEPENDS ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten
+)
 
 function(nui_add_emscripten_target)
     if (${NUI_USE_EXTERNAL_EMSCRIPTEN})
@@ -93,5 +95,9 @@ function(nui_add_emscripten_target)
     add_dependencies(
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-prejs
+    )
+    add_dependencies(
+        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
+        emscripten-setup
     )
 endfunction()

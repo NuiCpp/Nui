@@ -18,8 +18,8 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(webview_raw)
 
 if (WIN32)
-    add_custom_target(
-        webview2_msys
+    add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/bin/WebView2Loader.dll
         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/_deps/webview2" 
         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bin"
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps"
@@ -30,10 +30,14 @@ if (WIN32)
         COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/_deps/webview2/build/native/x64/WebView2Loader.dll" "${CMAKE_BINARY_DIR}/bin"
         COMMAND_EXPAND_LISTS
     )
+    add_custom_target(
+        webview2-msys
+        DEPENDS ${CMAKE_BINARY_DIR}/bin/WebView2Loader.dll
+    )
 endif()
 
 add_custom_target(
-    webview_prep 
+    webview-prep 
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/include" 
     COMMAND ${CMAKE_COMMAND} -E copy_if_different  "${CMAKE_BINARY_DIR}/_deps/webview_raw-src/webview.h" "${CMAKE_BINARY_DIR}/include/webview.h"
     COMMAND_EXPAND_LISTS
@@ -45,9 +49,10 @@ target_include_directories(webview INTERFACE "${CMAKE_BINARY_DIR}/include")
 if (WIN32)
     target_include_directories(webview INTERFACE "${CMAKE_BINARY_DIR}/_deps/webview2/build/native/include")
     target_link_directories(webview INTERFACE "${CMAKE_BINARY_DIR}/_deps/webview2/build/native/x64")
+    add_dependencies(webview-prep webview2-msys)
 endif()
 
-add_dependencies(webview webview_prep)
+add_dependencies(webview webview-prep)
 set_target_properties(webview PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES $<TARGET_PROPERTY:webview,INTERFACE_INCLUDE_DIRECTORIES>)
 
 target_link_libraries(
