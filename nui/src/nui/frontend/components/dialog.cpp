@@ -39,6 +39,11 @@ namespace Nui::Components
             element->val().call<void>("show");
     }
     //---------------------------------------------------------------------------------------------------------------------
+    bool DialogController::isOpen() const
+    {
+        return isOpen_;
+    }
+    //---------------------------------------------------------------------------------------------------------------------
     Nui::ElementRenderer Dialog(DialogController& controller)
     {
         using namespace Nui::Attributes;
@@ -70,6 +75,7 @@ namespace Nui::Components
                                     type = "submit",
                                     onClick = [&controller](){
                                         controller.isOpen_ = false;
+                                        controller.args_.onButtonClicked_(DialogController::Button::Ok);
                                     }
                                 }("Ok");
                             }
@@ -80,12 +86,14 @@ namespace Nui::Components
                                         type = "submit",
                                         onClick = [&controller](){
                                             controller.isOpen_ = false;
+                                            controller.args_.onButtonClicked_(DialogController::Button::Ok);
                                         }
                                     }("Ok"),
                                     button{
                                         type = "cancel",
                                         onClick = [&controller](){
                                             controller.isOpen_ = false;
+                                            controller.args_.onButtonClicked_(DialogController::Button::Cancel);
                                         }
                                     }("Cancel")
                                 );
@@ -97,12 +105,14 @@ namespace Nui::Components
                                         type = "submit",
                                         onClick = [&controller](){
                                             controller.isOpen_ = false;
+                                            controller.args_.onButtonClicked_(DialogController::Button::Yes);
                                         }
                                     }("Yes"),
                                     button{
                                         type = "cancel",
                                         onClick = [&controller](){
                                             controller.isOpen_ = false;
+                                            controller.args_.onButtonClicked_(DialogController::Button::No);
                                         }
                                     }("No")
                                 );

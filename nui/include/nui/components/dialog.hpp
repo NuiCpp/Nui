@@ -15,6 +15,13 @@ namespace Nui::Components
     class DialogController
     {
       public:
+        enum class Button
+        {
+            Ok,
+            Cancel,
+            Yes,
+            No,
+        };
         enum class ButtonConfiguration
         {
             Ok,
@@ -28,11 +35,13 @@ namespace Nui::Components
             Observed<std::string> titel_;
             Observed<std::string> body_;
             Observed<ButtonConfiguration> buttonConfiguration_;
+            std::function<void(Button)> onButtonClicked_;
         };
 
         DialogController(ConstructionArgs&& args);
         void showModal();
         void show();
+        bool isOpen() const;
 
         friend Nui::ElementRenderer Dialog(DialogController& controller);
 
