@@ -27,6 +27,7 @@ else()
     add_library(nui-backend
         STATIC
             backend/window.cpp
+            backend/filesystem/special_paths.cpp
     )
     target_include_directories(
         nui-backend
@@ -42,7 +43,6 @@ else()
             fmt
         PUBLIC
             webview
-            roar
     )
     if (WIN32)
         target_include_directories(nui-backend PUBLIC ${CMAKE_BINARY_DIR}/libs/webview2/build/native/include)

@@ -1,6 +1,6 @@
 #include <nui/window.hpp>
 
-#include <roar/filesystem/special_paths.hpp>
+#include <nui/backend/filesystem/special_paths.hpp>
 #include <webview.h>
 #include <random>
 
@@ -58,7 +58,7 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setHtml(std::string_view html)
     {
-#ifdef __WIN32__
+#if defined(_WIN32)
         // https://github.com/MicrosoftEdge/WebView2Feedback/issues/1355
         // :((((
 
@@ -74,7 +74,7 @@ namespace Nui
         std::string fileName(fileNameSize, '\0');
         for (std::size_t i = 0; i < fileNameSize; ++i)
             fileName[i] = alphanum[dis(gen)];
-        const auto tempFile = Roar::resolvePath("%temp%/"s + fileName + ".html");
+        const auto tempFile = resolvePath("%temp%/"s + fileName + ".html");
         {
             std::ofstream temporary{tempFile, std::ios_base::binary};
             temporary.write(html.data(), static_cast<std::streamsize>(html.size()));
