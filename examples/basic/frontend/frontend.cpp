@@ -1,7 +1,7 @@
 #include <nui/core.hpp>
-#include <nui/dom/dom.hpp>
-#include <nui/elements.hpp>
-#include <nui/attributes.hpp>
+#include <nui/frontend/dom/dom.hpp>
+#include <nui/frontend/elements.hpp>
+#include <nui/frontend/attributes.hpp>
 
 #include <emscripten/val.h>
 

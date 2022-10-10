@@ -1,18 +1,18 @@
-#include <nui/components/dialog.hpp>
+#include <nui/frontend/components/dialog.hpp>
 
-#include <nui/elements/dialog.hpp>
-#include <nui/elements/form.hpp>
-#include <nui/elements/p.hpp>
-#include <nui/elements/menu.hpp>
-#include <nui/elements/heading.hpp>
-#include <nui/elements/button.hpp>
-#include <nui/elements/fragment.hpp>
-#include <nui/attributes/open.hpp>
-#include <nui/attributes/class.hpp>
-#include <nui/attributes/method.hpp>
-#include <nui/attributes/type.hpp>
-#include <nui/attributes/mouse_events.hpp>
-#include <nui/attributes/style.hpp>
+#include <nui/frontend/elements/dialog.hpp>
+#include <nui/frontend/elements/form.hpp>
+#include <nui/frontend/elements/p.hpp>
+#include <nui/frontend/elements/menu.hpp>
+#include <nui/frontend/elements/heading.hpp>
+#include <nui/frontend/elements/button.hpp>
+#include <nui/frontend/elements/fragment.hpp>
+#include <nui/frontend/attributes/open.hpp>
+#include <nui/frontend/attributes/class.hpp>
+#include <nui/frontend/attributes/method.hpp>
+#include <nui/frontend/attributes/type.hpp>
+#include <nui/frontend/attributes/mouse_events.hpp>
+#include <nui/frontend/attributes/style.hpp>
 
 #include <emscripten.h>
 

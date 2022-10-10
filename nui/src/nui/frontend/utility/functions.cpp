@@ -1,4 +1,4 @@
-#include <nui/utility/functions.hpp>
+#include <nui/frontend/utility/functions.hpp>
 
 // EMSCRIPTEN_BINDINGS(jsbindhpp)
 // {
