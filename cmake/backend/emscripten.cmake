@@ -69,7 +69,14 @@ function(nui_add_emscripten_target)
     ExternalProject_Add(
         "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten"
         SOURCE_DIR "${SOURCE_DIR}"
-        CONFIGURE_COMMAND ${EMCMAKE} cmake -DCMAKE_CXX_STANDARD=20 -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS} ${SOURCE_DIR}
+        CONFIGURE_COMMAND 
+            ${EMCMAKE} cmake 
+                -DCMAKE_CXX_STANDARD=20 
+                -DCMAKE_EXPORT_COMPILE_COMMANDS=1 
+                "$<$<CONFIG:DEBUG>:-DCMAKE_BUILD_TYPE=Debug>"
+                "$<$<CONFIG:RELEASE>:-DCMAKE_BUILD_TYPE=Release>"
+                ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS} 
+                ${SOURCE_DIR}
         BUILD_COMMAND $<TARGET_FILE:parcel-adapter> ${SOURCE_DIR}/package.json ${CMAKE_BINARY_DIR}/module_build/package.json "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
         COMMAND ${EMMAKE} make ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_MAKE_OPTIONS} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
         COMMAND $<TARGET_FILE:bin2hpp> ${CMAKE_BINARY_DIR}/module_build/bin/${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}.html ${CMAKE_BINARY_DIR}/include/${targetNormalized}.hpp ${targetNormalized}

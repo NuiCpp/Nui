@@ -11,8 +11,8 @@ endif()
 include(FetchContent)
 FetchContent_Declare(
     webview_raw
-    GIT_REPOSITORY https://github.com/5cript/webview.git
-    GIT_TAG        976a3b6cfba1e9d514e53db3d4b1608ce44aa1e4    
+    GIT_REPOSITORY https://github.com/webview/webview.git
+    GIT_TAG        2ee04ccd0530e3928a872f5d508c114403803e61
 )
 
 FetchContent_MakeAvailable(webview_raw)
