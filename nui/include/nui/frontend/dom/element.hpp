@@ -2,7 +2,6 @@
 
 #include <nui/frontend/elements/impl/html_element.hpp>
 #include <nui/frontend/event_system/event_context.hpp>
-#include <nui/frontend/utility/functions.hpp>
 #include <nui/frontend/dom/childless_element.hpp>
 #include <nui/utility/tuple_for_each.hpp>
 

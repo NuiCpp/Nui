@@ -2,12 +2,22 @@
 
 namespace Nui::Detail
 {
-    template <typename T, typename>
+    template <typename...>
     struct PickFirst
+    {};
+
+    template <typename T, typename... Ts>
+    struct PickFirst<T, Ts...>
     {
         using type = T;
     };
 
-    template <typename T, typename U>
-    using PickFirst_t = typename PickFirst<T, U>::type;
+    template <>
+    struct PickFirst<>
+    {
+        using type = void;
+    };
+
+    template <typename... Ts>
+    using PickFirst_t = typename PickFirst<Ts...>::type;
 }

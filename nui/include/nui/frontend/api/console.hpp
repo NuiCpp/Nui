@@ -6,6 +6,7 @@ namespace Nui
 {
     class Console
     {
+      public:
         template <typename... Args>
         static void log(Args&&... args)
         {
@@ -58,7 +59,7 @@ namespace Nui
             emscripten::val::global("console").call<void>("clear");
         }
         template <typename T>
-        static void assert(bool condition, T&& message)
+        static void assert_(bool condition, T&& message)
         {
             emscripten::val::global("console").call<void>("assert", condition, std::forward<T>(message));
         }

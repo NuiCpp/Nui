@@ -211,6 +211,20 @@ namespace Nui
             return p;
         }
 
+        std::optional<T> pop(IdType id)
+        {
+            const auto p = findItem(id);
+            if (p == std::end(items_))
+                return std::nullopt;
+
+            const auto result = std::move(p->item);
+            p->item.reset();
+            --itemCount_;
+
+            condense();
+            return result;
+        }
+
         std::optional<T>* select(IdType id)
         {
             const auto iter = findItem(id);

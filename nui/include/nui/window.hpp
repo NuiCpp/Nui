@@ -1,7 +1,13 @@
 #pragma once
 
+#include <nui/core.hpp>
+#ifdef NUI_BACKEND
+#    include <nlohmann/json.hpp>
+#endif
+
 #include <memory>
 #include <string>
+#include <functional>
 
 namespace Nui
 {
@@ -10,7 +16,7 @@ namespace Nui
         WEBVIEW_HINT_NONE,
         WEBVIEW_HINT_MIN,
         WEBVIEW_HINT_MAX,
-        WEBVIEW_HINT_NIXED
+        WEBVIEW_HINT_FIXED
     };
 
     class Window
@@ -32,12 +38,11 @@ namespace Nui
         void run();
         void terminate();
         void setHtml(std::string_view html);
-        // eval
-        // init
-        // bind
-        // unbind
-        // dispatch
-        // set_html
+#ifdef NUI_BACKEND
+        void bind(std::string const& name, std::function<void(nlohmann::json const&)> const& callback);
+#endif
+        void eval(std::string const& js);
+        void openDevTools();
 
       private:
         struct Implementation;

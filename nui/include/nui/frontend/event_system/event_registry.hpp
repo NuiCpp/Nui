@@ -1,6 +1,6 @@
 #pragma once
 
-#include <nui/frontend/data_structures/selecteables_registry.hpp>
+#include <nui/data_structures/selectables_registry.hpp>
 #include <nui/frontend/event_system/event.hpp>
 #include <nui/utility/visit_overloaded.hpp>
 
