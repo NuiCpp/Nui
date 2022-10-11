@@ -12,23 +12,25 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(emscripten)
 
 if(UNIX)
-    add_custom_target(
-        emscripten_setup
-        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/emscripten-src"
-        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" install latest --build=Release
-        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" activate latest
-        COMMAND_EXPAND_LISTS
+    add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten
+        COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk install latest --build=Release
+        COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk activate latest
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/_deps/emscripten-src
     )
 else()
-    add_custom_target(
-        emscripten_setup
-        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/emscripten-src"
-        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" install latest --build=Release
-        #FIXME: properly generate config / get activate to work.
-        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcc --generate-config"
-        COMMAND_EXPAND_LISTS
+    # FIXME: fix config.
+    add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten
+        COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk install latest --build=Release
+        COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcc --generate-config
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/_deps/emscripten-src
     )
 endif()
+add_custom_target(
+    emscripten-setup
+    DEPENDS ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten
+)
 
 function(nui_add_emscripten_target)
     if (${NUI_USE_EXTERNAL_EMSCRIPTEN})
@@ -69,9 +71,16 @@ function(nui_add_emscripten_target)
     ExternalProject_Add(
         "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten"
         SOURCE_DIR "${SOURCE_DIR}"
-        CONFIGURE_COMMAND ${EMCMAKE} cmake -DCMAKE_CXX_STANDARD=20 -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS} ${SOURCE_DIR}
-        COMMAND $<TARGET_FILE:parcel-adapter> ${CMAKE_BINARY_DIR}/module_build/package.json "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
-        BUILD_COMMAND ${EMMAKE} make ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_MAKE_OPTIONS} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
+        CONFIGURE_COMMAND 
+            ${EMCMAKE} cmake 
+                -DCMAKE_CXX_STANDARD=20 
+                -DCMAKE_EXPORT_COMPILE_COMMANDS=1 
+                "$<$<CONFIG:DEBUG>:-DCMAKE_BUILD_TYPE=Debug>"
+                "$<$<CONFIG:RELEASE>:-DCMAKE_BUILD_TYPE=Release>"
+                ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS} 
+                ${SOURCE_DIR}
+        BUILD_COMMAND $<TARGET_FILE:parcel-adapter> ${SOURCE_DIR}/package.json ${CMAKE_BINARY_DIR}/module_build/package.json "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
+        COMMAND ${EMMAKE} make ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_MAKE_OPTIONS} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
         COMMAND $<TARGET_FILE:bin2hpp> ${CMAKE_BINARY_DIR}/module_build/bin/${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}.html ${CMAKE_BINARY_DIR}/include/${targetNormalized}.hpp ${targetNormalized}
         BINARY_DIR "${CMAKE_BINARY_DIR}/module_build"
         BUILD_ALWAYS 1
@@ -86,5 +95,9 @@ function(nui_add_emscripten_target)
     add_dependencies(
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-prejs
+    )
+    add_dependencies(
+        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
+        emscripten-setup
     )
 endfunction()

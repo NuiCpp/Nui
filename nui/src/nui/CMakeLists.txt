@@ -27,6 +27,8 @@ else()
     add_library(nui-backend
         STATIC
             backend/window.cpp
+            backend/filesystem/special_paths.cpp
+            backend/rpc_hub.cpp
     )
     target_include_directories(
         nui-backend
@@ -39,8 +41,8 @@ else()
         PRIVATE
             project-settings
             project-warnings
-            fmt
         PUBLIC
+            fmt
             webview
     )
     if (WIN32)

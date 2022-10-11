@@ -1,18 +1,18 @@
-#include <nui/components/dialog.hpp>
+#include <nui/frontend/components/dialog.hpp>
 
-#include <nui/elements/dialog.hpp>
-#include <nui/elements/form.hpp>
-#include <nui/elements/p.hpp>
-#include <nui/elements/menu.hpp>
-#include <nui/elements/heading.hpp>
-#include <nui/elements/button.hpp>
-#include <nui/elements/fragment.hpp>
-#include <nui/attributes/open.hpp>
-#include <nui/attributes/class.hpp>
-#include <nui/attributes/method.hpp>
-#include <nui/attributes/type.hpp>
-#include <nui/attributes/mouse_events.hpp>
-#include <nui/attributes/style.hpp>
+#include <nui/frontend/elements/dialog.hpp>
+#include <nui/frontend/elements/form.hpp>
+#include <nui/frontend/elements/p.hpp>
+#include <nui/frontend/elements/menu.hpp>
+#include <nui/frontend/elements/heading.hpp>
+#include <nui/frontend/elements/button.hpp>
+#include <nui/frontend/elements/fragment.hpp>
+#include <nui/frontend/attributes/open.hpp>
+#include <nui/frontend/attributes/class.hpp>
+#include <nui/frontend/attributes/method.hpp>
+#include <nui/frontend/attributes/type.hpp>
+#include <nui/frontend/attributes/mouse_events.hpp>
+#include <nui/frontend/attributes/style.hpp>
 
 #include <emscripten.h>
 
@@ -37,6 +37,11 @@ namespace Nui::Components
         isOpen_ = true;
         if (auto element = element_.lock())
             element->val().call<void>("show");
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    bool DialogController::isOpen() const
+    {
+        return isOpen_;
     }
     //---------------------------------------------------------------------------------------------------------------------
     Nui::ElementRenderer Dialog(DialogController& controller)
@@ -70,6 +75,7 @@ namespace Nui::Components
                                     type = "submit",
                                     onClick = [&controller](){
                                         controller.isOpen_ = false;
+                                        controller.args_.onButtonClicked_(DialogController::Button::Ok);
                                     }
                                 }("Ok");
                             }
@@ -80,12 +86,14 @@ namespace Nui::Components
                                         type = "submit",
                                         onClick = [&controller](){
                                             controller.isOpen_ = false;
+                                            controller.args_.onButtonClicked_(DialogController::Button::Ok);
                                         }
                                     }("Ok"),
                                     button{
                                         type = "cancel",
                                         onClick = [&controller](){
                                             controller.isOpen_ = false;
+                                            controller.args_.onButtonClicked_(DialogController::Button::Cancel);
                                         }
                                     }("Cancel")
                                 );
@@ -97,12 +105,14 @@ namespace Nui::Components
                                         type = "submit",
                                         onClick = [&controller](){
                                             controller.isOpen_ = false;
+                                            controller.args_.onButtonClicked_(DialogController::Button::Yes);
                                         }
                                     }("Yes"),
                                     button{
                                         type = "cancel",
                                         onClick = [&controller](){
                                             controller.isOpen_ = false;
+                                            controller.args_.onButtonClicked_(DialogController::Button::No);
                                         }
                                     }("No")
                                 );

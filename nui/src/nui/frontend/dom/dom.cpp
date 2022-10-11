@@ -1,6 +1,6 @@
-#include <nui/dom/dom.hpp>
-#include <nui/utility/inferance_helper.hpp>
-#include <nui/elements/div.hpp>
+#include <nui/frontend/dom/dom.hpp>
+#include <nui/frontend/utility/inferance_helper.hpp>
+#include <nui/frontend/elements/div.hpp>
 
 #include <emscripten/val.h>
 
