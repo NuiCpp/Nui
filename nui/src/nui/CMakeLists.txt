@@ -23,6 +23,9 @@ if (EMSCRIPTEN)
             project-warnings
     )
     nui_set_target_output_directories(nui-frontend)
+    target_compile_features(nui-frontend PUBLIC cxx_std_20)
+    set_target_properties(nui-frontend PROPERTIES CXX_STANDARD_REQUIRED ON)
+    set_target_properties(nui-frontend PROPERTIES CXX_EXTENSIONS OFF)
 else()
     add_library(nui-backend
         STATIC
@@ -51,4 +54,7 @@ else()
         target_link_libraries(nui-backend PUBLIC WebView2Loader.dll ole32 shell32 shlwapi user32)
     endif()
     nui_set_target_output_directories(nui-backend)
+    target_compile_features(nui-backend PUBLIC cxx_std_20)
+    set_target_properties(nui-backend PROPERTIES CXX_STANDARD_REQUIRED ON)
+    set_target_properties(nui-backend PROPERTIES CXX_EXTENSIONS OFF)
 endif()

@@ -35,7 +35,7 @@ int main(int argc, char** argv)
     output << "#include <string_view>\n";
     output << "#include <string>\n";
     output << "\n";
-    output << "constexpr std::string_view " << argv[3] << "_data[] = {\n";
+    output << "static const std::string_view " << argv[3] << "_data[] = {\n";
 
     do
     {

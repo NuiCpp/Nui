@@ -60,7 +60,7 @@ int main(int argc, char** argv)
     }
     auto package = json::parse(readFile(ifs));
     if (!package.contains("source"))
-        package["source"] = "static/"s + std::string{argv[3]} + ".html";
+        package["source"] = "static/index.html";
 
     if (!package.contains("targets"))
     {

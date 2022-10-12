@@ -26,8 +26,8 @@ function(nui_prepare_emscripten_target)
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_STATIC} ${CMAKE_BINARY_DIR}/static
         COMMAND ${CMAKE_BINARY_DIR}/node_modules/.bin/parcel build --dist-dir ${CMAKE_BINARY_DIR}/bin
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        BYPRODUCTS ${CMAKE_BINARY_DIR}/bin/${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}.html
-        DEPENDS ${CMAKE_BINARY_DIR}/bin/${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}.js
+        BYPRODUCTS ${CMAKE_BINARY_DIR}/bin/index.html
+        DEPENDS ${CMAKE_BINARY_DIR}/bin/index.js
     )
 
     string (REPLACE ";" " " EMSCRIPTEN_LINK "${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_EMSCRIPTEN_LINK_OPTIONS}")
@@ -38,6 +38,7 @@ function(nui_prepare_emscripten_target)
             LINK_FLAGS
             "-sSINGLE_FILE -sNO_EXIT_RUNTIME=1 ${EMSCRIPTEN_LINK} --no-entry --bind --pre-js=\"${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PREJS}\""
     )
+    set_target_properties(${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET} PROPERTIES OUTPUT_NAME "index")
     add_dependencies(${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-npm-install)
     add_dependencies(${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET})
 endfunction()

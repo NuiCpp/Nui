@@ -71,6 +71,7 @@ function(nui_add_emscripten_target)
     ExternalProject_Add(
         "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten"
         SOURCE_DIR "${SOURCE_DIR}"
+        # emscripten cmake with passed down Release/Debug build type
         CONFIGURE_COMMAND 
             ${EMCMAKE} cmake 
                 -DCMAKE_CXX_STANDARD=20 
@@ -79,10 +80,15 @@ function(nui_add_emscripten_target)
                 "$<$<CONFIG:RELEASE>:-DCMAKE_BUILD_TYPE=Release>"
                 ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS} 
                 ${SOURCE_DIR}
-        BUILD_COMMAND $<TARGET_FILE:parcel-adapter> ${SOURCE_DIR}/package.json ${CMAKE_BINARY_DIR}/module_build/package.json "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
+        # copy over package.json and fill parcel options that do not exist on it
+        BUILD_COMMAND $<TARGET_FILE:parcel-adapter> ${SOURCE_DIR}/package.json ${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/package.json "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
+        # emscripten make
         COMMAND ${EMMAKE} make ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_MAKE_OPTIONS} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
-        COMMAND $<TARGET_FILE:bin2hpp> ${CMAKE_BINARY_DIR}/module_build/bin/${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}.html ${CMAKE_BINARY_DIR}/include/${targetNormalized}.hpp ${targetNormalized}
-        BINARY_DIR "${CMAKE_BINARY_DIR}/module_build"
+        # rename to plain index.js
+        COMMAND ${CMAKE_COMMAND} -E rename ${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}.js ${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.js
+        # convert result to header file containing the page
+        COMMAND $<TARGET_FILE:bin2hpp> ${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html ${CMAKE_BINARY_DIR}/include/index.hpp index
+        BINARY_DIR "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
         BUILD_ALWAYS 1
         INSTALL_COMMAND ""
     )
