@@ -72,7 +72,8 @@ namespace Nui::Dom
         }
         void setAttribute(std::string_view key, bool value)
         {
-            element_.call<emscripten::val>("setAttribute", emscripten::val{std::string{key}}, emscripten::val{value});
+            if (value)
+                element_.call<emscripten::val>("setAttribute", emscripten::val{std::string{key}}, emscripten::val{""});
         }
         void setAttribute(std::string_view key, int value)
         {

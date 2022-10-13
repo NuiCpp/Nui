@@ -4,6 +4,7 @@
 #include <nui/concepts.hpp>
 #include <nui/frontend/event_system/range_event_context.hpp>
 #include <nui/frontend/event_system/event_context.hpp>
+#include <nui/frontend/event_system/range.hpp>
 #include <nui/utility/meta/pick_first.hpp>
 
 #include <memory>
@@ -400,6 +401,8 @@ namespace Nui
         ObservedContainer& operator=(ObservedContainer&&) = default;
         ~ObservedContainer() = default;
 
+        constexpr auto map(auto&& function);
+
         template <typename T = ContainerT>
         ObservedContainer& operator=(T&& t)
         {
@@ -788,6 +791,15 @@ namespace Nui
                   RangeEventContext{static_cast<long>(t.size()), true}}
         {}
     };
+
+    template <typename ContainerT>
+    constexpr auto ObservedContainer<ContainerT>::map(auto&& function)
+    {
+        return std::pair<ObservedRange<Observed<ContainerT>>, std::decay_t<decltype(function)>>{
+            ObservedRange<Observed<ContainerT>>{static_cast<Observed<ContainerT>&>(*this)},
+            std::forward<std::decay_t<decltype(function)>>(function),
+        };
+    }
 
     template <typename T>
     requires Incrementable<T>

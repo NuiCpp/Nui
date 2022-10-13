@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nui/frontend/event_system/observed_value.hpp>
+#include <nui/frontend/generator_typedefs.hpp>
 
 // elements
 #include <nui/frontend/elements/input.hpp>
@@ -8,49 +9,40 @@
 // attributes
 #include <nui/frontend/attributes/type.hpp>
 #include <nui/frontend/attributes/value.hpp>
-#include <nui/frontend/attributes/input_events.hpp>
+#include <nui/frontend/attributes/on_input.hpp>
 
 #include <tuple>
 
-namespace Nui
+namespace Nui::Components
 {
-    template <typename... Args>
-    class TextInput
+    /**
+     * @brief This component can be used like this TextInput(attributes...)(children...) instead of the C{}() syntax.
+     *
+     * @param model The value model.
+     * @param attributes Other attributes to forward.
+     */
+    template <typename... Attributes>
+    constexpr auto
+    TextInput(Nui::Attribute<Nui::Attributes::valueTag, Observed<std::string>>&& model, Attributes&&... attributes)
     {
-      public:
-        constexpr TextInput(Nui::Attribute<Nui::Attributes::valueTag, Observed<std::string>>&& value, Args&&... args)
-            : modelText(value.observed())
-            , args(std::forward<Args>(args)...)
-        {}
-
-        template <typename... Children>
-        constexpr auto operator()(Children&&... children) &&
-        {
+        return [&model, ... attributes = std::forward<Attributes>(attributes)]<typename... Children>(
+                   Children&&... children) mutable {
             using Nui::Elements::input;
             namespace attr = Nui::Attributes;
-            using namespace attr::Literals;
             using attr::type;
             using attr::value;
             using attr::onInput;
 
-            // clang-format off
-            return std::apply([&](auto&&... args)
-            {
-                return input{
-                    std::forward<decltype(args)>(args)...,
-                    type = "text",
-                    value = modelText,
-                    onInput = [&modelText = this->modelText](auto const& event)
-                    {
-                        modelText = event["target"]["value"].template as<std::string>();
-                    }
-                }(std::forward<Children>(children)...);
-            }, args);
-            // clang-format on
-        }
-
-      private:
-        Observed<std::string>& modelText;
-        std::tuple<Args...> args;
-    };
+            return input{
+                std::move(attributes)...,
+                type = "text",
+                value = model.observed(),
+                onInput =
+                    [&model](auto const& event) {
+                        // bypass updates.
+                        model.observed().value() = event["target"]["value"].template as<std::string>();
+                    },
+            }(std::forward<Children>(children)...);
+        };
+    }
 }

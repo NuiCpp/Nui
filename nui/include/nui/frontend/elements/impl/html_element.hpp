@@ -1,5 +1,6 @@
 #pragma once
 
+#include <nui/frontend/event_system/observed_value.hpp>
 #include <nui/frontend/event_system/observed_value_combinator.hpp>
 #include <nui/frontend/event_system/range.hpp>
 #include <nui/frontend/event_system/event_context.hpp>
@@ -346,6 +347,19 @@ namespace Nui
                 Dom::ReferencePasser{[](auto&&) {}},
                 std::move(observedRange),
                 std::forward<GeneratorT>(ElementRenderer));
+        }
+        template <typename ReferencePasserT, typename ObservedValue, typename GeneratorT>
+        constexpr auto
+        operator()(ReferencePasserT&& referencePasser, std::pair<ObservedRange<ObservedValue>, GeneratorT>&& mapPair) &&
+        {
+            return std::move(*this).rangeRender(
+                std::forward<ReferencePasserT>(referencePasser), std::move(mapPair.first), std::move(mapPair.second));
+        }
+        template <typename ObservedValue, typename GeneratorT>
+        constexpr auto operator()(std::pair<ObservedRange<ObservedValue>, GeneratorT>&& mapPair) &&
+        {
+            return std::move(*this).rangeRender(
+                Dom::ReferencePasser{[](auto&&) {}}, std::move(mapPair.first), std::move(mapPair.second));
         }
 
         std::tuple<Attributes...> const& attributes() const

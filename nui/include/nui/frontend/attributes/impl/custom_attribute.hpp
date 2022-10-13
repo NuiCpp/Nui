@@ -1,5 +1,6 @@
 #pragma once
 
+#include <nui/frontend/attributes/impl/attribute.hpp>
 #include <nui/frontend/event_system/observed_value.hpp>
 #include <nui/frontend/event_system/observed_value_combinator.hpp>
 #include <nui/utility/meta/is_tuple.hpp>
@@ -19,9 +20,13 @@ namespace Nui
         CustomAttribute(U&& param)
             : param_(std::forward<U>(param))
         {}
-        T get() const
+        T get() const&
         {
             return param_;
+        }
+        T&& get() &&
+        {
+            return std::move(param_);
         }
 
       private:

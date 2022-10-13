@@ -1,6 +1,5 @@
 #pragma once
 
-#include <nui/frontend/event_system/observed_value.hpp>
 #include <nui/frontend/event_system/event_context.hpp>
 #include <nui/utility/tuple_for_each.hpp>
 #include <nui/concepts.hpp>
