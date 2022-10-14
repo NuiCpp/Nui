@@ -24,7 +24,7 @@ namespace Nui
         {
             return param_;
         }
-        T&& get() &&
+        T&& extract() &&
         {
             return std::move(param_);
         }

@@ -11,6 +11,7 @@
 #include <string>
 #include <tuple>
 #include <utility>
+#include <thread>
 
 namespace Nui
 {
@@ -113,6 +114,8 @@ namespace Nui
         {
             callRemoteImpl(name, json);
         }
+
+        void enableFileDialogs();
 
       private:
         void callRemoteImpl(std::string const& name, nlohmann::json const& json)

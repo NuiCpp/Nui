@@ -54,7 +54,7 @@ namespace Nui
                 std::end(attachedEvents_));
         }
 
-      private:
+      protected:
         std::vector<EventContext::EventIdType> attachedEvents_;
         std::vector<EventContext::EventIdType> attachedOneshotEvents_;
     };
@@ -379,20 +379,24 @@ namespace Nui
         ObservedContainer()
             : ModifiableObserved<ContainerT>{}
             , rangeContext_{0}
+            , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
         ObservedContainer(T&& t)
             : ModifiableObserved<ContainerT>{std::forward<T>(t)}
             , rangeContext_{static_cast<long>(contained_.size())}
+            , afterEffectId_{registerAfterEffect()}
         {}
         ObservedContainer(RangeEventContext&& rangeContext)
             : ModifiableObserved<ContainerT>{}
             , rangeContext_{std::move(rangeContext)}
+            , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
         ObservedContainer(T&& t, RangeEventContext&& rangeContext)
             : ModifiableObserved<ContainerT>{std::forward<T>(t)}
             , rangeContext_{std::move(rangeContext)}
+            , afterEffectId_{registerAfterEffect()}
         {}
 
         ObservedContainer(const ObservedContainer&) = delete;
@@ -716,7 +720,7 @@ namespace Nui
         }
 
       protected:
-        void update(bool force) override
+        void update(bool force = false) override
         {
             if (force)
                 rangeContext_.reset(contained_.size(), true);
@@ -753,8 +757,17 @@ namespace Nui
                 update();
         }
 
+        auto registerAfterEffect()
+        {
+            return globalEventContext.registerAfterEffect(Event{[this](EventContext::EventIdType) {
+                rangeContext_.reset(contained_.size(), true);
+                return true;
+            }});
+        }
+
       private:
         mutable RangeEventContext rangeContext_;
+        EventContext::EventIdType afterEffectId_;
     };
 
     template <typename T>

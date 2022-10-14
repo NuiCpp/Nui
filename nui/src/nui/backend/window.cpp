@@ -1,10 +1,15 @@
 #include <nui/window.hpp>
 
 #include <nui/backend/filesystem/special_paths.hpp>
+#include <nui/backend/filesystem/file_dialog.hpp>
+#include <nui/utility/scope_exit.hpp>
 
 #include <webview.h>
 #include <fmt/format.h>
 #include <nlohmann/json.hpp>
+#include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/thread_pool.hpp>
+#include <boost/asio/post.hpp>
 
 #include <random>
 #include <fstream>
@@ -20,10 +25,16 @@ namespace Nui
         webview::webview view;
         std::vector<std::filesystem::path> cleanupFiles;
         std::vector<std::function<void(nlohmann::json const&)>> callbacks;
+        boost::asio::thread_pool pool{4};
 
         Implementation(bool debug)
             : view{debug}
         {}
+        ~Implementation()
+        {
+            pool.stop();
+            pool.join();
+        }
     };
     //#####################################################################################################################
     Window::Window()
@@ -98,6 +109,11 @@ namespace Nui
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------
+    void Window::asyncDispatch(std::function<void()> func)
+    {
+        boost::asio::post(impl_->pool.executor(), std::move(func));
+    }
+    //---------------------------------------------------------------------------------------------------------------------
     void Window::navigate(const std::string& url)
     {
         impl_->view.navigate(url);
@@ -105,7 +121,34 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::run()
     {
+#ifdef _WIN32
+        MSG msg;
+        BOOL res;
+        while ((res = GetMessage(&msg, nullptr, 0, 0)) != -1)
+        {
+            if (msg.hwnd)
+            {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+                continue;
+            }
+            if (msg.message == WM_APP)
+            {
+                auto f = reinterpret_cast<std::function<void()>*>(msg.lParam);
+                ScopeExit se{[f]() {
+                    // yuck! but this is from webview internals
+                    delete f;
+                }};
+                (*f)();
+            }
+            else if (msg.message == WM_QUIT)
+            {
+                return;
+            }
+        }
+#else
         impl_->view.run();
+#endif
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::terminate()
@@ -122,7 +165,7 @@ namespace Nui
                 const name = "{}";
                 const id = {};
                 globalThis.nui_rpc = (globalThis.nui_rpc || {{
-                    frontend: {{}}, backend: {{}}
+                    frontend: {{}}, backend: {{}}, tempId: 0
                 }});
                 globalThis.nui_rpc.backend[name] = (...args) => {{
                     globalThis.external.invoke(JSON.stringify({{
@@ -147,8 +190,8 @@ namespace Nui
     void Window::openDevTools()
     {
 #if defined(_WIN32)
-        auto* nativeWindowHandle = static_cast<ICoreWebView2*>(impl_->view.window());
-        // FIXME:
+        // FIXME: (segfaults, but why?)
+        // auto* nativeWindowHandle = static_cast<ICoreWebView2*>(impl_->view.window());
         // nativeWindowHandle->OpenDevToolsWindow();
         throw std::runtime_error("Not implemented");
 #elif defined(__APPLE__)

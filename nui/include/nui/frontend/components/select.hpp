@@ -17,6 +17,7 @@
 
 #include <string>
 #include <iterator>
+#include <iostream>
 
 namespace Nui::Components
 {
@@ -44,7 +45,7 @@ namespace Nui::Components
 
         // clang-format off
         return select{
-            onChange = [onSelect = std::move(onSelect).get(), &selectModel = selectModel.get()](emscripten::val event){
+            onChange = [onSelect = onSelect.get()](emscripten::val event){
                 onSelect(event["target"]["selectedIndex"].as<int>());
             },
             std::forward<SelectAttributes>(selectAttributes)...,

@@ -6,6 +6,7 @@
 
 #include <functional>
 #include <limits>
+#include <map>
 
 namespace Nui
 {
@@ -40,6 +41,11 @@ namespace Nui
             return registry_.select(id);
         }
 
+        EventIdType registerAfterEffect(Event event)
+        {
+            return afterEffects_.append(std::move(event));
+        }
+
         void executeEvent(EventIdType id)
         {
             return registry_.deselect(id, [](SelectablesRegistry<Event>::ItemWithId const& itemWithId) -> bool {
@@ -56,9 +62,15 @@ namespace Nui
                     return false;
                 return itemWithId.item.value()(itemWithId.id);
             });
+            afterEffects_.deselectAll([](SelectablesRegistry<Event>::ItemWithId const& itemWithId) -> bool {
+                if (!itemWithId.item)
+                    return false;
+                return itemWithId.item.value()(itemWithId.id);
+            });
         }
 
       private:
         SelectablesRegistry<Event> registry_;
+        SelectablesRegistry<Event> afterEffects_;
     };
 }

@@ -540,7 +540,8 @@ namespace Nui
                     };
 
                     updateChildren();
-                    rangeContext.reset(observedValue.value().size(), false);
+                    // TODO: remove fully here:
+                    // rangeContext.reset(observedValue.value().size(), false);
                     Detail::createUpdateEvent(observedValue, childrenUpdater, createdSelfWeak);
                 };
                 (*childrenUpdater)();

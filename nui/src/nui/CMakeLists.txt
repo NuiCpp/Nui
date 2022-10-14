@@ -4,6 +4,7 @@ if (EMSCRIPTEN)
             frontend/components/dialog.cpp
             frontend/dom/dom.cpp
             frontend/event_system/event_context.cpp
+            frontend/filesystem/file_dialog.cpp
             frontend/utility/functions.cpp
             frontend/window.cpp
     )
@@ -31,6 +32,8 @@ else()
         STATIC
             backend/window.cpp
             backend/filesystem/special_paths.cpp
+            backend/filesystem/file_dialog.cpp
+            backend/filesystem/file_dialog_options.cpp
             backend/rpc_hub.cpp
     )
     target_include_directories(
@@ -44,9 +47,12 @@ else()
         PRIVATE
             project-settings
             project-warnings
+            Boost::system
+            Boost::boost
         PUBLIC
             fmt
             webview
+            portable_file_dialogs
     )
     if (WIN32)
         target_include_directories(nui-backend PUBLIC ${CMAKE_BINARY_DIR}/libs/webview2/build/native/include)
