@@ -247,14 +247,12 @@ namespace Nui::Attributes
             return "style";
         };
         template <typename U>
-        constexpr std::enable_if_t<!::Nui::Detail::IsObserved_v<std::decay_t<U>>, Attribute<style_, U>>
-        operator=(U val) const
+        requires(!IsObserved<std::decay_t<U>>) constexpr Attribute<style_, std::decay_t<U>> operator=(U val) const
         {
-            return Attribute<style_, U>{std::move(val)};
+            return Attribute<style_, std::decay_t<U>>{std::move(val)};
         }
         template <typename U>
-        constexpr std::enable_if_t<::Nui::Detail::IsObserved_v<std::decay_t<U>>, Attribute<style_, std::decay_t<U>>>
-        operator=(U& val) const
+        requires(IsObserved<std::decay_t<U>>) constexpr Attribute<style_, std::decay_t<U>> operator=(U& val) const
         {
             return Attribute<style_, std::decay_t<U>>{val};
         }

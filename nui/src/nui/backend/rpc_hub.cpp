@@ -9,7 +9,7 @@ namespace Nui
         : window_{&window}
     {}
     //---------------------------------------------------------------------------------------------------------------------
-    void RpcHub::enableFileDialogs()
+    void RpcHub::enableFileDialogs() const
     {
         registerFunction("nui_showOpenDialog", [this](nlohmann::json const& args) {
             const auto callbackId = args["callbackId"].get<std::string>();

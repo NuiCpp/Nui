@@ -5,6 +5,7 @@
 #include <nui/frontend/event_system/observed_value_combinator.hpp>
 #include <nui/utility/meta/is_tuple.hpp>
 
+#include <type_traits>
 #include <utility>
 #include <tuple>
 #include <optional>
@@ -16,22 +17,41 @@ namespace Nui
     class CustomAttribute
     {
       public:
-        template <typename U = T>
-        CustomAttribute(U&& param)
-            : param_(std::forward<U>(param))
+        CustomAttribute(T& value)
+            : attr_{value}
         {}
-        T get() const&
+        CustomAttribute(std::remove_reference_t<T>&& value)
+            : attr_{std::move(value)}
+        {}
+        std::remove_reference_t<T> const& get() const&
         {
-            return param_;
+            return attr_;
+        }
+        std::remove_reference_t<T>& get() &
+        {
+            return attr_;
         }
         T&& extract() &&
         {
-            return std::move(param_);
+            return std::move(attr_);
         }
 
       private:
-        T param_;
+        T attr_;
     };
+
+    namespace Detail
+    {
+        template <typename T>
+        struct IsCustomAttribute : std::false_type
+        {};
+        template <typename T, typename Tag>
+        struct IsCustomAttribute<CustomAttribute<T, Tag>> : std::true_type
+        {};
+    }
+
+    template <typename T>
+    concept IsCustomAttribute = Detail::IsCustomAttribute<T>::value;
 
     namespace Detail
     {
@@ -129,13 +149,12 @@ namespace Nui
     struct NAME##Tag \
     { \
         template <typename T> \
-        std::enable_if_t<!::Nui::Detail::IsObserved_v<std::decay_t<T>>, CustomAttribute<T, NAME##Tag>> \
-        operator=(T&& param) const \
+        requires(!IsObserved<std::decay_t<T>>) CustomAttribute<std::decay_t<T>, NAME##Tag> operator=(T&& param) const \
         { \
-            return std::forward<T>(param); \
+            return {std::forward<T>(param)}; \
         } \
         template <typename T> \
-        std::enable_if_t<::Nui::Detail::IsObserved_v<std::decay_t<T>>, CustomAttribute<T&, NAME##Tag>> \
+        requires(IsObserved<std::decay_t<T>>) CustomAttribute<T&, NAME##Tag> \
         operator=(T& param) const \
         { \
             return {param}; \

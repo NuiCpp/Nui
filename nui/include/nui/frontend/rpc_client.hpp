@@ -4,6 +4,7 @@
 
 #include <nui/frontend/api/console.hpp>
 #include <nui/frontend/utility/functions.hpp>
+#include <nui/frontend/utility/val_conversion.hpp>
 
 #include <string>
 
@@ -24,7 +25,10 @@ namespace Nui
                     Console::error("Remote callable with name '"s + name_ + "' is undefined");
                     return emscripten::val::undefined();
                 }
-                return callable_(emscripten::val{args}...);
+                if (backChannel_.empty())
+                    return callable_(convertToVal(args)...);
+                else
+                    return callable_(convertToVal(backChannel_), convertToVal(args)...);
             }
             auto operator()(emscripten::val val) const
             {
@@ -34,11 +38,22 @@ namespace Nui
                     Console::error("Remote callable with name '"s + name_ + "' is undefined");
                     return emscripten::val::undefined();
                 }
-                return callable_(val);
+                if (backChannel_.empty())
+                    return callable_(val);
+                else
+                    return callable_(convertToVal(backChannel_), val);
             }
 
             RemoteCallable(std::string name)
                 : name_{std::move(name)}
+                , backChannel_{}
+                , callable_{emscripten::val::undefined()}
+                , isSet_{false}
+            {}
+
+            RemoteCallable(std::string name, std::string backChannel)
+                : name_{std::move(name)}
+                , backChannel_{std::move(backChannel)}
                 , callable_{emscripten::val::undefined()}
                 , isSet_{false}
             {}
@@ -61,6 +76,7 @@ namespace Nui
 
           private:
             std::string name_;
+            std::string backChannel_;
             mutable emscripten::val callable_;
             mutable bool isSet_;
         };
@@ -73,8 +89,16 @@ namespace Nui
          */
         static auto getRemoteCallable(std::string name)
         {
-            using namespace std::string_literals;
             return RemoteCallable{std::move(name)};
+        }
+
+        /**
+         * @brief Get a callable remote function and register a temporary callable for a response.
+         */
+        template <typename FunctionT>
+        static auto getRemoteCallableWithBackChannel(std::string name, FunctionT&& func)
+        {
+            return RemoteCallable{std::move(name), registerFunctionOnce(std::forward<FunctionT>(func))};
         }
 
         /**
@@ -97,6 +121,7 @@ namespace Nui
             auto tempIdVal = emscripten::val::global("nui_rpc")["tempId"];
             tempIdVal = emscripten::val{tempId};
             const auto tempIdString = "temp_"s + std::to_string(tempId);
+            // TODO: dry?
             emscripten::val::global("nui_rpc")["frontend"].set(
                 tempIdString,
                 Nui::bind(

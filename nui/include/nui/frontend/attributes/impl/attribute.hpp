@@ -157,13 +157,13 @@ namespace Nui
                 return HTML_NAME; \
             }; \
             template <typename U> \
-            std::enable_if_t<!::Nui::Detail::IsObserved_v<std::decay_t<U>>, Attribute<NAME##Tag, U>> \
+            requires(!IsObserved<std::decay_t<U>>) Attribute<NAME##Tag, std::decay_t<U>> \
             operator=(U val) const \
             { \
                 return Attribute<NAME##Tag, U>{std::move(val)}; \
             } \
             template <typename U> \
-            std::enable_if_t<::Nui::Detail::IsObserved_v<std::decay_t<U>>, Attribute<NAME##Tag, std::decay_t<U>>> \
+            requires(IsObserved<std::decay_t<U>>) Attribute<NAME##Tag, std::decay_t<U>> \
             operator=(U& val) const \
             { \
                 return Attribute<NAME##Tag, std::decay_t<U>>{val}; \

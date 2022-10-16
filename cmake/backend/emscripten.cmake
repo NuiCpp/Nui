@@ -19,7 +19,6 @@ if(UNIX)
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/_deps/emscripten-src
     )
 else()
-    # FIXME: fix config.
     add_custom_command(
         OUTPUT ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten
         COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk install latest --build=Release

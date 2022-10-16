@@ -8,6 +8,7 @@ if (EMSCRIPTEN)
             frontend/utility/functions.cpp
             frontend/window.cpp
     )
+    add_library(Nui::frontend ALIAS nui-frontend)
     target_include_directories(
         nui-frontend
         PUBLIC
@@ -20,13 +21,15 @@ if (EMSCRIPTEN)
             libcpppre
             mplex
             interval-tree
+            boost_describe
+            boost_mp11
         PRIVATE
             project-warnings
     )
     nui_set_target_output_directories(nui-frontend)
     target_compile_features(nui-frontend PUBLIC cxx_std_20)
     set_target_properties(nui-frontend PROPERTIES CXX_STANDARD_REQUIRED ON)
-    set_target_properties(nui-frontend PROPERTIES CXX_EXTENSIONS OFF)
+    set_target_properties(nui-frontend PROPERTIES CXX_EXTENSIONS ON)
 else()
     add_library(nui-backend
         STATIC
@@ -36,6 +39,7 @@ else()
             backend/filesystem/file_dialog_options.cpp
             backend/rpc_hub.cpp
     )
+    add_library(Nui::backend ALIAS nui-backend)
     target_include_directories(
         nui-backend
         PUBLIC
@@ -47,8 +51,6 @@ else()
         PRIVATE
             project-settings
             project-warnings
-            Boost::system
-            Boost::boost
         PUBLIC
             fmt
             webview
@@ -62,5 +64,5 @@ else()
     nui_set_target_output_directories(nui-backend)
     target_compile_features(nui-backend PUBLIC cxx_std_20)
     set_target_properties(nui-backend PROPERTIES CXX_STANDARD_REQUIRED ON)
-    set_target_properties(nui-backend PROPERTIES CXX_EXTENSIONS OFF)
+    set_target_properties(nui-backend PROPERTIES CXX_EXTENSIONS ON)
 endif()

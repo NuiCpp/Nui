@@ -15,6 +15,8 @@
 #include <utility>
 #include <deque>
 
+#include <iostream>
+
 namespace Nui
 {
     class ObservedBase
@@ -80,7 +82,7 @@ namespace Nui
                     // TODO: log?
                 }
             }
-            auto& data()
+            auto& value()
             {
                 return observed_.contained_;
             }
@@ -314,7 +316,8 @@ namespace Nui
             }
             reference operator*()
             {
-                return ReferenceWrapper<value_type, ContainerT>{owner_, it_ - owner_->container_.begin(), *it_};
+                return ReferenceWrapper<value_type, ContainerT>{
+                    owner_, static_cast<std::size_t>(it_ - owner_->contained_.begin()), *it_};
             }
             IteratorWrapper operator[](std::size_t offset) const
             {
@@ -566,6 +569,10 @@ namespace Nui
             rangeContext_.reset(0, true);
             update();
         }
+        iterator insert(iterator pos, const value_type& value)
+        {
+            return insert(pos.getWrapped(), value);
+        }
         iterator insert(const_iterator pos, const value_type& value)
         {
             const auto distance = pos - cbegin();
@@ -573,12 +580,20 @@ namespace Nui
             insertRangeChecked(distance, distance, RangeStateType::Insert);
             return iterator{this, it};
         }
+        iterator insert(iterator pos, value_type&& value)
+        {
+            return insert(pos.getWrapped(), std::move(value));
+        }
         iterator insert(const_iterator pos, value_type&& value)
         {
             const auto distance = pos - cbegin();
             auto it = contained_.insert(pos, std::move(value));
             insertRangeChecked(distance, distance, RangeStateType::Insert);
             return iterator{this, it};
+        }
+        iterator insert(iterator pos, size_type count, const value_type& value)
+        {
+            return insert(pos.getWrapped(), count, value);
         }
         iterator insert(const_iterator pos, size_type count, const value_type& value)
         {
@@ -588,12 +603,21 @@ namespace Nui
             return iterator{this, it};
         }
         template <typename Iterator>
+        iterator insert(iterator pos, Iterator first, Iterator last)
+        {
+            return insert(pos.getWrapped(), first, last);
+        }
+        template <typename Iterator>
         iterator insert(const_iterator pos, Iterator first, Iterator last)
         {
             const auto distance = pos - cbegin();
             auto it = contained_.insert(pos, first, last);
             insertRangeChecked(distance, distance + std::distance(first, last), RangeStateType::Insert);
             return iterator{this, it};
+        }
+        iterator insert(iterator pos, std::initializer_list<value_type> ilist)
+        {
+            return insert(pos.getWrapped(), ilist);
         }
         iterator insert(const_iterator pos, std::initializer_list<value_type> ilist)
         {
@@ -773,7 +797,9 @@ namespace Nui
     template <typename T>
     class Observed : public ModifiableObserved<T>
     {
+      public:
         using ModifiableObserved<T>::ModifiableObserved;
+        using ModifiableObserved<T>::operator=;
     };
     template <typename... Parameters>
     class Observed<std::vector<Parameters...>> : public ObservedContainer<std::vector<Parameters...>>
@@ -862,8 +888,8 @@ namespace Nui
         {
             static constexpr bool value = true;
         };
-
-        template <typename T>
-        constexpr bool IsObserved_v = IsObserved<T>::value;
     }
+
+    template <typename T>
+    concept IsObserved = Detail::IsObserved<T>::value;
 }
