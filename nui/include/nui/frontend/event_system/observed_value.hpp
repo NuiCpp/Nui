@@ -14,6 +14,7 @@
 #include <list>
 #include <utility>
 #include <deque>
+#include <string>
 
 #include <iostream>
 
@@ -64,6 +65,9 @@ namespace Nui
     template <typename ContainedT>
     class ModifiableObserved : public ObservedBase
     {
+      public:
+        using value_type = ContainedT;
+
       public:
         class ModificationProxy
         {
@@ -196,6 +200,14 @@ namespace Nui
         ContainedT const& operator*() const
         {
             return contained_;
+        }
+        ContainedT* operator->()
+        {
+            return &contained_;
+        }
+        ContainedT const* operator->() const
+        {
+            return &contained_;
         }
 
         /**
@@ -747,7 +759,7 @@ namespace Nui
         void update(bool force = false) override
         {
             if (force)
-                rangeContext_.reset(contained_.size(), true);
+                rangeContext_.reset(static_cast<long>(contained_.size()), true);
             ObservedBase::update(force);
         }
 
@@ -800,17 +812,33 @@ namespace Nui
       public:
         using ModifiableObserved<T>::ModifiableObserved;
         using ModifiableObserved<T>::operator=;
+        using ModifiableObserved<T>::operator->;
     };
     template <typename... Parameters>
     class Observed<std::vector<Parameters...>> : public ObservedContainer<std::vector<Parameters...>>
     {
       public:
+        using ObservedContainer<std::vector<Parameters...>>::ObservedContainer;
+        using ObservedContainer<std::vector<Parameters...>>::operator=;
+        using ObservedContainer<std::vector<Parameters...>>::operator->;
         static constexpr auto isRandomAccess = true;
     };
     template <typename... Parameters>
     class Observed<std::deque<Parameters...>> : public ObservedContainer<std::deque<Parameters...>>
     {
       public:
+        using ObservedContainer<std::deque<Parameters...>>::ObservedContainer;
+        using ObservedContainer<std::deque<Parameters...>>::operator=;
+        using ObservedContainer<std::deque<Parameters...>>::operator->;
+        static constexpr auto isRandomAccess = true;
+    };
+    template <typename... Parameters>
+    class Observed<std::basic_string<Parameters...>> : public ObservedContainer<std::basic_string<Parameters...>>
+    {
+      public:
+        using ObservedContainer<std::basic_string<Parameters...>>::ObservedContainer;
+        using ObservedContainer<std::basic_string<Parameters...>>::operator=;
+        using ObservedContainer<std::basic_string<Parameters...>>::operator->;
         static constexpr auto isRandomAccess = true;
     };
     template <typename... Parameters>

@@ -3,6 +3,9 @@
 #include <nui/frontend/attributes/impl/attribute.hpp>
 #include <nui/utility/meta/tuple_filter.hpp>
 #include <nui/utility/meta/tuple_transform.hpp>
+#include <nui/utility/meta/pick_first.hpp>
+#include <nui/frontend/event_system/observed_value.hpp>
+#include <nui/frontend/event_system/observed_value_combinator.hpp>
 #include <mplex/control/if.hpp>
 #include <mplex/functional/lift.hpp>
 #include <mplex/fundamental/integral.hpp>
@@ -11,42 +14,50 @@
 #include <string>
 #include <sstream>
 #include <optional>
+#include <tuple>
 
 namespace Nui::Attributes
 {
     namespace Detail
     {
-        template <typename T>
+        template <typename... T>
         struct StylePropertyEbo
         {
-            Observed<T>& observed;
+            std::tuple<Observed<T>&...> observed;
         };
         template <>
         struct StylePropertyEbo<void>
         {};
     }
-    template <typename FunctionT, typename T>
-    struct StylePropertyImpl : public Detail::StylePropertyEbo<T>
+    template <typename FunctionT, typename... T>
+    struct StylePropertyImpl : public Detail::StylePropertyEbo<T...>
     {
-        using value_type = T;
+        using value_type = std::tuple<Observed<T>&...>;
 
         FunctionT generator;
         constexpr static bool isStatic()
         {
-            return std::is_same_v<T, void>;
+            return sizeof...(T) == 1 && std::is_same_v<Nui::Detail::PickFirst_t<T...>, void>;
         }
         constexpr auto operator()() const
         {
             return generator();
         }
 
-        template <typename U = T>
+        template <typename U>
         constexpr StylePropertyImpl(FunctionT generator, Observed<U>& observed)
-            : Detail::StylePropertyEbo<T>{observed}
+            : Detail::StylePropertyEbo<T...>{std::forward_as_tuple(observed)}
             , generator{std::move(generator)}
         {}
         constexpr StylePropertyImpl(FunctionT generator, std::nullptr_t)
-            : Detail::StylePropertyEbo<T>{}
+            : Detail::StylePropertyEbo<T...>{}
+            , generator{std::move(generator)}
+        {}
+        template <typename GeneratorT>
+        constexpr StylePropertyImpl(
+            FunctionT generator,
+            ObservedValueCombinatorWithGenerator<GeneratorT, Observed<T>...>&& observed)
+            : Detail::StylePropertyEbo<T...>{std::move(observed).observedValues()}
             , generator{std::move(generator)}
         {}
     };
@@ -54,6 +65,9 @@ namespace Nui::Attributes
     StylePropertyImpl(FunctionT generator, std::nullptr_t) -> StylePropertyImpl<FunctionT, void>;
     template <typename FunctionT, typename T>
     StylePropertyImpl(FunctionT generator, Observed<T>&) -> StylePropertyImpl<FunctionT, T>;
+    template <typename FunctionT, typename GeneratorT, typename... ObservedT>
+    StylePropertyImpl(FunctionT generator, ObservedValueCombinatorWithGenerator<GeneratorT, ObservedT...>&&)
+        -> StylePropertyImpl<FunctionT, typename ObservedT::value_type...>;
 
     namespace Detail
     {
@@ -62,25 +76,25 @@ namespace Nui::Attributes
         {
             constexpr static bool value = true;
         };
-        template <typename T>
-        struct IsDynamicStyleProperty<StylePropertyImpl<T, void>>
+        template <typename FunctionT>
+        struct IsDynamicStyleProperty<StylePropertyImpl<FunctionT, void>>
         {
             constexpr static bool value = false;
         };
         template <typename Property>
         struct StripPropertyObserved
         {
-            using type = Observed<typename Property::value_type>&;
-            constexpr static Observed<typename Property::value_type>& extract(Property& prop)
+            using type = typename Property::value_type;
+            constexpr static auto extract(Property& prop)
             {
                 return prop.observed;
             }
         };
-        template <typename T>
-        struct StripPropertyObserved<StylePropertyImpl<T, void>>
+        template <typename FunctionT>
+        struct StripPropertyObserved<StylePropertyImpl<FunctionT, void>>
         {
-            using type = void;
-            constexpr static void* extract(StylePropertyImpl<T, void>&)
+            using type = std::tuple<>;
+            constexpr static void* extract(StylePropertyImpl<FunctionT, void>&)
             {
                 return nullptr;
             }
@@ -124,7 +138,7 @@ namespace Nui::Attributes
         {
             constexpr static auto apply(auto&& propertyTuple)
             {
-                return std::tie(std::get<Indices>(propertyTuple).observed...);
+                return std::tuple_cat(std::get<Indices>(propertyTuple).observed...);
             }
         };
     }
@@ -159,6 +173,15 @@ namespace Nui::Attributes
                     return name + ":" + observedValue.value();
                 },
                 observedValue};
+        }
+        template <typename FunctionT, typename... ArgsT>
+        auto operator=(ObservedValueCombinatorWithGenerator<FunctionT, ArgsT...>&& combinator)
+        {
+            return StylePropertyImpl{
+                [name = std::string{name}, gen = combinator.generator()]() {
+                    return name + ":" + gen();
+                },
+                std::move(combinator)};
         }
     };
 
@@ -206,7 +229,7 @@ namespace Nui::Attributes
     class Style
     {
       public:
-        using ObservedValueList = Nui::Detail::TupleTransform_t<
+        using ObservedValueList = Nui::Detail::FlatTupleTransform_t<
             Nui::Detail::TupleFilter_t<Detail::IsDynamicStyleProperty, Properties...>,
             Detail::StripPropertyObserved>;
 

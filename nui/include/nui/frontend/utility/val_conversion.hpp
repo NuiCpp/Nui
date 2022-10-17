@@ -20,6 +20,12 @@
 
 namespace Nui
 {
+    template <
+        typename T,
+        class Bases = boost::describe::describe_bases<T, boost::describe::mod_any_access>,
+        class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>,
+        class Enable = std::enable_if_t<!std::is_union<T>::value>>
+    void convertToVal(emscripten::val& val, T const& obj);
     template <typename T>
     emscripten::val convertToVal(std::optional<T> const& option);
     template <typename T>
@@ -33,6 +39,8 @@ namespace Nui
     template <typename T>
     emscripten::val convertToVal(Observed<T> const& observed);
 
+    template <typename T, class Bases, class Members, class Enable>
+    void convertFromVal(emscripten::val const& val, T& obj);
     template <typename T>
     requires Fundamental<T>
     void convertFromVal(emscripten::val const& val, T& value);
@@ -49,11 +57,7 @@ namespace Nui
     template <typename T>
     void convertFromVal(emscripten::val const& val, Observed<T>& observed);
 
-    template <
-        typename T,
-        class Bases = boost::describe::describe_bases<T, boost::describe::mod_any_access>,
-        class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>,
-        class Enable = std::enable_if_t<!std::is_union<T>::value>>
+    template <typename T, class Bases, class Members, class Enable>
     void convertToVal(emscripten::val& val, T const& obj)
     {
         if (val.typeOf().as<std::string>() != "object")

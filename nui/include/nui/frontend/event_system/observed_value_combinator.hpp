@@ -40,6 +40,16 @@ namespace Nui
             });
         }
 
+        std::tuple<ObservedValues&...> const& observedValues() &
+        {
+            return observedValues_;
+        }
+
+        std::tuple<ObservedValues&...>&& observedValues() &&
+        {
+            return std::move(const_cast<std::tuple<ObservedValues&...>&>(observedValues_));
+        }
+
       protected:
         const std::tuple<ObservedValues&...> observedValues_;
     };
