@@ -4,9 +4,11 @@ if (EMSCRIPTEN)
             frontend/components/dialog.cpp
             frontend/dom/dom.cpp
             frontend/event_system/event_context.cpp
+            frontend/filesystem/file_dialog.cpp
             frontend/utility/functions.cpp
             frontend/window.cpp
     )
+    add_library(Nui::frontend ALIAS nui-frontend)
     target_include_directories(
         nui-frontend
         PUBLIC
@@ -19,20 +21,25 @@ if (EMSCRIPTEN)
             libcpppre
             mplex
             interval-tree
+            boost_describe
+            boost_mp11
         PRIVATE
             project-warnings
     )
     nui_set_target_output_directories(nui-frontend)
     target_compile_features(nui-frontend PUBLIC cxx_std_20)
     set_target_properties(nui-frontend PROPERTIES CXX_STANDARD_REQUIRED ON)
-    set_target_properties(nui-frontend PROPERTIES CXX_EXTENSIONS OFF)
+    set_target_properties(nui-frontend PROPERTIES CXX_EXTENSIONS ON)
 else()
     add_library(nui-backend
         STATIC
             backend/window.cpp
             backend/filesystem/special_paths.cpp
+            backend/filesystem/file_dialog.cpp
+            backend/filesystem/file_dialog_options.cpp
             backend/rpc_hub.cpp
     )
+    add_library(Nui::backend ALIAS nui-backend)
     target_include_directories(
         nui-backend
         PUBLIC
@@ -47,6 +54,7 @@ else()
         PUBLIC
             fmt
             webview
+            portable_file_dialogs
     )
     if (WIN32)
         target_include_directories(nui-backend PUBLIC ${CMAKE_BINARY_DIR}/libs/webview2/build/native/include)
@@ -56,5 +64,5 @@ else()
     nui_set_target_output_directories(nui-backend)
     target_compile_features(nui-backend PUBLIC cxx_std_20)
     set_target_properties(nui-backend PROPERTIES CXX_STANDARD_REQUIRED ON)
-    set_target_properties(nui-backend PROPERTIES CXX_EXTENSIONS OFF)
+    set_target_properties(nui-backend PROPERTIES CXX_EXTENSIONS ON)
 endif()

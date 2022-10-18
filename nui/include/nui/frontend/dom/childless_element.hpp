@@ -55,11 +55,14 @@ namespace Nui::Dom
         }
 
         // TODO: more overloads?
-        void setAttribute(std::string_view key, std::string_view value)
+        void setAttribute(std::string_view key, std::string const& value)
         {
-            // FIXME: performance fix: val(string(...))
-            element_.call<emscripten::val>(
-                "setAttribute", emscripten::val{std::string{key}}, emscripten::val{std::string{value}});
+            // FIXME: performance, keys are turned to std::string
+            if (value.empty())
+                element_.call<emscripten::val>("removeAttribute", emscripten::val{std::string{key}});
+            else
+                element_.call<emscripten::val>(
+                    "setAttribute", emscripten::val{std::string{key}}, emscripten::val{value});
         }
         void setAttribute(std::string_view key, std::invocable<emscripten::val> auto&& value)
         {
@@ -67,12 +70,16 @@ namespace Nui::Dom
         }
         void setAttribute(std::string_view key, char const* value)
         {
-            element_.call<emscripten::val>(
-                "setAttribute", emscripten::val{std::string{key}}, emscripten::val{std::string{value}});
+            if (value[0] == '\0')
+                element_.call<emscripten::val>("removeAttribute", emscripten::val{std::string{key}});
+            else
+                element_.call<emscripten::val>(
+                    "setAttribute", emscripten::val{std::string{key}}, emscripten::val{std::string{value}});
         }
         void setAttribute(std::string_view key, bool value)
         {
-            element_.call<emscripten::val>("setAttribute", emscripten::val{std::string{key}}, emscripten::val{value});
+            if (value)
+                element_.call<emscripten::val>("setAttribute", emscripten::val{std::string{key}}, emscripten::val{""});
         }
         void setAttribute(std::string_view key, int value)
         {

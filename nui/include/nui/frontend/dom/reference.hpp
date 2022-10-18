@@ -22,7 +22,7 @@ namespace Nui::Dom
         }
 
       private:
-        T func_;
+        std::function<void(std::weak_ptr<Dom::BasicElement>&&)> func_;
     };
 
     namespace Detail
@@ -40,8 +40,9 @@ namespace Nui::Dom
     template <typename T>
     concept IsReferencePasser = Detail::IsReferencePasser<T>::value;
 
-    auto reference(std::invocable<std::weak_ptr<Dom::BasicElement>&&> auto&& func)
+    template <typename T>
+    requires std::invocable<T, std::weak_ptr<Dom::BasicElement> &&> auto reference(T&& func)
     {
-        return ReferencePasser{std::forward<decltype(func)>(func)};
+        return ReferencePasser<T>{std::forward<T>(func)};
     }
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <nui/frontend/utility/val_conversion.hpp>
+
 #include <emscripten/val.h>
 
 namespace Nui
@@ -10,37 +12,37 @@ namespace Nui
         template <typename... Args>
         static void log(Args&&... args)
         {
-            emscripten::val::global("console").call<void>("log", std::forward<Args>(args)...);
+            emscripten::val::global("console").call<void>("log", convertToVal(std::forward<Args>(args))...);
         }
         template <typename... Args>
         static void error(Args&&... args)
         {
-            emscripten::val::global("console").call<void>("error", std::forward<Args>(args)...);
+            emscripten::val::global("console").call<void>("error", convertToVal(std::forward<Args>(args))...);
         }
         template <typename... Args>
         static void warn(Args&&... args)
         {
-            emscripten::val::global("console").call<void>("warn", std::forward<Args>(args)...);
+            emscripten::val::global("console").call<void>("warn", convertToVal(std::forward<Args>(args))...);
         }
         template <typename... Args>
         static void info(Args&&... args)
         {
-            emscripten::val::global("console").call<void>("info", std::forward<Args>(args)...);
+            emscripten::val::global("console").call<void>("info", convertToVal(std::forward<Args>(args))...);
         }
         template <typename... Args>
         static void debug(Args&&... args)
         {
-            emscripten::val::global("console").call<void>("debug", std::forward<Args>(args)...);
+            emscripten::val::global("console").call<void>("debug", convertToVal(std::forward<Args>(args))...);
         }
         template <typename... Args>
         static void trace(Args&&... args)
         {
-            emscripten::val::global("console").call<void>("trace", std::forward<Args>(args)...);
+            emscripten::val::global("console").call<void>("trace", convertToVal(std::forward<Args>(args))...);
         }
         template <typename... Args>
         static void table(Args&&... args)
         {
-            emscripten::val::global("console").call<void>("table", std::forward<Args>(args)...);
+            emscripten::val::global("console").call<void>("table", convertToVal(std::forward<Args>(args))...);
         }
         static void group()
         {

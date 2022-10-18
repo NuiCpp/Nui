@@ -38,11 +38,12 @@ namespace Nui
         void run();
         void terminate();
         void setHtml(std::string_view html);
-#ifdef NUI_BACKEND
-        void bind(std::string const& name, std::function<void(nlohmann::json const&)> const& callback);
-#endif
         void eval(std::string const& js);
         void openDevTools();
+#ifdef NUI_BACKEND
+        void bind(std::string const& name, std::function<void(nlohmann::json const&)> const& callback);
+        void asyncDispatch(std::function<void()> func);
+#endif
 
       private:
         struct Implementation;

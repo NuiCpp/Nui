@@ -5,6 +5,7 @@
 #include <nui/frontend/elements/fragment.hpp>
 #include <nui/frontend/elements/caption.hpp>
 #include <nui/frontend/elements/table.hpp>
+#include <nui/frontend/elements/nil.hpp>
 #include <nui/frontend/attributes/impl/custom_attribute.hpp>
 #include <nui/frontend/generator_typedefs.hpp>
 #include <nui/utility/meta/extract_value_type.hpp>
@@ -34,7 +35,7 @@ namespace Nui::Components
 
       public:
         template <typename... Args>
-        Table(CustomAttribute<Observed<ContainerT<RowDataT>>&, tableModelTag>&& model, Args&&... args)
+        Table(CustomAttribute<const Observed<ContainerT<RowDataT>>&, tableModelTag>&& model, Args&&... args)
             : tableModel_{model.get()}
             , captionModel_{[&]() -> decltype(captionModel_) {
                 // TODO: I need a better pattern for this. optional<static or observed>
@@ -43,7 +44,7 @@ namespace Nui::Components
                     return {};
                 else if constexpr (std::is_same_v<std::string, decltype(attribute->get())>)
                     return attribute->get();
-                else if constexpr (std::is_same_v<Observed<std::string>&, decltype(attribute->get())>)
+                else if constexpr (std::is_same_v<Observed<std::string> const&, decltype(attribute->get())>)
                     return &attribute->get();
                 else
                     return {};
@@ -76,7 +77,7 @@ namespace Nui::Components
                         [](std::string const& content) -> Nui::ElementRenderer{
                             return caption{}(content);
                         },
-                        [](Observed<std::string>* model) -> Nui::ElementRenderer{
+                        [](Observed<std::string> const* model) -> Nui::ElementRenderer{
                             return caption{}(*model);
                         }
                     );
@@ -109,8 +110,8 @@ namespace Nui::Components
         }
 
       private:
-        Observed<TableModelType>& tableModel_;
-        std::variant<std::monostate, std::string, Observed<std::string>*> captionModel_;
+        Observed<TableModelType> const& tableModel_;
+        std::variant<std::monostate, std::string, Observed<std::string> const*> captionModel_;
         std::function<ElementRenderer(long, RowDataT const&)> rowRenderer_;
         std::optional<std::function<ElementRenderer()>> headerRenderer_;
         std::optional<std::function<ElementRenderer()>> footerRenderer_;

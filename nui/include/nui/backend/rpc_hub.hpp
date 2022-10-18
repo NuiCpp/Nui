@@ -11,6 +11,7 @@
 #include <string>
 #include <tuple>
 #include <utility>
+#include <thread>
 
 namespace Nui
 {
@@ -87,7 +88,7 @@ namespace Nui
         )";
 
         template <typename T>
-        void registerFunction(std::string const& name, T&& func)
+        void registerFunction(std::string const& name, T&& func) const
         {
             using namespace std::string_literals;
             window_->bind(name, Detail::FunctionWrapper<T>::wrapFunction(std::forward<T>(func)));
@@ -101,21 +102,23 @@ namespace Nui
          * @param args
          */
         template <typename... Args>
-        void callRemote(std::string const& name, Args&&... args)
+        void callRemote(std::string const& name, Args&&... args) const
         {
             callRemoteImpl(name, nlohmann::json{std::forward<Args>(args)...});
         }
-        void callRemote(std::string const& name, nlohmann::json const& json)
+        void callRemote(std::string const& name, nlohmann::json const& json) const
         {
             callRemoteImpl(name, json);
         }
-        void callRemote(std::string const& name, nlohmann::json&& json)
+        void callRemote(std::string const& name, nlohmann::json&& json) const
         {
             callRemoteImpl(name, json);
         }
 
+        void enableFileDialogs() const;
+
       private:
-        void callRemoteImpl(std::string const& name, nlohmann::json const& json)
+        void callRemoteImpl(std::string const& name, nlohmann::json const& json) const
         {
             using namespace std::string_literals;
             window_->eval(fmt::format(remoteCallScript, name, json.dump()));
