@@ -38,6 +38,12 @@ namespace Nui
     emscripten::val convertToVal(std::vector<T> const& vector);
     template <typename T>
     emscripten::val convertToVal(Observed<T> const& observed);
+    template <typename T>
+    emscripten::val convertToVal(std::unordered_map<std::string, T> const& map);
+    inline emscripten::val convertToVal(long long)
+    {
+        throw std::runtime_error("Cannot convert long long to val");
+    }
 
     template <typename T, class Bases, class Members, class Enable>
     void convertFromVal(emscripten::val const& val, T& obj);
@@ -56,6 +62,12 @@ namespace Nui
     void convertFromVal(emscripten::val const& val, std::vector<T>& vector);
     template <typename T>
     void convertFromVal(emscripten::val const& val, Observed<T>& observed);
+    template <typename T>
+    void convertFromVal(emscripten::val const& val, std::unordered_map<std::string, T>& map);
+    inline void convertFromVal(emscripten::val const&, long long)
+    {
+        throw std::invalid_argument("Cannot convert from val to long long");
+    }
 
     template <typename T, class Bases, class Members, class Enable>
     void convertToVal(emscripten::val& val, T const& obj)
@@ -140,6 +152,14 @@ namespace Nui
     {
         return convertToVal(observed.value());
     }
+    template <typename T>
+    emscripten::val convertToVal(std::unordered_map<std::string, T> const& map)
+    {
+        emscripten::val result = emscripten::val::object();
+        for (auto const& [key, value] : map)
+            result.set(key, convertToVal(value));
+        return result;
+    }
 
     template <typename T>
     requires Fundamental<T>
@@ -196,5 +216,19 @@ namespace Nui
     {
         auto proxy = observed.modify();
         convertFromVal(val, proxy.value());
+    }
+    template <typename T>
+    void convertFromVal(emscripten::val const& val, std::unordered_map<std::string, T>& map)
+    {
+        map.clear();
+        const auto keys = emscripten::val::global("Object").call<emscripten::val>("keys", val);
+        const auto length = keys["length"].as<std::size_t>();
+        for (std::size_t i = 0; i < length; ++i)
+        {
+            const auto key = keys[i].as<std::string>();
+            T value;
+            convertFromVal(val[key], value);
+            map.emplace(key, std::move(value));
+        }
     }
 }
