@@ -151,7 +151,8 @@ namespace Nui
 
         // Children:
         template <typename... ElementT>
-        requires(Dom::IsNotReferencePasser<ElementT>&&...) constexpr auto operator()(ElementT&&... elements) &&
+        requires((Dom::IsNotReferencePasser<ElementT> && ...) && (!IsObserved<ElementT> && ...)) constexpr auto
+        operator()(ElementT&&... elements) &&
         {
             return [self = this->clone(), children = std::make_tuple(std::forward<ElementT>(elements)...)](
                        auto& parentElement, Renderer const& gen) {
@@ -256,7 +257,7 @@ namespace Nui
                 return materialized;
             };
         }
-        auto operator()(Observed<std::string>& observedString) &&
+        auto operator()(Observed<std::string> const& observedString) &&
         {
             return std::move(*this).operator()(observe(observedString), [&observedString]() -> std::string {
                 return observedString.value();
@@ -264,7 +265,7 @@ namespace Nui
         }
         template <typename ReferencePasserT>
         requires Dom::IsReferencePasser<ReferencePasserT>
-        auto operator()(ReferencePasserT&& referencePasser, Observed<std::string>& observedString) &&
+        auto operator()(ReferencePasserT&& referencePasser, Observed<std::string> const& observedString) &&
         {
             return std::move(*this).operator()(
                 std::forward<ReferencePasserT>(referencePasser),
@@ -298,7 +299,7 @@ namespace Nui
             };
         }
         template <std::invocable GeneratorT>
-        constexpr auto operator()(GeneratorT&& ElementRenderer) &&
+        requires(!InvocableReturns<GeneratorT, std::string>) constexpr auto operator()(GeneratorT&& ElementRenderer) &&
         {
             return [self = this->clone(), ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](
                        auto& parentElement, Renderer const& gen) {
@@ -307,6 +308,24 @@ namespace Nui
         }
 
         // Reactive functions:
+        template <typename ReferencePasserT, typename... ObservedValues, std::invocable GeneratorT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(
+            ReferencePasserT&& referencePasser,
+            ObservedValueCombinatorWithGenerator<GeneratorT, ObservedValues...> combinator) &&
+        {
+            return std::move(*this).operator()(
+                std::forward<ReferencePasserT>(referencePasser),
+                std::move(combinator).split(),
+                std::move(combinator).generator());
+        }
+        template <typename... ObservedValues, std::invocable GeneratorT>
+        constexpr auto operator()(ObservedValueCombinatorWithGenerator<GeneratorT, ObservedValues...> combinator) &&
+        {
+            return std::move(*this).operator()(
+                Dom::ReferencePasser{[](auto&&) {}}, std::move(combinator).split(), std::move(combinator).generator());
+        }
+
         template <typename ReferencePasserT, typename... ObservedValues, std::invocable GeneratorT>
         requires Dom::IsReferencePasser<ReferencePasserT>
         constexpr auto operator()(
