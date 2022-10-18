@@ -23,7 +23,7 @@ namespace Nui::Attributes
         template <typename... T>
         struct StylePropertyEbo
         {
-            std::tuple<Observed<T>&...> observed;
+            std::tuple<Observed<T> const&...> observed;
         };
         template <>
         struct StylePropertyEbo<void>
@@ -32,7 +32,7 @@ namespace Nui::Attributes
     template <typename FunctionT, typename... T>
     struct StylePropertyImpl : public Detail::StylePropertyEbo<T...>
     {
-        using value_type = std::tuple<Observed<T>&...>;
+        using value_type = std::tuple<Observed<T> const&...>;
 
         FunctionT generator;
         constexpr static bool isStatic()
@@ -45,7 +45,7 @@ namespace Nui::Attributes
         }
 
         template <typename U>
-        constexpr StylePropertyImpl(FunctionT generator, Observed<U>& observed)
+        constexpr StylePropertyImpl(FunctionT generator, Observed<U> const& observed)
             : Detail::StylePropertyEbo<T...>{std::forward_as_tuple(observed)}
             , generator{std::move(generator)}
         {}
