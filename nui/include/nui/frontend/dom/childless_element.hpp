@@ -59,7 +59,7 @@ namespace Nui::Dom
         {
             // FIXME: performance, keys are turned to std::string
             if (value.empty())
-                element_.set(key.data(), "");
+                element_.call<emscripten::val>("removeAttribute", emscripten::val{std::string{key}});
             else
                 element_.call<emscripten::val>(
                     "setAttribute", emscripten::val{std::string{key}}, emscripten::val{value});
@@ -71,7 +71,7 @@ namespace Nui::Dom
         void setAttribute(std::string_view key, char const* value)
         {
             if (value[0] == '\0')
-                element_.set(key.data(), "");
+                element_.call<emscripten::val>("removeAttribute", emscripten::val{std::string{key}});
             else
                 element_.call<emscripten::val>(
                     "setAttribute", emscripten::val{std::string{key}}, emscripten::val{std::string{value}});
