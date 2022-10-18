@@ -21,5 +21,14 @@ namespace Nui
         {
             return emscripten::val::global("JSON").call<std::string>("stringify", json);
         }
+        static std::string stringify(emscripten::val const& json, emscripten::val const& replacer, int indent)
+        {
+            return emscripten::val::global("JSON").call<std::string>("stringify", json, replacer, indent);
+        }
+        static std::string stringify(emscripten::val const& json, int indent)
+        {
+            return emscripten::val::global("JSON").call<std::string>(
+                "stringify", json, emscripten::val::null(), indent);
+        }
     };
 }
