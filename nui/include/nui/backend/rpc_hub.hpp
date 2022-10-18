@@ -115,7 +115,20 @@ namespace Nui
             callRemoteImpl(name, json);
         }
 
+        /**
+         * @brief Enables file dialog functionality
+         */
         void enableFileDialogs() const;
+
+        /**
+         * @brief Enables opening of the devTools, terminating the window from the view...
+         */
+        void enableWindowFunctions() const;
+
+        /**
+         * @brief Enables all functionality.
+         */
+        void enableAll();
 
       private:
         void callRemoteImpl(std::string const& name, nlohmann::json const& json) const

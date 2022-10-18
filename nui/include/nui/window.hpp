@@ -19,6 +19,14 @@ namespace Nui
         WEBVIEW_HINT_FIXED
     };
 
+    // https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2?view=webview2-1.0.1370.28#corewebview2_host_resource_access_kind
+    enum class HostResourceAccessKind
+    {
+        Deny,
+        Allow,
+        DenyCors
+    };
+
     class Window
     {
       public:
@@ -35,14 +43,18 @@ namespace Nui
         void setTitle(std::string const& title);
         void setSize(int width, int height, WebViewHint hint);
         void navigate(const std::string& url);
-        void run();
         void terminate();
-        void setHtml(std::string_view html);
-        void eval(std::string const& js);
         void openDevTools();
 #ifdef NUI_BACKEND
         void bind(std::string const& name, std::function<void(nlohmann::json const&)> const& callback);
         void asyncDispatch(std::function<void()> func);
+        void setVirtualHostNameToFolderMapping(
+            std::string const& hostName,
+            std::string const& folderPath,
+            HostResourceAccessKind accessKind);
+        void run();
+        void setHtml(std::string_view html);
+        void eval(std::string const& js);
 #endif
 
       private:

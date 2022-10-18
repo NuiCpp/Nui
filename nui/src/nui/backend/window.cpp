@@ -3,6 +3,7 @@
 #include <nui/backend/filesystem/special_paths.hpp>
 #include <nui/backend/filesystem/file_dialog.hpp>
 #include <nui/utility/scope_exit.hpp>
+#include <nui/utility/widen.hpp>
 
 #include <webview.h>
 #include <fmt/format.h>
@@ -11,15 +12,33 @@
 #include <boost/asio/thread_pool.hpp>
 #include <boost/asio/post.hpp>
 
+#if __linux__
+#    include <gtk/gtk.h>
+#    include <webkit/webkit.h>
+#endif
+
 #include <random>
 #include <fstream>
 #include <filesystem>
 #include <iostream>
 #include <vector>
 
+#if __linux__
+extern "C" {
+    void resourceLoadStarted(
+        WebKitWebView* webView,
+        WebKitWebResource* webResource,
+        WebKitURIRequest* request,
+        gpointer userData)
+    {
+        std::cout << "resource load started\n";
+    }
+}
+#endif
+
 namespace Nui
 {
-    //#####################################################################################################################
+    // #####################################################################################################################
     struct Window::Implementation
     {
         webview::webview view;
@@ -36,7 +55,7 @@ namespace Nui
             pool.join();
         }
     };
-    //#####################################################################################################################
+    // #####################################################################################################################
     Window::Window()
         : Window{false}
     {}
@@ -190,10 +209,8 @@ namespace Nui
     void Window::openDevTools()
     {
 #if defined(_WIN32)
-        // FIXME: (segfaults, but why?)
-        // auto* nativeWindowHandle = static_cast<ICoreWebView2*>(impl_->view.window());
-        // nativeWindowHandle->OpenDevToolsWindow();
-        throw std::runtime_error("Not implemented");
+        auto* nativeWebView = static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(impl_->view).webview());
+        nativeWebView->OpenDevToolsWindow();
 #elif defined(__APPLE__)
         throw std::runtime_error("Not implemented");
 #else
@@ -209,5 +226,45 @@ namespace Nui
         webkit_web_inspector_show(webkitInspector);
 #endif
     }
-    //#####################################################################################################################
+    //---------------------------------------------------------------------------------------------------------------------
+    void Window::setVirtualHostNameToFolderMapping(
+        std::string const& hostName,
+        std::string const& folderPath,
+        HostResourceAccessKind accessKind)
+    {
+#if defined(_WIN32)
+        ICoreWebView2_3* wv23;
+        auto* nativeWebView = static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(impl_->view).webview());
+
+        std::cout << "QueryInterface\n";
+        nativeWebView->QueryInterface(IID_ICoreWebView2_3, reinterpret_cast<void**>(&wv23));
+
+        if (wv23 == nullptr)
+            throw std::runtime_error("Could not get interface to set mapping.");
+
+        COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND nativeAccessKind;
+        switch (accessKind)
+        {
+            case (HostResourceAccessKind::Deny):
+                nativeAccessKind = COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY;
+                break;
+            case (HostResourceAccessKind::Allow):
+                nativeAccessKind = COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW;
+                break;
+            case (HostResourceAccessKind::DenyCors):
+                nativeAccessKind = COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY_CORS;
+                break;
+        }
+
+        wv23->SetVirtualHostNameToFolderMapping(
+            widenString(hostName).c_str(), widenString(folderPath).c_str(), nativeAccessKind);
+#elif defined(__APPLE__)
+        throw std::runtime_error("Not implemented");
+#else
+        // TODO:
+        auto* nativeWebView = static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(impl_->view).webview());
+        g_signal_connect(nativeWebView, "resource-load-started", G_CALLBACK(resourceLoadStarted), NULL);
+#endif
+    }
+    // #####################################################################################################################
 }

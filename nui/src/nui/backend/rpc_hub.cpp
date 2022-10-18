@@ -4,7 +4,7 @@
 
 namespace Nui
 {
-    //#####################################################################################################################
+    // #####################################################################################################################
     RpcHub::RpcHub(Window& window)
         : window_{&window}
     {}
@@ -36,5 +36,27 @@ namespace Nui
             callRemote(callbackId, response);
         });
     }
-    //#####################################################################################################################
+    //---------------------------------------------------------------------------------------------------------------------
+    void RpcHub::enableWindowFunctions() const
+    {
+        registerFunction("nui_openDevTools", [this]() {
+            window_->openDevTools();
+        });
+        registerFunction("nui_terminate", [this]() {
+            window_->terminate();
+        });
+        registerFunction("nui_setWindowSize", [this](int width, int height, int hint) {
+            window_->setSize(width, height, static_cast<WebViewHint>(hint));
+        });
+        registerFunction("nui_setWindowTitle", [this](std::string const& title) {
+            window_->setTitle(title);
+        });
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void RpcHub::enableAll()
+    {
+        enableFileDialogs();
+        enableWindowFunctions();
+    }
+    // #####################################################################################################################
 }
