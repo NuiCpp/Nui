@@ -117,7 +117,7 @@ namespace Nui
 
         auto value() const
         {
-            return combinator_();
+            return combinator_.generate();
         }
 
         template <typename ElementT>
@@ -130,7 +130,7 @@ namespace Nui
                 [element, event = std::move(event), combinator_ = this->combinator_](auto eventId) {
                     if (auto shared = element.lock(); shared)
                     {
-                        event(shared, combinator_());
+                        event(shared, combinator_.generate());
                         return true;
                     }
                     combinator_.unattachEvent(eventId);

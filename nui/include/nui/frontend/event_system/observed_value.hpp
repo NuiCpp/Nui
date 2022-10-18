@@ -25,24 +25,67 @@ namespace Nui
       public:
         ObservedBase() = default;
         virtual ~ObservedBase() = default;
+        ObservedBase(ObservedBase const&) = delete;
+        ObservedBase(ObservedBase&& other)
+            : attachedEvents_{}
+            , attachedOneshotEvents_{}
+        {
+            // events are outside the value logic of the observed class. the contained value is moved, but the events
+            // are merged.
+            for (auto& event : other.attachedEvents_)
+                attachedEvents_.push_back(std::move(event));
+            for (auto& event : other.attachedOneshotEvents_)
+                attachedOneshotEvents_.push_back(std::move(event));
+        }
+        ObservedBase& operator=(ObservedBase const&) = delete;
+        ObservedBase& operator=(ObservedBase&& other)
+        {
+            for (auto& event : other.attachedEvents_)
+                attachedEvents_.push_back(std::move(event));
+            for (auto& event : other.attachedOneshotEvents_)
+                attachedOneshotEvents_.push_back(std::move(event));
+            return *this;
+        }
 
-        void attachEvent(EventContext::EventIdType eventId)
+        void attachEvent(EventContext::EventIdType eventId) const
         {
             attachedEvents_.emplace_back(eventId);
         }
-        void attachOneshotEvent(EventContext::EventIdType eventId)
+        void attachOneshotEvent(EventContext::EventIdType eventId) const
         {
             attachedOneshotEvents_.emplace_back(eventId);
         }
-        void unattachEvent(EventContext::EventIdType eventId)
+        void unattachEvent(EventContext::EventIdType eventId) const
         {
             attachedEvents_.erase(
                 std::remove(std::begin(attachedEvents_), std::end(attachedEvents_), eventId),
                 std::end(attachedEvents_));
         }
 
+        std::size_t attachedEventCount() const
+        {
+            return attachedEvents_.size();
+        }
+        std::size_t attachedOneshotEventCount() const
+        {
+            return attachedOneshotEvents_.size();
+        }
+        std::size_t totalAttachedEventCount() const
+        {
+            return attachedEvents_.size() + attachedOneshotEvents_.size();
+        }
+
+        /**
+         * @brief You should never need to do this.
+         */
+        void detachAllEvents()
+        {
+            attachedEvents_.clear();
+            attachedOneshotEvents_.clear();
+        }
+
       protected:
-        virtual void update(bool /*force*/ = false)
+        virtual void update(bool /*force*/ = false) const
         {
             for (auto& event : attachedEvents_)
             {
@@ -58,8 +101,8 @@ namespace Nui
         }
 
       protected:
-        std::vector<EventContext::EventIdType> attachedEvents_;
-        std::vector<EventContext::EventIdType> attachedOneshotEvents_;
+        mutable std::vector<EventContext::EventIdType> attachedEvents_;
+        mutable std::vector<EventContext::EventIdType> attachedOneshotEvents_;
     };
 
     template <typename ContainedT>
@@ -102,9 +145,23 @@ namespace Nui
       public:
         ModifiableObserved() = default;
         ModifiableObserved(const ModifiableObserved&) = delete;
-        ModifiableObserved(ModifiableObserved&&) = default;
+        ModifiableObserved(ModifiableObserved&& other)
+            : ObservedBase{std::move(other)}
+            , contained_{std::move(other.contained_)}
+        {
+            update();
+        };
         ModifiableObserved& operator=(const ModifiableObserved&) = delete;
-        ModifiableObserved& operator=(ModifiableObserved&&) = default;
+        ModifiableObserved& operator=(ModifiableObserved&& other)
+        {
+            if (this != &other)
+            {
+                ObservedBase::operator=(std::move(other));
+                contained_ = std::move(other.contained_);
+                update();
+            }
+            return *this;
+        };
         ~ModifiableObserved() = default;
 
         template <typename T = ContainedT>
@@ -420,7 +477,7 @@ namespace Nui
         ObservedContainer& operator=(ObservedContainer&&) = default;
         ~ObservedContainer() = default;
 
-        constexpr auto map(auto&& function);
+        constexpr auto map(auto&& function) const;
 
         template <typename T = ContainerT>
         ObservedContainer& operator=(T&& t)
@@ -756,7 +813,7 @@ namespace Nui
         }
 
       protected:
-        void update(bool force = false) override
+        void update(bool force = false) const override
         {
             if (force)
                 rangeContext_.reset(static_cast<long>(contained_.size()), true);
@@ -803,7 +860,7 @@ namespace Nui
 
       private:
         mutable RangeEventContext rangeContext_;
-        EventContext::EventIdType afterEffectId_;
+        mutable EventContext::EventIdType afterEffectId_;
     };
 
     template <typename T>
@@ -860,10 +917,10 @@ namespace Nui
     };
 
     template <typename ContainerT>
-    constexpr auto ObservedContainer<ContainerT>::map(auto&& function)
+    constexpr auto ObservedContainer<ContainerT>::map(auto&& function) const
     {
         return std::pair<ObservedRange<Observed<ContainerT>>, std::decay_t<decltype(function)>>{
-            ObservedRange<Observed<ContainerT>>{static_cast<Observed<ContainerT>&>(*this)},
+            ObservedRange<Observed<ContainerT>>{static_cast<Observed<ContainerT> const&>(*this)},
             std::forward<std::decay_t<decltype(function)>>(function),
         };
     }
@@ -919,5 +976,5 @@ namespace Nui
     }
 
     template <typename T>
-    concept IsObserved = Detail::IsObserved<T>::value;
+    concept IsObserved = Detail::IsObserved<std::decay_t<T>>::value;
 }

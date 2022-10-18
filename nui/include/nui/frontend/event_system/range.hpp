@@ -6,21 +6,21 @@ namespace Nui
     class ObservedRange
     {
       public:
-        constexpr ObservedRange(ObservedValue& observedValues)
+        constexpr ObservedRange(ObservedValue const& observedValues)
             : observedValue_{observedValues}
         {}
 
-        ObservedValue& observedValue() const
+        ObservedValue const& observedValue() const
         {
             return observedValue_;
         }
 
       private:
-        ObservedValue& observedValue_;
+        ObservedValue const& observedValue_;
     };
 
     template <typename ObservedValue>
-    ObservedRange<ObservedValue> range(ObservedValue& observedValues)
+    ObservedRange<ObservedValue> range(ObservedValue const& observedValues)
     {
         return ObservedRange<ObservedValue>{observedValues};
     }
