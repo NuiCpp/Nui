@@ -7,6 +7,7 @@
 #include <nui/frontend/utility/val_conversion.hpp>
 
 #include <string>
+#include <cstdint>
 
 namespace Nui
 {
@@ -116,19 +117,16 @@ namespace Nui
                 Console::error("rpc was not setup by backend"s);
                 return {};
             }
-            auto tempId = emscripten::val::global("nui_rpc")["tempId"].as<int>();
-            ++tempId;
-            auto tempIdVal = emscripten::val::global("nui_rpc")["tempId"];
-            tempIdVal = emscripten::val{tempId};
+            auto tempId = emscripten::val::global("nui_rpc")["tempId"].as<uint32_t>() + 1;
+            emscripten::val::global("nui_rpc").set("tempId", tempId);
             const auto tempIdString = "temp_"s + std::to_string(tempId);
             // TODO: dry?
             emscripten::val::global("nui_rpc")["frontend"].set(
                 tempIdString,
                 Nui::bind(
-                    [func = std::move(func)](emscripten::val param) {
+                    [func = std::move(func), tempIdString](emscripten::val param) {
                         func(param);
-                        emscripten::val::global("nui_rpc")["frontend"].set(
-                            "temp_"s + param.as<std::string>(), emscripten::val::undefined());
+                        emscripten::val::global("nui_rpc")["frontend"].set(tempIdString, emscripten::val::undefined());
                     },
                     std::placeholders::_1));
             return tempIdString;
