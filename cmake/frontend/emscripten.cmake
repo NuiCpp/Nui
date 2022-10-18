@@ -4,7 +4,7 @@ function(nui_prepare_emscripten_target)
         NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS
         ""
         "TARGET;PREJS;STATIC"
-        "EMSCRIPTEN_LINK_OPTIONS;EMSCRIPTEN_COMPILE_OPTIONS"
+        "EMSCRIPTEN_LINK_OPTIONS;EMSCRIPTEN_COMPILE_OPTIONS;PARCEL_NO_OPTIMIZE"
         ${ARGN}
     )
 
@@ -24,7 +24,7 @@ function(nui_prepare_emscripten_target)
     add_custom_target(
         ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel 
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_STATIC} ${CMAKE_BINARY_DIR}/static
-        COMMAND ${CMAKE_BINARY_DIR}/node_modules/.bin/parcel build --dist-dir ${CMAKE_BINARY_DIR}/bin
+        COMMAND ${CMAKE_BINARY_DIR}/node_modules/.bin/parcel build "$<$<BOOL:${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PARCEL_NO_OPTIMIZE}>:--no-optimize>" --dist-dir ${CMAKE_BINARY_DIR}/bin
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         BYPRODUCTS ${CMAKE_BINARY_DIR}/bin/index.html
         DEPENDS ${CMAKE_BINARY_DIR}/bin/index.js
@@ -36,7 +36,7 @@ function(nui_prepare_emscripten_target)
         ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}
         PROPERTIES
             LINK_FLAGS
-            "-sSINGLE_FILE -sNO_EXIT_RUNTIME=1 ${EMSCRIPTEN_LINK} --no-entry --bind --pre-js=\"${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PREJS}\""
+            "-sENVIRONMENT=web -sSINGLE_FILE -sNO_EXIT_RUNTIME=1 ${EMSCRIPTEN_LINK} --bind --pre-js=\"${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PREJS}\""
     )
     set_target_properties(${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET} PROPERTIES OUTPUT_NAME "index")
     add_dependencies(${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-npm-install)
