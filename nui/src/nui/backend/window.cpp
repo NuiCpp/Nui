@@ -149,7 +149,7 @@ namespace Nui
         });
 
 #if __linux__
-        auto nativeWebView = WEBKIT_WEB_VIEW(static_cast<webview::browser_engine&>(impl_->view).webview());
+        auto nativeWebView = WEBKIT_WEB_VIEW(getNativeWebView());
 
         auto* webContext = webkit_web_view_get_context(nativeWebView);
         webkit_web_context_register_uri_scheme(
@@ -287,15 +287,20 @@ namespace Nui
         impl_->view.eval(js);
     }
     //---------------------------------------------------------------------------------------------------------------------
+    void* Window::getNativeWebView()
+    {
+        return static_cast<webview::browser_engine&>(impl_->view).webview();
+    }
+    //---------------------------------------------------------------------------------------------------------------------
     void Window::openDevTools()
     {
 #if defined(_WIN32)
-        auto* nativeWebView = static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(impl_->view).webview());
+        auto* nativeWebView = static_cast<ICoreWebView2*>(getNativeWebView());
         nativeWebView->OpenDevToolsWindow();
 #elif defined(__APPLE__)
         throw std::runtime_error("Not implemented");
 #else
-        auto nativeWebView = WEBKIT_WEB_VIEW(static_cast<webview::browser_engine&>(impl_->view).webview());
+        auto nativeWebView = WEBKIT_WEB_VIEW(getNativeWebView());
         auto webkitInspector = webkit_web_view_get_inspector(nativeWebView);
         webkit_web_inspector_show(webkitInspector);
 #endif
@@ -308,7 +313,7 @@ namespace Nui
     {
 #if defined(_WIN32)
         ICoreWebView2_3* wv23;
-        auto* nativeWebView = static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(impl_->view).webview());
+        auto* nativeWebView = static_cast<ICoreWebView2*>(getNativeWebView());
 
         std::cout << "QueryInterface\n";
         nativeWebView->QueryInterface(IID_ICoreWebView2_3, reinterpret_cast<void**>(&wv23));
