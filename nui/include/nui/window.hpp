@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <functional>
+#include <filesystem>
 
 namespace Nui
 {
@@ -50,7 +51,7 @@ namespace Nui
         void asyncDispatch(std::function<void()> func);
         void setVirtualHostNameToFolderMapping(
             std::string const& hostName,
-            std::string const& folderPath,
+            std::filesystem::path const& folderPath,
             HostResourceAccessKind accessKind);
         void run();
         void setHtml(std::string_view html);

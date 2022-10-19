@@ -56,6 +56,7 @@ else()
             webview
             portable_file_dialogs
             nlohmann_json
+            roar
     )
     if (WIN32)
         target_include_directories(nui-backend PUBLIC ${CMAKE_BINARY_DIR}/libs/webview2/build/native/include)

@@ -4,6 +4,7 @@
 #include <nui/backend/filesystem/file_dialog.hpp>
 #include <nui/utility/scope_exit.hpp>
 #include <nui/utility/widen.hpp>
+#include <nui/utility/scope_exit.hpp>
 
 #include <webview.h>
 #include <fmt/format.h>
@@ -11,10 +12,10 @@
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/thread_pool.hpp>
 #include <boost/asio/post.hpp>
+#include <roar/mime_type.hpp>
 
 #if __linux__
 #    include <gtk/gtk.h>
-#    include <webkit/webkit.h>
 #endif
 
 #include <random>
@@ -22,18 +23,15 @@
 #include <filesystem>
 #include <iostream>
 #include <vector>
+#include <memory>
+#include <string>
 
 #if __linux__
-extern "C" {
-    void resourceLoadStarted(
-        WebKitWebView* webView,
-        WebKitWebResource* webResource,
-        WebKitURIRequest* request,
-        gpointer userData)
-    {
-        std::cout << "resource load started\n";
-    }
-}
+struct HostNameMappingInfo
+{
+    std::unordered_map<std::string, std::filesystem::path> hostNameToFolderMapping{};
+    std::size_t hostNameMappingMax{0};
+};
 #endif
 
 namespace Nui
@@ -45,6 +43,9 @@ namespace Nui
         std::vector<std::filesystem::path> cleanupFiles;
         std::vector<std::function<void(nlohmann::json const&)>> callbacks;
         boost::asio::thread_pool pool{4};
+#if __linux__
+        HostNameMappingInfo hostNameMappingInfo;
+#endif
 
         Implementation(bool debug)
             : view{debug}
@@ -55,6 +56,78 @@ namespace Nui
             pool.join();
         }
     };
+    // #####################################################################################################################
+}
+
+#if __linux__
+std::size_t strlenLimited(char const* str, std::size_t limit)
+{
+    std::size_t i = 0;
+    while (i <= limit && str[i] != '\0')
+        ++i;
+    return i;
+}
+
+extern "C" {
+    // TODO: This function can be improved.
+    void uriSchemeRequestCallback(WebKitURISchemeRequest* request, gpointer userData)
+    {
+        auto* hostNameMappingInfo = static_cast<HostNameMappingInfo*>(userData);
+
+        const auto path = std::string_view{webkit_uri_scheme_request_get_path(request)};
+        const auto uri = std::string_view{webkit_uri_scheme_request_get_uri(request)};
+        const auto scheme = std::string_view{webkit_uri_scheme_request_get_scheme(request)};
+
+        auto exitError = Nui::ScopeExit{[&] {
+            // FIXME: 0, 0: this should be correct error categories.
+            auto* error = g_error_new(0, 0, "Invalid custom scheme / Host name mapping.");
+            auto freeError = Nui::ScopeExit{[error] {
+                g_error_free(error);
+            }};
+            webkit_uri_scheme_request_finish_error(request, error);
+        }};
+
+        auto hostName = std::string{uri.data() + scheme.size() + 3, uri.size() - scheme.size() - 3 - path.size()};
+        auto it = hostNameMappingInfo->hostNameToFolderMapping.find(hostName);
+        if (it == hostNameMappingInfo->hostNameToFolderMapping.end())
+        {
+            std::cout << "Host name mapping not found: " << hostName << "\n";
+            return;
+        }
+
+        const auto filePath = it->second / std::string{path.data() + 1, path.size() - 1};
+        auto fileContent = std::string{};
+        {
+            auto file = std::ifstream{filePath, std::ios::binary};
+            if (!file)
+            {
+                std::cout << "File not found: " << filePath << "\n";
+                return;
+            }
+            file.seekg(0, std::ios::end);
+            fileContent.resize(static_cast<std::size_t>(file.tellg()));
+            file.seekg(0, std::ios::beg);
+            file.read(fileContent.data(), static_cast<std::streamsize>(fileContent.size()));
+        }
+
+        exitError.disarm();
+        GInputStream* stream = g_memory_input_stream_new_from_data(
+            g_strdup(fileContent.c_str()), static_cast<gssize>(fileContent.size()), g_free);
+        auto freeStream = Nui::ScopeExit{[stream] {
+            g_object_unref(stream);
+        }};
+        const auto maybeMime = Roar::extensionToMime(filePath.extension().string());
+        std::string mime = maybeMime ? *maybeMime : "application/octet-stream";
+        webkit_uri_scheme_request_finish(request, stream, static_cast<gint64>(fileContent.size()), mime.c_str());
+    }
+
+    void uriSchemeDestroyNotify(void*)
+    {}
+}
+#endif
+
+namespace Nui
+{
     // #####################################################################################################################
     Window::Window()
         : Window{false}
@@ -68,17 +141,25 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     Window::Window(bool debug)
         : impl_{std::make_unique<Implementation>(debug)}
-    {}
-    //---------------------------------------------------------------------------------------------------------------------
-    Window::Window(char const* title, bool debug)
-        : Window{std::string{title}, debug}
     {
         impl_->view.install_message_hook([this](std::string const& msg) {
             const auto obj = nlohmann::json::parse(msg);
             impl_->callbacks[obj["id"].get<std::size_t>()](obj["args"]);
             return false;
         });
+
+#if __linux__
+        auto nativeWebView = WEBKIT_WEB_VIEW(static_cast<webview::browser_engine&>(impl_->view).webview());
+
+        auto* webContext = webkit_web_view_get_context(nativeWebView);
+        webkit_web_context_register_uri_scheme(
+            webContext, "assets", &uriSchemeRequestCallback, &impl_->hostNameMappingInfo, &uriSchemeDestroyNotify);
+#endif
     }
+    //---------------------------------------------------------------------------------------------------------------------
+    Window::Window(char const* title, bool debug)
+        : Window{std::string{title}, debug}
+    {}
     //---------------------------------------------------------------------------------------------------------------------
     Window::~Window()
     {
@@ -214,22 +295,15 @@ namespace Nui
 #elif defined(__APPLE__)
         throw std::runtime_error("Not implemented");
 #else
-        auto gtkWindow{GTK_WINDOW(w.window())};
-        auto children{gtk_container_get_children(GTK_CONTAINER(gtkWindow))};
-        auto gtkWidget{GTK_WIDGET(children[0].data)};
-        g_list_free(children);
-        auto webkitWebView{WEBKIT_WEB_VIEW(gtkWidget)};
-        // Unnecessary because because webview calls webkit_settings_set_enable_developer_extras
-        // auto webkitSettings{webkit_web_view_get_settings(webkitWebView)};
-        // g_object_set(G_OBJECT(webkitSettings), "enable-developer-extras", TRUE, NULL);
-        auto webkitInspector{webkit_web_view_get_inspector(webkitWebView)};
+        auto nativeWebView = WEBKIT_WEB_VIEW(static_cast<webview::browser_engine&>(impl_->view).webview());
+        auto webkitInspector = webkit_web_view_get_inspector(nativeWebView);
         webkit_web_inspector_show(webkitInspector);
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setVirtualHostNameToFolderMapping(
         std::string const& hostName,
-        std::string const& folderPath,
+        std::filesystem::path const& folderPath,
         HostResourceAccessKind accessKind)
     {
 #if defined(_WIN32)
@@ -257,13 +331,14 @@ namespace Nui
         }
 
         wv23->SetVirtualHostNameToFolderMapping(
-            widenString(hostName).c_str(), widenString(folderPath).c_str(), nativeAccessKind);
+            widenString(hostName).c_str(), widenString(folderPath.string()).c_str(), nativeAccessKind);
 #elif defined(__APPLE__)
         throw std::runtime_error("Not implemented");
 #else
-        // TODO:
-        auto* nativeWebView = static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(impl_->view).webview());
-        g_signal_connect(nativeWebView, "resource-load-started", G_CALLBACK(resourceLoadStarted), NULL);
+        (void)accessKind;
+        impl_->hostNameMappingInfo.hostNameMappingMax =
+            std::max(impl_->hostNameMappingInfo.hostNameMappingMax, hostName.size());
+        impl_->hostNameMappingInfo.hostNameToFolderMapping[hostName] = folderPath;
 #endif
     }
     // #####################################################################################################################

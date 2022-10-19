@@ -16,6 +16,10 @@ namespace Nui
         {
             onExit_();
         }
+        void disarm()
+        {
+            onExit_ = [] {};
+        }
 
       private:
         std::function<void()> onExit_;
