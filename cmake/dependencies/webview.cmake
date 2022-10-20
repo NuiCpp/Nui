@@ -12,7 +12,7 @@ include(FetchContent)
 FetchContent_Declare(
     webview_raw
     GIT_REPOSITORY https://github.com/5cript/webview.git
-    GIT_TAG        1bfb9d15e032c138d43d83bb141a472edc0bcb9c
+    GIT_TAG        5002fb32b3c6981e5aae9bcee6f07a7dc3ce3dac
 )
 
 FetchContent_MakeAvailable(webview_raw)

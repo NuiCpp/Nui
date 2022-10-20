@@ -1,14 +1,16 @@
 #include <nui/window.hpp>
 
+#include <nui/frontend/rpc_client.hpp>
+
 namespace Nui
 {
-    //#####################################################################################################################
+    // #####################################################################################################################
     struct Window::Implementation
     {
         Implementation(bool)
         {}
     };
-    //#####################################################################################################################
+    // #####################################################################################################################
     Window::Window()
         : Window{false}
     {}
@@ -29,39 +31,29 @@ namespace Nui
     Window::Window(Window&&) = default;
     Window& Window::operator=(Window&&) = default;
     //---------------------------------------------------------------------------------------------------------------------
-    void Window::setTitle(std::string const&)
+    void Window::setTitle(std::string const& title)
     {
-        // noop
+        RpcClient::getRemoteCallable("Nui::setWindowTitle")(title);
     }
     //---------------------------------------------------------------------------------------------------------------------
-    void Window::setSize(int, int, WebViewHint)
+    void Window::setSize(int width, int height, WebViewHint hint)
     {
-        // noop
+        RpcClient::getRemoteCallable("Nui::setWindowSize")(width, height, static_cast<int>(hint));
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::navigate(const std::string&)
     {
-        // noop
-    }
-    //---------------------------------------------------------------------------------------------------------------------
-    void Window::run()
-    {
-        // noop
+        // TODO: something smarter here. maybe some "react router" kind of thing?
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::terminate()
     {
-        // TODO: could make this work
+        RpcClient::getRemoteCallable("Nui::terminate")();
     }
     //---------------------------------------------------------------------------------------------------------------------
-    void Window::setHtml(std::string_view)
+    void Window::openDevTools()
     {
-        // noop
+        RpcClient::getRemoteCallable("Nui::openDevTools")();
     }
-    //---------------------------------------------------------------------------------------------------------------------
-    void Window::eval(std::string const&)
-    {
-        // noop
-    }
-    //#####################################################################################################################
+    // #####################################################################################################################
 }

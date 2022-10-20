@@ -5,8 +5,11 @@ if (EMSCRIPTEN)
             frontend/dom/dom.cpp
             frontend/event_system/event_context.cpp
             frontend/filesystem/file_dialog.cpp
+            frontend/filesystem/file.cpp
             frontend/utility/functions.cpp
             frontend/window.cpp
+            frontend/api/fetch.cpp
+            frontend/api/throttle.cpp
     )
     add_library(Nui::frontend ALIAS nui-frontend)
     target_include_directories(
@@ -38,6 +41,9 @@ else()
             backend/filesystem/file_dialog.cpp
             backend/filesystem/file_dialog_options.cpp
             backend/rpc_hub.cpp
+            backend/rpc_addons/fetch.cpp
+            backend/rpc_addons/file.cpp
+            backend/rpc_addons/throttle.cpp
     )
     add_library(Nui::backend ALIAS nui-backend)
     target_include_directories(
@@ -46,6 +52,7 @@ else()
             ${CMAKE_CURRENT_LIST_DIR}/../../include
             ${CMAKE_BINARY_DIR}/include
     )
+    find_package(Boost 1.80.0 REQUIRED COMPONENTS system)
     target_link_libraries(
         nui-backend
         PRIVATE
@@ -55,6 +62,9 @@ else()
             fmt
             webview
             portable_file_dialogs
+            nlohmann_json
+            roar
+            Boost::boost
     )
     if (WIN32)
         target_include_directories(nui-backend PUBLIC ${CMAKE_BINARY_DIR}/libs/webview2/build/native/include)

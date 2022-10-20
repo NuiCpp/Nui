@@ -4,6 +4,7 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <filesystem>
 
 constexpr std::size_t lineWidth = 120;
 
@@ -16,6 +17,10 @@ int main(int argc, char** argv)
                   << "\n";
         return 1;
     }
+
+    auto outputPath = std::filesystem::path(argv[2]).parent_path();
+    if (!std::filesystem::exists(outputPath))
+        std::filesystem::create_directories(outputPath);
 
     std::ifstream input(argv[1], std::ios_base::binary);
     std::ofstream output(argv[2], std::ios_base::binary);

@@ -38,6 +38,11 @@ void createPackageJsonIfMissing(std::filesystem::path const& where, std::string 
     }
 }
 
+void copyParcelRc(std::filesystem::path const& from, std::filesystem::path const& to)
+{
+    std::filesystem::copy_file(from, to, std::filesystem::copy_options::overwrite_existing);
+}
+
 int main(int argc, char** argv)
 {
     using nlohmann::json;
@@ -52,6 +57,9 @@ int main(int argc, char** argv)
     }
 
     createPackageJsonIfMissing(argv[1], argv[3]);
+    copyParcelRc(
+        std::filesystem::path{argv[1]}.parent_path() / ".parcelrc",
+        std::filesystem::path{argv[2]}.parent_path() / ".parcelrc");
     std::ifstream ifs(argv[1], std::ios_base::binary);
     if (!ifs.is_open())
     {
