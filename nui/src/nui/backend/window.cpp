@@ -25,6 +25,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <mutex>
 
 #if __linux__
 struct HostNameMappingInfo
@@ -43,6 +44,7 @@ namespace Nui
         std::vector<std::filesystem::path> cleanupFiles;
         std::vector<std::function<void(nlohmann::json const&)>> callbacks;
         boost::asio::thread_pool pool{4};
+        std::recursive_mutex viewGuard;
 #if __linux__
         HostNameMappingInfo hostNameMappingInfo;
 #endif
@@ -143,6 +145,7 @@ namespace Nui
         : impl_{std::make_unique<Implementation>(debug)}
     {
         impl_->view.install_message_hook([this](std::string const& msg) {
+            std::scoped_lock lock{impl_->viewGuard};
             const auto obj = nlohmann::json::parse(msg);
             impl_->callbacks[obj["id"].get<std::size_t>()](obj["args"]);
             return false;
@@ -171,11 +174,13 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setTitle(std::string const& title)
     {
+        std::scoped_lock lock{impl_->viewGuard};
         impl_->view.set_title(title);
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setSize(int width, int height, WebViewHint hint)
     {
+        std::scoped_lock lock{impl_->viewGuard};
         impl_->view.set_size(width, height, static_cast<int>(hint));
     }
     //---------------------------------------------------------------------------------------------------------------------
@@ -202,9 +207,12 @@ namespace Nui
             std::ofstream temporary{tempFile, std::ios_base::binary};
             temporary.write(html.data(), static_cast<std::streamsize>(html.size()));
         }
+
+        std::scoped_lock lock{impl_->viewGuard};
         impl_->view.navigate("file://"s + tempFile.string());
         impl_->cleanupFiles.push_back(tempFile);
 #else
+        std::scoped_lock lock{impl_->viewGuard};
         impl_->view.set_html(std::string{html});
 #endif
     }
@@ -216,6 +224,7 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::navigate(const std::string& url)
     {
+        std::scoped_lock lock{impl_->viewGuard};
         impl_->view.navigate(url);
     }
     //---------------------------------------------------------------------------------------------------------------------
@@ -253,11 +262,13 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::terminate()
     {
+        std::scoped_lock lock{impl_->viewGuard};
         impl_->view.terminate();
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::bind(std::string const& name, std::function<void(nlohmann::json const&)> const& callback)
     {
+        std::scoped_lock lock{impl_->viewGuard};
         impl_->callbacks.push_back(callback);
         auto script = fmt::format(
             R"(
@@ -278,12 +289,14 @@ namespace Nui
         )",
             name,
             impl_->callbacks.size() - 1);
+
         impl_->view.init(script);
         impl_->view.eval(script);
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::eval(std::string const& js)
     {
+        std::scoped_lock lock{impl_->viewGuard};
         impl_->view.eval(js);
     }
     //---------------------------------------------------------------------------------------------------------------------
@@ -294,15 +307,19 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::openDevTools()
     {
+        std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
         auto* nativeWebView = static_cast<ICoreWebView2*>(getNativeWebView());
         nativeWebView->OpenDevToolsWindow();
 #elif defined(__APPLE__)
         throw std::runtime_error("Not implemented");
 #else
+        // FIXME: This freezes the view on Linux when called from there. "received NeedDebuggerBreak trap" in the
+        // console, Is a breakpoint auto set and locks everything up?
         auto nativeWebView = WEBKIT_WEB_VIEW(getNativeWebView());
         auto webkitInspector = webkit_web_view_get_inspector(nativeWebView);
         webkit_web_inspector_show(webkitInspector);
+        webkit_web_inspector_detach(webkitInspector);
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------
@@ -311,6 +328,7 @@ namespace Nui
         std::filesystem::path const& folderPath,
         HostResourceAccessKind accessKind)
     {
+        std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
         ICoreWebView2_3* wv23;
         auto* nativeWebView = static_cast<ICoreWebView2*>(getNativeWebView());
@@ -345,6 +363,24 @@ namespace Nui
             std::max(impl_->hostNameMappingInfo.hostNameMappingMax, hostName.size());
         impl_->hostNameMappingInfo.hostNameToFolderMapping[hostName] = folderPath;
 #endif
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void Window::setConsoleOutput(bool active)
+    {
+        std::scoped_lock lock{impl_->viewGuard};
+#if __linux__
+        auto nativeWebView = WEBKIT_WEB_VIEW(getNativeWebView());
+        auto* settings = webkit_web_view_get_settings(nativeWebView);
+        webkit_settings_set_enable_write_console_messages_to_stdout(settings, active);
+        webkit_web_view_set_settings(nativeWebView, settings);
+#else
+        (void)active;
+#endif
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    boost::asio::any_io_executor Window::getExecutor() const
+    {
+        return impl_->pool.executor();
     }
     // #####################################################################################################################
 }

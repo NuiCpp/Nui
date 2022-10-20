@@ -12,6 +12,8 @@
 #include <tuple>
 #include <utility>
 #include <thread>
+#include <functional>
+#include <unordered_map>
 
 namespace Nui
 {
@@ -95,6 +97,16 @@ namespace Nui
         }
 
         /**
+         * @brief Returns the attached window.
+         *
+         * @return Window&
+         */
+        Window& window() const
+        {
+            return *window_;
+        }
+
+        /**
          * @brief For technical reasons these cannot return a value currently.
          *
          * @tparam Args
@@ -105,6 +117,12 @@ namespace Nui
         void callRemote(std::string const& name, Args&&... args) const
         {
             callRemoteImpl(name, nlohmann::json{std::forward<Args>(args)...});
+        }
+        template <typename Arg>
+        void callRemote(std::string const& name, Arg&& arg) const
+        {
+            nlohmann::json j = arg;
+            callRemoteImpl(name, std::move(j));
         }
         void callRemote(std::string const& name, nlohmann::json const& json) const
         {
@@ -121,14 +139,51 @@ namespace Nui
         void enableFileDialogs() const;
 
         /**
+         * @brief Enables file class in the frontend.
+         */
+        void enableFile();
+
+        /**
          * @brief Enables opening of the devTools, terminating the window from the view...
          */
         void enableWindowFunctions() const;
 
         /**
+         * @brief Enables fetch functionality.
+         */
+        void enableFetch() const;
+
+        /**
+         * @brief Enables the throttle functionality.
+         */
+        void enableThrottle();
+
+        /**
          * @brief Enables all functionality.
          */
         void enableAll();
+
+        template <typename ManagerT>
+        void* accessStateStore(std::string const& id)
+        {
+            auto iter = stateStores_.find(id);
+            if (iter == stateStores_.end())
+            {
+                return stateStores_
+                    .insert(
+                        {id,
+                         std::unique_ptr<void, std::function<void(void*)>>{
+                             ManagerT::create(),
+                             [](void* ptr) {
+                                 ManagerT::destroy(ptr);
+                             }}})
+                    .first->second.get();
+            }
+            else
+            {
+                return iter->second.get();
+            }
+        }
 
       private:
         void callRemoteImpl(std::string const& name, nlohmann::json const& json) const
@@ -139,5 +194,6 @@ namespace Nui
 
       private:
         Window* window_;
+        std::unordered_map<std::string, std::unique_ptr<void, std::function<void(void*)>>> stateStores_;
     };
 }

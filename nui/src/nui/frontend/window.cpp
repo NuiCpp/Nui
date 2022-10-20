@@ -33,12 +33,12 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setTitle(std::string const& title)
     {
-        RpcClient::getRemoteCallable("nui_setWindowTitle")(title);
+        RpcClient::getRemoteCallable("Nui::setWindowTitle")(title);
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setSize(int width, int height, WebViewHint hint)
     {
-        RpcClient::getRemoteCallable("nui_setWindowSize")(width, height, static_cast<int>(hint));
+        RpcClient::getRemoteCallable("Nui::setWindowSize")(width, height, static_cast<int>(hint));
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::navigate(const std::string&)
@@ -48,12 +48,12 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::terminate()
     {
-        RpcClient::getRemoteCallable("nui_terminate")();
+        RpcClient::getRemoteCallable("Nui::terminate")();
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::openDevTools()
     {
-        RpcClient::getRemoteCallable("nui_openDevTools")();
+        RpcClient::getRemoteCallable("Nui::openDevTools")();
     }
     // #####################################################################################################################
 }

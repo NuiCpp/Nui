@@ -14,6 +14,12 @@
 
 namespace Nui
 {
+    namespace Detail
+    {
+        struct InplaceTag
+        {};
+    }
+
     template <typename T>
     class SelectablesRegistry
     {
@@ -24,6 +30,11 @@ namespace Nui
             IdType id;
             std::optional<T> item;
 
+            template <typename... Args>
+            ItemWithId(IdType id, Detail::InplaceTag, Args&&... args)
+                : id{id}
+                , item{T{std::forward<Args>(args)...}}
+            {}
             ItemWithId(IdType id, T item)
                 : id{id}
                 , item{std::move(item)}
@@ -183,7 +194,17 @@ namespace Nui
         SelectablesRegistry& operator=(SelectablesRegistry&&) = default;
         ~SelectablesRegistry() = default;
 
-        IdType append(T element)
+        IdType append(T const& element)
+        {
+            items_.push_back(ItemWithId{id_, std::optional<T>{element}});
+            ++itemCount_;
+            const auto id = id_;
+            id_++;
+            if (id_ == invalidId - 1)
+                id_ = 0;
+            return id;
+        }
+        IdType append(T&& element)
         {
             items_.push_back(ItemWithId{id_, std::optional<T>{std::move(element)}});
             ++itemCount_;
@@ -191,7 +212,18 @@ namespace Nui
             id_++;
             if (id_ == invalidId - 1)
                 id_ = 0;
+            return id;
+        }
 
+        template <typename... Args>
+        IdType emplace(Args&&... args)
+        {
+            items_.push_back(ItemWithId{id_, Detail::InplaceTag{}, std::forward<Args>(args)...});
+            ++itemCount_;
+            const auto id = id_;
+            id_++;
+            if (id_ == invalidId - 1)
+                id_ = 0;
             return id;
         }
 
@@ -291,13 +323,13 @@ namespace Nui
             return ConstIteratorType{iter};
         }
 
-        IteratorType operator[](IdType id) const
+        auto const& operator[](IdType id) const
         {
-            return get(id);
+            return *get(id);
         }
-        IteratorType operator[](IdType id)
+        auto& operator[](IdType id)
         {
-            return get(id);
+            return *get(id);
         }
 
         IteratorType begin()

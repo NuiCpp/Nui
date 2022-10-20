@@ -4,13 +4,87 @@
 
 #include <nui/frontend/api/console.hpp>
 #include <nui/frontend/utility/functions.hpp>
+#include <nui/utility/meta/function_traits.hpp>
 #include <nui/frontend/utility/val_conversion.hpp>
 
 #include <string>
 #include <cstdint>
+#include <tuple>
 
 namespace Nui
 {
+    namespace Detail
+    {
+        template <typename ReturnType, typename ArgsTypes, typename IndexSeq>
+        struct FunctionWrapperImpl
+        {};
+
+        template <typename ArgT>
+        constexpr static auto extractMember(emscripten::val const& val) -> decltype(auto)
+        {
+            if constexpr (std::is_same_v<std::decay_t<ArgT>, emscripten::val>)
+                return val;
+            else
+            {
+                std::decay_t<ArgT> value;
+                convertFromVal(val, value);
+                return value;
+            }
+        }
+
+        template <typename ReturnType>
+        struct FunctionWrapperImpl<ReturnType, std::tuple<emscripten::val>, std::index_sequence<0>>
+        {
+            template <typename FunctionT>
+            constexpr static auto wrapFunction(FunctionT&& func)
+            {
+                return [func = std::move(func)](emscripten::val const& args) {
+                    func(args);
+                };
+            }
+        };
+
+        template <typename ReturnType, typename ArgType>
+        struct FunctionWrapperImpl<ReturnType, std::tuple<ArgType>, std::index_sequence<0>>
+        {
+            template <typename FunctionT>
+            constexpr static auto wrapFunction(FunctionT&& func)
+            {
+                return [func = std::move(func)](emscripten::val const& arg) {
+                    func(extractMember<ArgType>(arg));
+                };
+            }
+        };
+
+        template <typename ReturnType, typename... ArgsTypes, std::size_t... Is>
+        struct FunctionWrapperImpl<ReturnType, std::tuple<ArgsTypes...>, std::index_sequence<Is...>>
+        {
+            template <typename FunctionT>
+            constexpr static auto wrapFunction(FunctionT&& func)
+            {
+                return [func = std::move(func)](emscripten::val const& args) {
+                    func(extractMember<ArgsTypes>(args[Is])...);
+                };
+            }
+        };
+
+        template <typename ReturnType, typename ArgsTypes>
+        struct FunctionWrapperImpl2
+        {};
+
+        template <typename ReturnType, typename... ArgsTypes>
+        struct FunctionWrapperImpl2<ReturnType, std::tuple<ArgsTypes...>>
+            : public FunctionWrapperImpl<ReturnType, std::tuple<ArgsTypes...>, std::index_sequence_for<ArgsTypes...>>
+        {};
+
+        template <typename FunctionT>
+        struct FunctionWrapper
+            : public FunctionWrapperImpl2<
+                  FunctionReturnType_t<std::decay_t<FunctionT>>,
+                  FunctionArgumentTypes_t<std::decay_t<FunctionT>>>
+        {};
+    }
+
     class RpcClient
     {
       public:
@@ -124,7 +198,8 @@ namespace Nui
             emscripten::val::global("nui_rpc")["frontend"].set(
                 tempIdString,
                 Nui::bind(
-                    [func = std::move(func), tempIdString](emscripten::val param) {
+                    [func = Detail::FunctionWrapper<FunctionT>::wrapFunction(std::forward<FunctionT>(func)),
+                     tempIdString](emscripten::val param) {
                         func(param);
                         emscripten::val::global("nui_rpc")["frontend"].set(tempIdString, emscripten::val::undefined());
                     },
@@ -150,10 +225,22 @@ namespace Nui
             emscripten::val::global("nui_rpc")["frontend"].set(
                 (name).c_str(),
                 Nui::bind(
-                    [func = std::move(func)](emscripten::val param) {
+                    [func = Detail::FunctionWrapper<FunctionT>::wrapFunction(std::forward<FunctionT>(func))](
+                        emscripten::val param) {
                         func(param);
                     },
                     std::placeholders::_1));
+        }
+
+        static void unregisterFunction(std::string const& name)
+        {
+            using namespace std::string_literals;
+            if (emscripten::val::global("nui_rpc").typeOf().as<std::string>() == "undefined")
+            {
+                Console::error("rpc was not setup by backend"s);
+                return;
+            }
+            emscripten::val::global("nui_rpc")["frontend"].set(name.c_str(), emscripten::val::undefined());
         }
     };
 }

@@ -4,7 +4,7 @@ include(FetchContent)
 FetchContent_Declare(
 	roar
 	GIT_REPOSITORY https://github.com/5cript/roar.git
-	GIT_TAG        304e215eb37bdf7bfdc209974eb2b7a3da1b8ae9
+	GIT_TAG        ba4122904af057a33b37aa24d6b803d1f90f6d8d
 )
 
 FetchContent_MakeAvailable(roar)

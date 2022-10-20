@@ -3,6 +3,7 @@
 #include <nui/core.hpp>
 #ifdef NUI_BACKEND
 #    include <nlohmann/json.hpp>
+#    include <boost/asio/any_io_executor.hpp>
 #endif
 
 #include <memory>
@@ -104,6 +105,9 @@ namespace Nui
          * @param callback The function to bind.
          */
         void bind(std::string const& name, std::function<void(nlohmann::json const&)> const& callback);
+
+        boost::asio::any_io_executor getExecutor() const;
+
         void asyncDispatch(std::function<void()> func);
 
         /**
@@ -143,6 +147,11 @@ namespace Nui
          * @return void* Cast this pointer to the correct type depending on the OS.
          */
         void* getNativeWebView();
+
+        /**
+         * @brief [LINUX ONLY] Enable/Disable console output from view in the console.
+         */
+        void setConsoleOutput(bool active);
 #endif
 
       private:

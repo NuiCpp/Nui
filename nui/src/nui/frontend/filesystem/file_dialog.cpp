@@ -52,7 +52,7 @@ namespace Nui::FileDialog
             globalEventContext.executeActiveEventsImmediately();
         });
         opts.set("callbackId", id);
-        RpcClient::getRemoteCallable("nui_showOpenDialog")(opts);
+        RpcClient::getRemoteCallable("Nui::showOpenDialog")(opts);
     }
     //---------------------------------------------------------------------------------------------------------------------
     void showDirectoryDialog(
@@ -77,7 +77,7 @@ namespace Nui::FileDialog
             globalEventContext.executeActiveEventsImmediately();
         });
         opts.set("callbackId", id);
-        RpcClient::getRemoteCallable("nui_showDirectoryDialog")(opts);
+        RpcClient::getRemoteCallable("Nui::showDirectoryDialog")(opts);
     }
     //---------------------------------------------------------------------------------------------------------------------
     void
@@ -94,7 +94,7 @@ namespace Nui::FileDialog
             globalEventContext.executeActiveEventsImmediately();
         });
         opts.set("callbackId", id);
-        RpcClient::getRemoteCallable("nui_showSaveDialog")(opts);
+        RpcClient::getRemoteCallable("Nui::showSaveDialog")(opts);
     }
     //#####################################################################################################################
 }
