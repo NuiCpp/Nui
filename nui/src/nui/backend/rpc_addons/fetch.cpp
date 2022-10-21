@@ -3,13 +3,22 @@
 #include <nui/shared/api/fetch_options.hpp>
 #include <roar/curl/request.hpp>
 #include <roar/url/url.hpp>
+#include <roar/utility/base64.hpp>
 
 #include <iostream>
 
 namespace Nui
 {
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(FetchOptions, method, headers, body)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
+        FetchOptions,
+        method,
+        headers,
+        body,
+        verbose,
+        followRedirects,
+        maxRedirects,
+        autoReferer)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
         FetchResponse,
         curlCode,
@@ -41,7 +50,13 @@ namespace Nui
                 if (badUrl)
                     return;
 
-                request.sink(body).setHeaderFields(options.headers).headerSink(headers);
+                request.sink(body)
+                    .followRedirects(options.followRedirects)
+                    .maxRedirects(static_cast<std::size_t>(options.maxRedirects))
+                    .verbose(options.verbose)
+                    .setHeaderFields(options.headers)
+                    .autoReferer(options.autoReferer)
+                    .headerSink(headers);
                 if (!options.body.empty() && options.method != "GET")
                     request.source(options.body);
 
@@ -52,7 +67,7 @@ namespace Nui
                     .proxyStatus = static_cast<int>(response.proxyCode()),
                     .downloadSize = static_cast<uint32_t>(response.sizeOfDownload()),
                     .redirectUrl = response.redirectUrl(),
-                    .body = std::move(body),
+                    .body = Roar::base64Encode(body),
                     .headers = std::move(headers)};
 
                 hub.callRemote(responseId, resp);

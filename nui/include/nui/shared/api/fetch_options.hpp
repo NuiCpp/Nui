@@ -18,8 +18,17 @@ namespace Nui
         std::string method = "GET";
         std::unordered_map<std::string, std::string> headers = {};
         std::string body = "";
+        bool verbose = false;
+        bool followRedirects = false;
+        long maxRedirects = 255;
+        bool autoReferer = false;
+        // body is encoded as base64 to get it through to the webview. setting this option preserves the body as base64
+        bool dontDecodeBody = false;
     };
-    BOOST_DESCRIBE_STRUCT(FetchOptions, (), (method, headers, body));
+    BOOST_DESCRIBE_STRUCT(
+        FetchOptions,
+        (),
+        (method, headers, body, verbose, followRedirects, maxRedirects, autoReferer, dontDecodeBody));
 
     struct FetchResponse
     {

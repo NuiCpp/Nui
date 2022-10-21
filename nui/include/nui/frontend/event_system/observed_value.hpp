@@ -483,27 +483,27 @@ namespace Nui
         ObservedContainer& operator=(T&& t)
         {
             contained_ = std::forward<T>(t);
-            rangeContext_.reset(contained_.size(), true);
+            rangeContext_.reset(static_cast<long>(contained_.size()), true);
             update();
             return *this;
         }
         void assign(size_type count, const value_type& value)
         {
             contained_.assign(count, value);
-            rangeContext_.reset(contained_.size(), true);
+            rangeContext_.reset(static_cast<long>(contained_.size()), true);
             update();
         }
         template <typename Iterator>
         void assign(Iterator first, Iterator last)
         {
             contained_.assign(first, last);
-            rangeContext_.reset(contained_.size(), true);
+            rangeContext_.reset(static_cast<long>(contained_.size()), true);
             update();
         }
         void assign(std::initializer_list<value_type> ilist)
         {
             contained_.assign(ilist);
-            rangeContext_.reset(contained_.size(), true);
+            rangeContext_.reset(static_cast<long>(contained_.size()), true);
             update();
         }
 

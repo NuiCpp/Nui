@@ -8,9 +8,6 @@
 #include <vector>
 #include <optional>
 
-#include <iostream>
-#include <iomanip>
-
 namespace Nui
 {
     enum RangeStateType
@@ -129,7 +126,6 @@ namespace Nui
                     }
                     default:
                     {
-                        std::cout << "Invalid insertion case: " << std::bitset<4>(typeWithoutExtension | type_) << "\n";
                         throw std::runtime_error("Invalid insertion case");
                     }
                 }
@@ -198,7 +194,6 @@ namespace Nui
             , fullRangeUpdate_{true}
             , disableOptimizations_{disableOptimizations}
         {
-            std::cout << "disableopts: " << disableOptimizations_ << std::endl;
             reset(dataSize, true);
         }
         enum class InsertResult
@@ -209,16 +204,14 @@ namespace Nui
         };
         InsertResult insertModificationRange(long elementCount, long low, long high, RangeStateType type)
         {
-            std::cout << "imodrange\n";
             if (disableOptimizations_)
             {
-                std::cout << "disable opts\n";
                 fullRangeUpdate_ = true;
                 return InsertResult::Final;
             }
             if (type == RangeStateType::Erase)
             {
-                // FIXME: optimize erase like insert.
+                // TODO: optimize erase like insert.
                 reset(elementCount, true);
                 return InsertResult::Final;
             }
