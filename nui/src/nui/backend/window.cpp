@@ -151,6 +151,7 @@ namespace Nui
             impl_->callbacks[obj["id"].get<std::size_t>()](obj["args"]);
             return false;
         });
+        // TODO: SetCustomSchemeRegistrations
 
 #if __linux__
         auto nativeWebView = WEBKIT_WEB_VIEW(getNativeWebView());
@@ -334,7 +335,6 @@ namespace Nui
         ICoreWebView2_3* wv23;
         auto* nativeWebView = static_cast<ICoreWebView2*>(getNativeWebView());
 
-        std::cout << "QueryInterface\n";
         nativeWebView->QueryInterface(IID_ICoreWebView2_3, reinterpret_cast<void**>(&wv23));
 
         if (wv23 == nullptr)

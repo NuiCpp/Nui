@@ -30,7 +30,7 @@ if (EMSCRIPTEN)
             project-warnings
     )
     nui_set_target_output_directories(nui-frontend)
-    target_compile_features(nui-frontend PUBLIC cxx_std_20)
+    target_compile_features(nui-frontend PUBLIC cxx_std_23)
     set_target_properties(nui-frontend PROPERTIES CXX_STANDARD_REQUIRED ON)
     set_target_properties(nui-frontend PROPERTIES CXX_EXTENSIONS ON)
 else()
