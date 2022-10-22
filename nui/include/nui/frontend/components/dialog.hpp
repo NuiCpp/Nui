@@ -31,17 +31,24 @@ namespace Nui::Components
 
         struct ConstructionArgs
         {
-            Observed<std::optional<std::string>> className_;
-            Observed<std::string> titel_;
-            Observed<std::string> body_;
-            Observed<ButtonConfiguration> buttonConfiguration_;
-            std::function<void(Button)> onButtonClicked_;
+            Observed<std::optional<std::string>> className;
+            Observed<std::string> title;
+            Observed<std::string> body;
+            Observed<std::string> buttonClassName;
+            Observed<ButtonConfiguration> buttonConfiguration;
+            std::function<void(Button)> onButtonClicked;
         };
 
         DialogController(ConstructionArgs&& args);
         void showModal();
         void show();
         bool isOpen() const;
+        void setClassName(std::string const& className);
+        void setButtonClassName(std::string const& className);
+        void setTitle(std::string const& title);
+        void setBody(std::string const& body);
+        void setButtonConfiguration(ButtonConfiguration buttons);
+        void setOnButtonClicked(std::function<void(Button)> const& onButtonClicked);
 
         friend Nui::ElementRenderer Dialog(DialogController& controller);
 

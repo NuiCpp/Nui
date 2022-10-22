@@ -82,7 +82,8 @@ extern "C" {
 
         auto exitError = Nui::ScopeExit{[&] {
             // FIXME: 0, 0: this should be correct error categories.
-            auto* error = g_error_new(0, 0, "Invalid custom scheme / Host name mapping.");
+            auto* error =
+                g_error_new(WEBKIT_DOWNLOAD_ERROR_DESTINATION, 1, "Invalid custom scheme / Host name mapping.");
             auto freeError = Nui::ScopeExit{[error] {
                 g_error_free(error);
             }};
@@ -93,7 +94,7 @@ extern "C" {
         auto it = hostNameMappingInfo->hostNameToFolderMapping.find(hostName);
         if (it == hostNameMappingInfo->hostNameToFolderMapping.end())
         {
-            std::cout << "Host name mapping not found: " << hostName << "\n";
+            std::cerr << "Host name mapping not found: " << hostName << "\n";
             return;
         }
 
@@ -103,7 +104,7 @@ extern "C" {
             auto file = std::ifstream{filePath, std::ios::binary};
             if (!file)
             {
-                std::cout << "File not found: " << filePath << "\n";
+                std::cerr << "File not found: " << filePath << "\n";
                 return;
             }
             file.seekg(0, std::ios::end);
@@ -113,8 +114,8 @@ extern "C" {
         }
 
         exitError.disarm();
-        GInputStream* stream = g_memory_input_stream_new_from_data(
-            g_strdup(fileContent.c_str()), static_cast<gssize>(fileContent.size()), g_free);
+        GInputStream* stream =
+            g_memory_input_stream_new_from_data(fileContent.c_str(), static_cast<gssize>(fileContent.size()), nullptr);
         auto freeStream = Nui::ScopeExit{[stream] {
             g_object_unref(stream);
         }};
@@ -150,6 +151,7 @@ namespace Nui
             impl_->callbacks[obj["id"].get<std::size_t>()](obj["args"]);
             return false;
         });
+        // TODO: SetCustomSchemeRegistrations
 
 #if __linux__
         auto nativeWebView = WEBKIT_WEB_VIEW(getNativeWebView());
@@ -333,7 +335,6 @@ namespace Nui
         ICoreWebView2_3* wv23;
         auto* nativeWebView = static_cast<ICoreWebView2*>(getNativeWebView());
 
-        std::cout << "QueryInterface\n";
         nativeWebView->QueryInterface(IID_ICoreWebView2_3, reinterpret_cast<void**>(&wv23));
 
         if (wv23 == nullptr)

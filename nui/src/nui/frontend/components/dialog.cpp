@@ -44,6 +44,36 @@ namespace Nui::Components
         return isOpen_;
     }
     //---------------------------------------------------------------------------------------------------------------------
+    void DialogController::setClassName(std::string const& className)
+    {
+        args_.className = className;
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void DialogController::setButtonClassName(std::string const& className)
+    {
+        args_.buttonClassName = className;
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void DialogController::setTitle(std::string const& title)
+    {
+        args_.title = title;
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void DialogController::setBody(std::string const& body)
+    {
+        args_.body = body;
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void DialogController::setButtonConfiguration(ButtonConfiguration buttons)
+    {
+        args_.buttonConfiguration = buttons;
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void DialogController::setOnButtonClicked(std::function<void(Button)> const& onButtonClicked)
+    {
+        args_.onButtonClicked = onButtonClicked;
+    }
+    //---------------------------------------------------------------------------------------------------------------------
     Nui::ElementRenderer Dialog(DialogController& controller)
     {
         using namespace Nui::Attributes;
@@ -51,7 +81,7 @@ namespace Nui::Components
 
         // clang-format off
         return dialog{
-            class_ = controller.args_.className_
+            class_ = controller.args_.className
         }(
             Dom::reference([&controller](auto element){
                 controller.element_ = std::static_pointer_cast<Dom::Element>(element.lock());
@@ -60,22 +90,23 @@ namespace Nui::Components
                 method = "dialog"
             }(
                 h1{}(
-                    controller.args_.titel_
+                    controller.args_.title
                 ),
                 p{}(
-                    controller.args_.body_
+                    controller.args_.body
                 ),
                 menu{}(
-                    observe(controller.args_.buttonConfiguration_),
-                    [&controller, &conf = controller.args_.buttonConfiguration_]() -> Nui::ElementRenderer {
+                    observe(controller.args_.buttonConfiguration),
+                    [&controller, &conf = controller.args_.buttonConfiguration]() -> Nui::ElementRenderer {
                         switch (conf.value()) {
                             case(DialogController::ButtonConfiguration::Ok):
                             {
                                 return button{
+                                    class_ = controller.args_.buttonClassName,
                                     type = "submit",
                                     onClick = [&controller](){
                                         controller.isOpen_ = false;
-                                        controller.args_.onButtonClicked_(DialogController::Button::Ok);
+                                        controller.args_.onButtonClicked(DialogController::Button::Ok);
                                     }
                                 }("Ok");
                             }
@@ -83,17 +114,19 @@ namespace Nui::Components
                             {
                                 return fragment(
                                     button{
+                                        class_ = controller.args_.buttonClassName,
                                         type = "submit",
                                         onClick = [&controller](){
                                             controller.isOpen_ = false;
-                                            controller.args_.onButtonClicked_(DialogController::Button::Ok);
+                                            controller.args_.onButtonClicked(DialogController::Button::Ok);
                                         }
                                     }("Ok"),
                                     button{
+                                        class_ = controller.args_.buttonClassName,
                                         type = "cancel",
                                         onClick = [&controller](){
                                             controller.isOpen_ = false;
-                                            controller.args_.onButtonClicked_(DialogController::Button::Cancel);
+                                            controller.args_.onButtonClicked(DialogController::Button::Cancel);
                                         }
                                     }("Cancel")
                                 );
@@ -102,17 +135,19 @@ namespace Nui::Components
                             {
                                 return fragment(
                                     button{
+                                        class_ = controller.args_.buttonClassName,
                                         type = "submit",
                                         onClick = [&controller](){
                                             controller.isOpen_ = false;
-                                            controller.args_.onButtonClicked_(DialogController::Button::Yes);
+                                            controller.args_.onButtonClicked(DialogController::Button::Yes);
                                         }
                                     }("Yes"),
                                     button{
+                                        class_ = controller.args_.buttonClassName,
                                         type = "cancel",
                                         onClick = [&controller](){
                                             controller.isOpen_ = false;
-                                            controller.args_.onButtonClicked_(DialogController::Button::No);
+                                            controller.args_.onButtonClicked(DialogController::Button::No);
                                         }
                                     }("No")
                                 );
