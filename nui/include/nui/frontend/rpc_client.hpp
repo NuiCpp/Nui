@@ -141,7 +141,7 @@ namespace Nui
                     return true;
 
                 const auto rpcObject = emscripten::val::global("nui_rpc");
-                if (rpcObject.typeOf().as<std::string>() == "undefined")
+                if (rpcObject.isUndefined())
                     return false;
 
                 callable_ = emscripten::val::global("nui_rpc")["backend"][name_.c_str()];
@@ -186,7 +186,7 @@ namespace Nui
         static std::string registerFunctionOnce(FunctionT&& func)
         {
             using namespace std::string_literals;
-            if (emscripten::val::global("nui_rpc").typeOf().as<std::string>() == "undefined")
+            if (emscripten::val::global("nui_rpc").isUndefined())
             {
                 Console::error("rpc was not setup by backend"s);
                 return {};
@@ -217,7 +217,7 @@ namespace Nui
         static void registerFunction(std::string const& name, FunctionT&& func)
         {
             using namespace std::string_literals;
-            if (emscripten::val::global("nui_rpc").typeOf().as<std::string>() == "undefined")
+            if (emscripten::val::global("nui_rpc").isUndefined())
             {
                 Console::error("rpc was not setup by backend"s);
                 return;
@@ -235,7 +235,7 @@ namespace Nui
         static void unregisterFunction(std::string const& name)
         {
             using namespace std::string_literals;
-            if (emscripten::val::global("nui_rpc").typeOf().as<std::string>() == "undefined")
+            if (emscripten::val::global("nui_rpc").isUndefined())
             {
                 Console::error("rpc was not setup by backend"s);
                 return;

@@ -14,6 +14,7 @@
 #include <thread>
 #include <functional>
 #include <unordered_map>
+#include <mutex>
 
 namespace Nui
 {
@@ -80,8 +81,8 @@ namespace Nui
         ~RpcHub() = default;
         RpcHub(const RpcHub&) = delete;
         RpcHub& operator=(const RpcHub&) = delete;
-        RpcHub(RpcHub&&) = default;
-        RpcHub& operator=(RpcHub&&) = default;
+        RpcHub(RpcHub&&) = delete;
+        RpcHub& operator=(RpcHub&&) = delete;
 
         constexpr static char const* remoteCallScript = R"(
             (function() {{ 
@@ -93,6 +94,7 @@ namespace Nui
         void registerFunction(std::string const& name, T&& func) const
         {
             using namespace std::string_literals;
+            // window is threadsafe
             window_->bind(name, Detail::FunctionWrapper<T>::wrapFunction(std::forward<T>(func)));
         }
 
@@ -159,6 +161,11 @@ namespace Nui
         void enableThrottle();
 
         /**
+         * @brief Enables the setInterval and setTimeout functionality.
+         */
+        void enableTimer();
+
+        /**
          * @brief Enables all functionality.
          */
         void enableAll();
@@ -166,6 +173,7 @@ namespace Nui
         template <typename ManagerT>
         void* accessStateStore(std::string const& id)
         {
+            std::scoped_lock lock{guard_};
             auto iter = stateStores_.find(id);
             if (iter == stateStores_.end())
             {
@@ -189,10 +197,12 @@ namespace Nui
         void callRemoteImpl(std::string const& name, nlohmann::json const& json) const
         {
             using namespace std::string_literals;
+            // window is threadsafe.
             window_->eval(fmt::format(remoteCallScript, name, json.dump()));
         }
 
       private:
+        std::recursive_mutex guard_;
         Window* window_;
         std::unordered_map<std::string, std::unique_ptr<void, std::function<void(void*)>>> stateStores_;
     };

@@ -10,6 +10,7 @@ if (EMSCRIPTEN)
             frontend/window.cpp
             frontend/api/fetch.cpp
             frontend/api/throttle.cpp
+            frontend/api/timer.cpp
     )
     add_library(Nui::frontend ALIAS nui-frontend)
     target_include_directories(
@@ -44,6 +45,7 @@ else()
             backend/rpc_addons/fetch.cpp
             backend/rpc_addons/file.cpp
             backend/rpc_addons/throttle.cpp
+            backend/rpc_addons/timer.cpp
     )
     add_library(Nui::backend ALIAS nui-backend)
     target_include_directories(

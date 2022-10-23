@@ -1,4 +1,4 @@
-#include "file.hpp"
+#include "throttle.hpp"
 
 #include <nui/data_structures/selectables_registry.hpp>
 
@@ -26,7 +26,8 @@ namespace Nui
                 bool callWhenReady,
                 RpcHub* hub,
                 boost::asio::any_io_executor executor)
-                : interval_{interval}
+                : guard_{}
+                , interval_{interval}
                 , lastCallTime_{std::chrono::high_resolution_clock::now() - 2 * interval}
                 , timer_{std::move(executor)}
                 , callWhenReady_{callWhenReady}
@@ -79,13 +80,13 @@ namespace Nui
             }
 
           private:
+            std::recursive_mutex guard_;
             std::chrono::milliseconds interval_;
             std::chrono::high_resolution_clock::time_point lastCallTime_;
             boost::asio::deadline_timer timer_;
             bool callWhenReady_;
             Nui::RpcHub* hub_;
             Nui::SelectablesRegistry<ThrottleInstance>::IdType id_;
-            std::recursive_mutex guard_;
         };
         using ThrottleStore = SelectablesRegistry<std::shared_ptr<ThrottleInstance>>;
 

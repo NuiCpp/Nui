@@ -999,41 +999,6 @@ namespace Nui
         };
     }
 
-    template <typename T>
-    requires Incrementable<T>
-    inline Observed<T>& operator++(Observed<T>& observedValue)
-    {
-        ++observedValue.contained_;
-        observedValue.update();
-        return observedValue;
-    }
-    template <typename T>
-    requires Incrementable<T>
-    inline T operator++(Observed<T>& observedValue, int)
-    {
-        auto tmp = observedValue.contained_;
-        ++observedValue.contained_;
-        observedValue.update();
-        return tmp;
-    }
-
-    template <typename T>
-    inline auto operator--(Observed<T>& observedValue)
-        -> Observed<Detail::PickFirst_t<T, decltype(--std::declval<T>())>>&
-    {
-        --observedValue.contained_;
-        observedValue.update();
-        return observedValue;
-    }
-    template <typename T>
-    inline auto operator--(Observed<T>& observedValue, int) -> Detail::PickFirst_t<T, decltype(std::declval<T>()--)>
-    {
-        auto tmp = observedValue.contained_;
-        --observedValue.contained_;
-        observedValue.update();
-        return tmp;
-    }
-
     namespace Detail
     {
         template <typename T>
@@ -1047,6 +1012,42 @@ namespace Nui
         {
             static constexpr bool value = true;
         };
+    }
+
+    template <typename T>
+    requires Incrementable<T>
+    inline ModifiableObserved<T>& operator++(ModifiableObserved<T>& observedValue)
+    {
+        ++observedValue.contained_;
+        observedValue.update();
+        return observedValue;
+    }
+    template <typename T>
+    requires Incrementable<T>
+    inline T operator++(ModifiableObserved<T>& observedValue, int)
+    {
+        auto tmp = observedValue.contained_;
+        ++observedValue.contained_;
+        observedValue.update();
+        return tmp;
+    }
+
+    template <typename T>
+    inline auto operator--(ModifiableObserved<T>& observedValue)
+        -> ModifiableObserved<Detail::PickFirst_t<T, decltype(--std::declval<T>())>>&
+    {
+        --observedValue.contained_;
+        observedValue.update();
+        return observedValue;
+    }
+    template <typename T>
+    inline auto operator--(ModifiableObserved<T>& observedValue, int)
+        -> Detail::PickFirst_t<T, decltype(std::declval<T>()--)>
+    {
+        auto tmp = observedValue.contained_;
+        --observedValue.contained_;
+        observedValue.update();
+        return tmp;
     }
 
     template <typename T>
