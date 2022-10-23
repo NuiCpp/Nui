@@ -302,9 +302,17 @@ namespace Nui
                 owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
                 return ref_;
             }
+            T const& operator*() const
+            {
+                return ref_;
+            }
             T* operator->()
             {
                 owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
+                return &ref_;
+            }
+            T const* operator->() const
+            {
                 return &ref_;
             }
             T& get()
@@ -327,6 +335,57 @@ namespace Nui
             std::size_t pos_;
             T& ref_;
         };
+        template <typename T, typename ContainerT>
+        class PointerWrapper
+        {
+          public:
+            PointerWrapper(ObservedContainer<ContainerT>* owner, std::size_t pos, T* ptr)
+                : owner_{owner}
+                , pos_{pos}
+                , ptr_{ptr}
+            {}
+            operator T&()
+            {
+                return *ptr_;
+            }
+            T& operator*()
+            {
+                owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
+                return ptr_;
+            }
+            T const& operator*() const
+            {
+                return ptr_;
+            }
+            T* operator->()
+            {
+                owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
+                return ptr_;
+            }
+            T const* operator->() const
+            {
+                return ptr_;
+            }
+            T& get()
+            {
+                owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
+                return *ptr_;
+            }
+            T const& getReadonly()
+            {
+                return *ptr_;
+            }
+            void operator=(T* ptr)
+            {
+                ptr_ = ptr;
+                owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
+            }
+
+          protected:
+            ObservedContainer<ContainerT>* owner_;
+            std::size_t pos_;
+            T* ptr_;
+        };
 
         template <typename WrappedIterator, typename ContainerT>
         class IteratorWrapper
@@ -335,8 +394,8 @@ namespace Nui
             using iterator_category = std::random_access_iterator_tag;
             using value_type = typename WrappedIterator::value_type;
             using difference_type = typename WrappedIterator::difference_type;
-            using pointer = typename WrappedIterator::pointer;
-            using reference = typename WrappedIterator::reference;
+            using pointer = PointerWrapper<value_type, ContainerT>;
+            using reference = ReferenceWrapper<value_type, ContainerT>;
 
           public:
             IteratorWrapper(ObservedContainer<ContainerT>* owner, WrappedIterator it)
@@ -383,10 +442,23 @@ namespace Nui
             {
                 return it_ - other.it_;
             }
-            reference operator*()
+            auto operator*()
             {
                 return ReferenceWrapper<value_type, ContainerT>{
                     owner_, static_cast<std::size_t>(it_ - owner_->contained_.begin()), *it_};
+            }
+            auto operator*() const
+            {
+                return *it_;
+            }
+            auto operator->()
+            {
+                return PointerWrapper<value_type, ContainerT>{
+                    owner_, static_cast<std::size_t>(it_ - owner_->contained_.begin()), &*it_};
+            }
+            auto operator->() const
+            {
+                return &*it_;
             }
             IteratorWrapper operator[](std::size_t offset) const
             {
@@ -428,6 +500,7 @@ namespace Nui
     {
       public:
         friend class ContainerWrapUtility::ReferenceWrapper<typename ContainerT::value_type, ContainerT>;
+        friend class ContainerWrapUtility::PointerWrapper<typename ContainerT::value_type, ContainerT>;
 
         using value_type = typename ContainerT::value_type;
         using allocator_type = typename ContainerT::allocator_type;
@@ -435,7 +508,7 @@ namespace Nui
         using difference_type = typename ContainerT::difference_type;
         using reference = ContainerWrapUtility::ReferenceWrapper<typename ContainerT::value_type, ContainerT>;
         using const_reference = typename ContainerT::const_reference;
-        using pointer = typename ContainerT::pointer;
+        using pointer = ContainerWrapUtility::PointerWrapper<typename ContainerT::value_type, ContainerT>;
         using const_pointer = typename ContainerT::const_pointer;
 
         using iterator = ContainerWrapUtility::IteratorWrapper<typename ContainerT::iterator, ContainerT>;
@@ -842,6 +915,7 @@ namespace Nui
                 else if (innerResult == RangeEventContext::InsertResult::Retry)
                 {
                     std::cout << "RangeEventContext::insertModificationRange() returned Retry twice in a row.\n";
+                    return;
                 }
                 else
                     update();

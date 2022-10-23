@@ -20,6 +20,16 @@
 
 namespace Nui
 {
+    namespace Detail
+    {
+        template <typename T>
+        struct IsOptional : std::false_type
+        {};
+        template <typename T>
+        struct IsOptional<std::optional<T>> : std::true_type
+        {};
+    }
+
     template <
         typename T,
         class Bases = boost::describe::describe_bases<T, boost::describe::mod_any_access>,
@@ -96,23 +106,6 @@ namespace Nui
         return val;
     }
 
-    template <
-        typename T,
-        class Bases = boost::describe::describe_bases<T, boost::describe::mod_any_access>,
-        class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>,
-        class Enable = std::enable_if_t<!std::is_union<T>::value>>
-    void convertFromVal(emscripten::val const& val, T& obj)
-    {
-        boost::mp11::mp_for_each<Bases>([&](auto&& base) {
-            using type = typename std::decay_t<decltype(base)>::type;
-            convertFromVal(val, static_cast<type&>(obj));
-        });
-
-        boost::mp11::mp_for_each<Members>([&](auto&& memAccessor) {
-            if (val.hasOwnProperty(memAccessor.name))
-                convertFromVal(val[memAccessor.name], obj.*memAccessor.pointer);
-        });
-    }
     template <typename T>
     emscripten::val convertToVal(std::optional<T> const& option)
     {
@@ -161,6 +154,35 @@ namespace Nui
         return result;
     }
 
+    template <
+        typename T,
+        class Bases = boost::describe::describe_bases<T, boost::describe::mod_any_access>,
+        class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>,
+        class Enable = std::enable_if_t<!std::is_union<T>::value>>
+    void convertFromVal(emscripten::val const& val, T& obj)
+    {
+        boost::mp11::mp_for_each<Bases>([&](auto&& base) {
+            using type = typename std::decay_t<decltype(base)>::type;
+            convertFromVal(val, static_cast<type&>(obj));
+        });
+
+        boost::mp11::mp_for_each<Members>([&](auto&& memAccessor) {
+            if (val.hasOwnProperty(memAccessor.name))
+            {
+                if constexpr (!Detail::IsOptional<decltype(obj.*memAccessor.pointer)>::value)
+                {
+                    if (val[memAccessor.name].isNull() || val[memAccessor.name].isUndefined())
+                        emscripten::val::global("console").call<void>(
+                            "error",
+                            std::string{"Expected member "} + memAccessor.name + " to be defined and non null");
+                    else
+                        convertFromVal(val[memAccessor.name], obj.*memAccessor.pointer);
+                }
+                else
+                    convertFromVal(val[memAccessor.name], obj.*memAccessor.pointer);
+            }
+        });
+    }
     template <typename T>
     requires Fundamental<T>
     void convertFromVal(emscripten::val const& val, T& value)
@@ -174,8 +196,7 @@ namespace Nui
     template <typename T>
     void convertFromVal(emscripten::val const& val, std::optional<T>& option)
     {
-        const auto typeOf = val.typeOf().as<std::string>();
-        if (typeOf == "undefined" || typeOf == "null")
+        if (val.isNull() || val.isUndefined())
             option = std::nullopt;
         else
         {
