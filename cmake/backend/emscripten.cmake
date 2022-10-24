@@ -5,8 +5,8 @@ include(FetchContent)
 
 FetchContent_Declare(
     emscripten
-    GIT_REPOSITORY https://github.com/5cript/emsdk
-    GIT_TAG        4ab2df239753b9cc22dcf987140319524e7e2a60 # Main branch after msys2 fix    
+    GIT_REPOSITORY https://github.com/emscripten-core/emsdk.git
+    GIT_TAG        e41b8c68a248da5f18ebd03bd0420953945d52ff
 )
 
 FetchContent_MakeAvailable(emscripten)
@@ -16,6 +16,7 @@ if(UNIX)
         OUTPUT ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten
         COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk install latest --build=Release
         COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk activate latest
+        COMMAND $<TARGET_FILE:patch-acorn> ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/tools/acorn-optimizer.js
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/_deps/emscripten-src
     )
 else()
@@ -23,6 +24,7 @@ else()
         OUTPUT ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten
         COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk install latest --build=Release
         COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcc --generate-config
+        COMMAND $<TARGET_FILE:patch-acorn> ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/tools/acorn-optimizer.js
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/_deps/emscripten-src
     )
 endif()

@@ -93,9 +93,7 @@ namespace Nui::Components
                 tbody{extractAttributeAsTuple<tableBodyAttributesTag>(passedArgs...)}(
                     range(tableModel_),
                     [renderer = std::move(rowRenderer_)](long i, auto const& row) {
-                        return tr{}(
-                            renderer(i, row)
-                        );
+                        return renderer(i, row);
                     }
                 ),
                 // footer                

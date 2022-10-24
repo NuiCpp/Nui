@@ -4,6 +4,7 @@
 #include "rpc_addons/fetch.hpp"
 #include "rpc_addons/file.hpp"
 #include "rpc_addons/throttle.hpp"
+#include "rpc_addons/timer.hpp"
 
 namespace Nui
 {
@@ -66,6 +67,11 @@ namespace Nui
         });
     }
     //---------------------------------------------------------------------------------------------------------------------
+    void RpcHub::enableTimer()
+    {
+        registerTimer(*this);
+    }
+    //---------------------------------------------------------------------------------------------------------------------
     void RpcHub::enableFetch() const
     {
         registerFetch(*this);
@@ -78,6 +84,7 @@ namespace Nui
         enableFetch();
         enableFile();
         enableThrottle();
+        enableTimer();
     }
     // #####################################################################################################################
 }

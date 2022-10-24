@@ -141,11 +141,11 @@ namespace Nui
                     return true;
 
                 const auto rpcObject = emscripten::val::global("nui_rpc");
-                if (rpcObject.typeOf().as<std::string>() == "undefined")
+                if (rpcObject.isUndefined())
                     return false;
 
                 callable_ = emscripten::val::global("nui_rpc")["backend"][name_.c_str()];
-                isSet_ = callable_.typeOf().as<std::string>() != "undefined";
+                isSet_ = !callable_.isUndefined();
                 return isSet_;
             }
 
@@ -186,7 +186,7 @@ namespace Nui
         static std::string registerFunctionOnce(FunctionT&& func)
         {
             using namespace std::string_literals;
-            if (emscripten::val::global("nui_rpc").typeOf().as<std::string>() == "undefined")
+            if (emscripten::val::global("nui_rpc").isUndefined())
             {
                 Console::error("rpc was not setup by backend"s);
                 return {};
@@ -201,7 +201,7 @@ namespace Nui
                     [func = Detail::FunctionWrapper<FunctionT>::wrapFunction(std::forward<FunctionT>(func)),
                      tempIdString](emscripten::val param) {
                         func(param);
-                        emscripten::val::global("nui_rpc")["frontend"].set(tempIdString, emscripten::val::undefined());
+                        emscripten::val::global("nui_rpc")["frontend"].delete_(tempIdString);
                     },
                     std::placeholders::_1));
             return tempIdString;
@@ -217,13 +217,13 @@ namespace Nui
         static void registerFunction(std::string const& name, FunctionT&& func)
         {
             using namespace std::string_literals;
-            if (emscripten::val::global("nui_rpc").typeOf().as<std::string>() == "undefined")
+            if (emscripten::val::global("nui_rpc").isUndefined())
             {
                 Console::error("rpc was not setup by backend"s);
                 return;
             }
             emscripten::val::global("nui_rpc")["frontend"].set(
-                (name).c_str(),
+                name.c_str(),
                 Nui::bind(
                     [func = Detail::FunctionWrapper<FunctionT>::wrapFunction(std::forward<FunctionT>(func))](
                         emscripten::val param) {
@@ -235,12 +235,12 @@ namespace Nui
         static void unregisterFunction(std::string const& name)
         {
             using namespace std::string_literals;
-            if (emscripten::val::global("nui_rpc").typeOf().as<std::string>() == "undefined")
+            if (emscripten::val::global("nui_rpc").isUndefined())
             {
                 Console::error("rpc was not setup by backend"s);
                 return;
             }
-            emscripten::val::global("nui_rpc")["frontend"].set(name.c_str(), emscripten::val::undefined());
+            emscripten::val::global("nui_rpc")["frontend"].delete_(name.c_str());
         }
     };
 }

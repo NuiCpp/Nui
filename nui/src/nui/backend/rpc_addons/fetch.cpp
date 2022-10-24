@@ -42,13 +42,17 @@ namespace Nui
                     [&url]() {
                         return Roar::Url::fromString(url);
                     },
-                    [&badUrl](std::string errString) -> boost::leaf::result<Roar::Url> {
-                        std::cerr << "Bad url: " << errString << "\n";
+                    [&badUrl, &url](std::string errString) -> boost::leaf::result<Roar::Url> {
+                        std::cerr << "Bad url: (" << url << ")" << errString << "\n";
+
                         badUrl = true;
                         return boost::leaf::new_error(errString);
                     });
                 if (badUrl)
+                {
+                    hub.callRemote(responseId, nlohmann::json());
                     return;
+                }
 
                 request.sink(body)
                     .followRedirects(options.followRedirects)
