@@ -103,4 +103,6 @@ function(nui_add_emscripten_target)
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
         emscripten-setup
     )
+
+    target_include_directories(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} PRIVATE ${CMAKE_BINARY_DIR}/include)
 endfunction()
