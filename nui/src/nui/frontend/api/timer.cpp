@@ -61,8 +61,9 @@ namespace Nui
     {
         RpcClient::getRemoteCallableWithBackChannel(
             "Nui::setTimeout", [callback = std::move(callback), toWrap = std::move(toWrap)](int32_t timerId) {
-                RpcClient::registerFunction("Nui::timerCall_"s + std::to_string(timerId), [toWrap]() {
+                RpcClient::registerFunction("Nui::timerCall_"s + std::to_string(timerId), [toWrap, timerId]() {
                     toWrap();
+                    RpcClient::unregisterFunction("Nui::timerCall_"s + std::to_string(timerId));
                 });
                 callback(TimerHandle{timerId});
             })(milliseconds);
