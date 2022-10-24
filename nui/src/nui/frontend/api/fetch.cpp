@@ -8,18 +8,21 @@
 
 namespace Nui
 {
-    void fetch(std::string const& uri, FetchOptions const& options, std::function<void(FetchResponse const&)> callback)
+    void fetch(
+        std::string const& uri,
+        FetchOptions const& options,
+        std::function<void(std::optional<FetchResponse> const&)> callback)
     {
         Nui::RpcClient::getRemoteCallableWithBackChannel(
             "Nui::fetch", [callback = std::move(callback), options](emscripten::val response) {
-                FetchResponse resp;
-                Nui::convertFromVal<FetchResponse>(response, resp);
-                if (!options.dontDecodeBody)
-                    resp.body = emscripten::val::global("atob")(resp.body).as<std::string>();
+                std::optional<FetchResponse> resp;
+                Nui::convertFromVal(response, resp);
+                if (resp && !options.dontDecodeBody)
+                    resp->body = emscripten::val::global("atob")(resp->body).as<std::string>();
                 callback(resp);
             })(uri, options);
     }
-    void fetch(std::string const& uri, std::function<void(FetchResponse const&)> callback)
+    void fetch(std::string const& uri, std::function<void(std::optional<FetchResponse> const&)> callback)
     {
         fetch(uri, {}, std::move(callback));
     }

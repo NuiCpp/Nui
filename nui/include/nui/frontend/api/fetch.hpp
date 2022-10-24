@@ -12,6 +12,9 @@ namespace Nui
      * @param options Options for the fetch.
      * @param callback Callback that is called when the fetch is done.
      */
-    void fetch(std::string const& uri, FetchOptions const& options, std::function<void(FetchResponse const&)> callback);
-    void fetch(std::string const& uri, std::function<void(FetchResponse const&)> callback);
+    void fetch(
+        std::string const& uri,
+        FetchOptions const& options,
+        std::function<void(std::optional<FetchResponse> const&)> callback);
+    void fetch(std::string const& uri, std::function<void(std::optional<FetchResponse> const&)> callback);
 }
