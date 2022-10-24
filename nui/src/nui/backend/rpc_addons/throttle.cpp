@@ -31,6 +31,7 @@ namespace Nui
                 , lastCallTime_{std::chrono::high_resolution_clock::now() - 2 * interval}
                 , timer_{std::move(executor)}
                 , callWhenReady_{callWhenReady}
+                , timerIsRunning_{false}
                 , hub_{hub}
                 , id_{std::numeric_limits<decltype(id_)>::max()}
             {}
@@ -52,8 +53,9 @@ namespace Nui
                 }
                 else
                 {
-                    if (callWhenReady_)
+                    if (callWhenReady_ && !timerIsRunning_)
                     {
+                        timerIsRunning_ = true;
                         const auto waitingTime =
                             std::chrono::duration_cast<std::chrono::milliseconds>(interval_ - timeSinceLastCall);
 
@@ -64,7 +66,8 @@ namespace Nui
                             if (auto shared = weak.lock())
                             {
                                 std::scoped_lock lock{shared->guard_};
-                                shared->hub_->callRemote("Nui::throttledCallWhenReady_"s + std::to_string(shared->id_));
+                                shared->timerIsRunning_ = false;
+                                shared->hub_->callRemote(shared->throttledCallWhenReadyWithId_);
                                 shared->lastCallTime_ = std::chrono::high_resolution_clock::now();
                             }
                         });
@@ -77,6 +80,7 @@ namespace Nui
             {
                 std::scoped_lock lock{guard_};
                 id_ = id;
+                throttledCallWhenReadyWithId_ = "Nui::throttledCallWhenReady_"s + std::to_string(id_);
             }
 
           private:
@@ -85,8 +89,10 @@ namespace Nui
             std::chrono::high_resolution_clock::time_point lastCallTime_;
             boost::asio::deadline_timer timer_;
             bool callWhenReady_;
+            bool timerIsRunning_;
             Nui::RpcHub* hub_;
             Nui::SelectablesRegistry<ThrottleInstance>::IdType id_;
+            std::string throttledCallWhenReadyWithId_;
         };
         using ThrottleStore = SelectablesRegistry<std::shared_ptr<ThrottleInstance>>;
 

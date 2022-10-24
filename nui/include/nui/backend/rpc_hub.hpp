@@ -90,6 +90,12 @@ namespace Nui
             }})();
         )";
 
+        constexpr static char const* remoteCallScript0Args = R"(
+            (function() {{ 
+                globalThis.nui_rpc.frontend["{}"]();
+            }})();
+        )";
+
         template <typename T>
         void registerFunction(std::string const& name, T&& func) const
         {
@@ -133,6 +139,10 @@ namespace Nui
         void callRemote(std::string const& name, nlohmann::json&& json) const
         {
             callRemoteImpl(name, json);
+        }
+        void callRemote(std::string const& name) const
+        {
+            callRemoteImpl(name);
         }
 
         /**
@@ -199,6 +209,12 @@ namespace Nui
             using namespace std::string_literals;
             // window is threadsafe.
             window_->eval(fmt::format(remoteCallScript, name, json.dump()));
+        }
+        void callRemoteImpl(std::string const& name) const
+        {
+            using namespace std::string_literals;
+            // window is threadsafe.
+            window_->eval(fmt::format(remoteCallScript0Args, name));
         }
 
       private:
