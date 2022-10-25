@@ -29,7 +29,7 @@ int main(int argc, char** argv)
     if (pos == std::string::npos)
     {
         std::cout << "Could not find exportES6 = false in " << argv[1] << "\n";
-        return 1;
+        return 0;
     }
     // replace with true:
     fileContent.replace(pos, 17, "exportES6 = true");

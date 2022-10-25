@@ -84,7 +84,6 @@ namespace Nui
             attachedOneshotEvents_.clear();
         }
 
-      protected:
         virtual void update(bool /*force*/ = false) const
         {
             for (auto& event : attachedEvents_)
@@ -182,22 +181,6 @@ namespace Nui
             update();
             return *this;
         }
-
-        template <typename T>
-        requires Incrementable<T>
-        friend ModifiableObserved<T>& operator++(ModifiableObserved<T>& observedValue);
-
-        template <typename T>
-        requires Incrementable<T>
-        friend T operator++(ModifiableObserved<T>& observedValue, int);
-
-        template <typename T>
-        requires Decrementable<T>
-        friend ModifiableObserved<T>& operator--(ModifiableObserved<T>& observedValue);
-
-        template <typename T>
-        requires Decrementable<T>
-        friend T operator--(ModifiableObserved<T>& observedValue, int);
 
         template <typename T = ContainedT, typename U>
         requires PlusAssignable<T, U> ModifiableObserved<T>
@@ -1018,7 +1001,7 @@ namespace Nui
     requires Incrementable<T>
     inline ModifiableObserved<T>& operator++(ModifiableObserved<T>& observedValue)
     {
-        ++observedValue.contained_;
+        ++observedValue.value();
         observedValue.update();
         return observedValue;
     }
@@ -1026,8 +1009,8 @@ namespace Nui
     requires Incrementable<T>
     inline T operator++(ModifiableObserved<T>& observedValue, int)
     {
-        auto tmp = observedValue.contained_;
-        ++observedValue.contained_;
+        auto tmp = observedValue.value();
+        ++observedValue.value();
         observedValue.update();
         return tmp;
     }
@@ -1036,7 +1019,7 @@ namespace Nui
     inline auto operator--(ModifiableObserved<T>& observedValue)
         -> ModifiableObserved<Detail::PickFirst_t<T, decltype(--std::declval<T>())>>&
     {
-        --observedValue.contained_;
+        --observedValue.value();
         observedValue.update();
         return observedValue;
     }
@@ -1044,8 +1027,8 @@ namespace Nui
     inline auto operator--(ModifiableObserved<T>& observedValue, int)
         -> Detail::PickFirst_t<T, decltype(std::declval<T>()--)>
     {
-        auto tmp = observedValue.contained_;
-        --observedValue.contained_;
+        auto tmp = observedValue.value();
+        --observedValue.value();
         observedValue.update();
         return tmp;
     }
