@@ -26,6 +26,9 @@
 #include <memory>
 #include <string>
 #include <mutex>
+#include <functional>
+
+constexpr static auto wakeUpMessage = WM_APP + 1;
 
 #if __linux__
 struct HostNameMappingInfo
@@ -43,14 +46,27 @@ namespace Nui
         webview::webview view;
         std::vector<std::filesystem::path> cleanupFiles;
         std::vector<std::function<void(nlohmann::json const&)>> callbacks;
-        boost::asio::thread_pool pool{4};
+        boost::asio::thread_pool pool;
         std::recursive_mutex viewGuard;
 #if __linux__
         HostNameMappingInfo hostNameMappingInfo;
+#elif defined(_WIN32)
+        DWORD windowThreadId;
+        std::vector<std::function<void()>> toProcessOnWindowThread;
 #endif
 
         Implementation(bool debug)
             : view{debug}
+            , cleanupFiles{}
+            , callbacks{}
+            , pool{4}
+            , viewGuard{}
+#if __linux__
+            , hostNameMappingInfo{}
+#elif defined(_WIN32)
+            , windowThreadId{GetCurrentThreadId()}
+            , toProcessOnWindowThread{}
+#endif
         {}
         ~Implementation()
         {
@@ -237,6 +253,17 @@ namespace Nui
         BOOL res;
         while ((res = GetMessage(&msg, nullptr, 0, 0)) != -1)
         {
+            {
+                std::scoped_lock lock{impl_->viewGuard};
+                if (!impl_->toProcessOnWindowThread.empty())
+                {
+                    for (auto const& func : impl_->toProcessOnWindowThread)
+                        func();
+                    impl_->toProcessOnWindowThread.clear();
+                }
+            }
+            if (msg.message == wakeUpMessage)
+                continue;
             if (msg.hwnd)
             {
                 TranslateMessage(&msg);
@@ -253,9 +280,7 @@ namespace Nui
                 (*f)();
             }
             else if (msg.message == WM_QUIT)
-            {
                 return;
-            }
         }
 #else
         impl_->view.run();
@@ -299,7 +324,21 @@ namespace Nui
     void Window::eval(std::string const& js)
     {
         std::scoped_lock lock{impl_->viewGuard};
+#if defined(_WIN32)
+        if (GetCurrentThreadId() == impl_->windowThreadId)
+        {
+            impl_->view.eval(js);
+        }
+        else
+        {
+            impl_->toProcessOnWindowThread.push_back([this, js]() {
+                impl_->view.eval(js);
+            });
+            PostThreadMessage(impl_->windowThreadId, wakeUpMessage, 0, 0);
+        }
+#else
         impl_->view.eval(js);
+#endif
     }
     //---------------------------------------------------------------------------------------------------------------------
     void* Window::getNativeWebView()
