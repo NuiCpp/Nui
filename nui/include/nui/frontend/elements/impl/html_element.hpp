@@ -151,8 +151,8 @@ namespace Nui
 
         // Children:
         template <typename... ElementT>
-        requires((Dom::IsNotReferencePasser<ElementT> && ...) && (!IsObserved<ElementT> && ...)) constexpr auto
-        operator()(ElementT&&... elements) &&
+        requires((Dom::IsNotReferencePasser<ElementT> && ...) && (!IsObserved<ElementT> && ...))
+        constexpr auto operator()(ElementT&&... elements) &&
         {
             return [self = this->clone(), children = std::make_tuple(std::forward<ElementT>(elements)...)](
                        auto& parentElement, Renderer const& gen) {
@@ -257,6 +257,14 @@ namespace Nui
                 return materialized;
             };
         }
+        template <typename T>
+        requires Fundamental<T>
+        auto operator()(Observed<T> const& observedNumber) &&
+        {
+            return std::move(*this).operator()(observe(observedNumber), [&observedNumber]() -> std::string {
+                return std::to_string(observedNumber.value());
+            });
+        }
         auto operator()(Observed<std::string> const& observedString) &&
         {
             return std::move(*this).operator()(observe(observedString), [&observedString]() -> std::string {
@@ -299,7 +307,8 @@ namespace Nui
             };
         }
         template <std::invocable GeneratorT>
-        requires(!InvocableReturns<GeneratorT, std::string>) constexpr auto operator()(GeneratorT&& ElementRenderer) &&
+        requires(!InvocableReturns<GeneratorT, std::string>)
+        constexpr auto operator()(GeneratorT&& ElementRenderer) &&
         {
             return [self = this->clone(), ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](
                        auto& parentElement, Renderer const& gen) {
