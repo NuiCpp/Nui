@@ -92,7 +92,7 @@ namespace Nui
 
         constexpr static char const* remoteCallScript0Args = R"(
             (function() {{ 
-                globalThis.nui_rpc.frontend["{}"]();
+                globalThis.nui_rpc.frontend["{}"](undefined);
             }})();
         )";
 
