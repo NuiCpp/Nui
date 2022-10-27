@@ -40,7 +40,8 @@ void createPackageJsonIfMissing(std::filesystem::path const& where, std::string 
 
 void copyParcelRc(std::filesystem::path const& from, std::filesystem::path const& to)
 {
-    std::filesystem::copy_file(from, to, std::filesystem::copy_options::overwrite_existing);
+    if (std::filesystem::exists(from))
+        std::filesystem::copy_file(from, to, std::filesystem::copy_options::overwrite_existing);
 }
 
 int main(int argc, char** argv)
