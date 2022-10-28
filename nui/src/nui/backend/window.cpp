@@ -29,14 +29,16 @@
 #include <mutex>
 #include <functional>
 
-constexpr static auto wakeUpMessage = WM_APP + 1;
-
 #if __linux__
 struct HostNameMappingInfo
 {
     std::unordered_map<std::string, std::filesystem::path> hostNameToFolderMapping{};
     std::size_t hostNameMappingMax{0};
 };
+#endif
+
+#if defined(_WIN32)
+constexpr static auto wakeUpMessage = WM_APP + 1;
 #endif
 
 namespace Nui
@@ -300,7 +302,7 @@ namespace Nui
 #if defined(_WIN32)
         SetWindowPos(reinterpret_cast<HWND>(impl_->view.window()), nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 #else
-        // TODO:
+        gtk_window_move(static_cast<GtkWindow*>(impl_->view.window()), x, y);
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 
 namespace Nui
 {
-    static auto nil()
+    [[maybe_unused]] static auto nil()
     {
         return [](auto& parentElement, Renderer const&) {
             return std::shared_ptr<std::decay_t<decltype(parentElement)>>(nullptr);

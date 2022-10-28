@@ -11,8 +11,6 @@ namespace Nui
     class Display
     {
       public:
-        friend class Screen;
-
         Display(const Display&) = default;
         Display(Display&&) = default;
         Display& operator=(const Display&) = default;
@@ -44,7 +42,6 @@ namespace Nui
             return deviceName_;
         }
 
-      private:
         Display(int32_t x, int32_t y, int32_t width, int32_t height, bool isPrimary, std::string deviceName)
             : x_(x)
             , y_(y)
