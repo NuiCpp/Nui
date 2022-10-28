@@ -79,7 +79,20 @@ namespace Nui
          * @param height
          * @param hint
          */
-        void setSize(int width, int height, WebViewHint hint);
+        void setSize(int width, int height, WebViewHint hint = WebViewHint::WEBVIEW_HINT_NONE);
+
+        /**
+         * @brief Sets the position of the window
+         *
+         * @param x xCoordinate
+         * @param y yCoordinate
+         */
+        void setPosition(int x, int y);
+
+        /**
+         * @brief Center the window on the primary display. Requires size to be set first.
+         */
+        void centerOnPrimaryDisplay();
 
         /**
          * @brief Navigate to url.
@@ -107,8 +120,6 @@ namespace Nui
         void bind(std::string const& name, std::function<void(nlohmann::json const&)> const& callback);
 
         boost::asio::any_io_executor getExecutor() const;
-
-        void asyncDispatch(std::function<void()> func);
 
         /**
          * @brief Map a host name under the assets:// scheme to a folder.

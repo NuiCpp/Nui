@@ -176,6 +176,11 @@ namespace Nui
         void enableTimer();
 
         /**
+         * @brief Enables the screen functionality.
+         */
+        void enableScreen();
+
+        /**
          * @brief Enables all functionality.
          */
         void enableAll();

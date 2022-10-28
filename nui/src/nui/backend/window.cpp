@@ -5,6 +5,7 @@
 #include <nui/utility/scope_exit.hpp>
 #include <nui/utility/widen.hpp>
 #include <nui/utility/scope_exit.hpp>
+#include <nui/screen.hpp>
 
 #include <webview.h>
 #include <fmt/format.h>
@@ -48,6 +49,8 @@ namespace Nui
         std::vector<std::function<void(nlohmann::json const&)>> callbacks;
         boost::asio::thread_pool pool;
         std::recursive_mutex viewGuard;
+        int width;
+        int height;
 #if __linux__
         HostNameMappingInfo hostNameMappingInfo;
 #elif defined(_WIN32)
@@ -187,7 +190,9 @@ namespace Nui
         for (auto const& file : impl_->cleanupFiles)
             std::filesystem::remove(file);
     }
+    //---------------------------------------------------------------------------------------------------------------------
     Window::Window(Window&&) = default;
+    //---------------------------------------------------------------------------------------------------------------------
     Window& Window::operator=(Window&&) = default;
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setTitle(std::string const& title)
@@ -199,11 +204,14 @@ namespace Nui
     void Window::setSize(int width, int height, WebViewHint hint)
     {
         std::scoped_lock lock{impl_->viewGuard};
+        impl_->width = width;
+        impl_->height = height;
         impl_->view.set_size(width, height, static_cast<int>(hint));
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setHtml(std::string_view html)
     {
+        std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
         // https://github.com/MicrosoftEdge/WebView2Feedback/issues/1355
         // :((((
@@ -226,18 +234,11 @@ namespace Nui
             temporary.write(html.data(), static_cast<std::streamsize>(html.size()));
         }
 
-        std::scoped_lock lock{impl_->viewGuard};
         impl_->view.navigate("file://"s + tempFile.string());
         impl_->cleanupFiles.push_back(tempFile);
 #else
-        std::scoped_lock lock{impl_->viewGuard};
         impl_->view.set_html(std::string{html});
 #endif
-    }
-    //---------------------------------------------------------------------------------------------------------------------
-    void Window::asyncDispatch(std::function<void()> func)
-    {
-        boost::asio::post(impl_->pool.executor(), std::move(func));
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::navigate(const std::string& url)
@@ -293,32 +294,66 @@ namespace Nui
         impl_->view.terminate();
     }
     //---------------------------------------------------------------------------------------------------------------------
-    void Window::bind(std::string const& name, std::function<void(nlohmann::json const&)> const& callback)
+    void Window::setPosition(int x, int y)
     {
         std::scoped_lock lock{impl_->viewGuard};
-        impl_->callbacks.push_back(callback);
-        auto script = fmt::format(
-            R"(
-            (() => {{
-                const name = "{}";
-                const id = {};
-                globalThis.nui_rpc = (globalThis.nui_rpc || {{
-                    frontend: {{}}, backend: {{}}, tempId: 0
-                }});
-                globalThis.nui_rpc.backend[name] = (...args) => {{
-                    globalThis.external.invoke(JSON.stringify({{
-                        name: name,
-                        id: id,
-                        args: [...args]
-                    }}))  
-                }};
-            }})();
-        )",
-            name,
-            impl_->callbacks.size() - 1);
+#if defined(_WIN32)
+        SetWindowPos(reinterpret_cast<HWND>(impl_->view.window()), nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+#else
+        // TODO:
+#endif
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void Window::centerOnPrimaryDisplay()
+    {
+        std::scoped_lock lock{impl_->viewGuard};
+        const auto primaryDisplay = Screen::getPrimaryDisplay();
+        setPosition(
+            primaryDisplay.x() + (primaryDisplay.width() - impl_->width) / 2,
+            primaryDisplay.y() + (primaryDisplay.height() - impl_->height) / 2);
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void Window::bind(std::string const& name, std::function<void(nlohmann::json const&)> const& callback)
+    {
+        auto bindImpl = [this, name, callback]() {
+            std::scoped_lock lock{impl_->viewGuard};
+            impl_->callbacks.push_back(callback);
+            auto script = fmt::format(
+                R"(
+                    (() => {{
+                        const name = "{}";
+                        const id = {};
+                        globalThis.nui_rpc = (globalThis.nui_rpc || {{
+                            frontend: {{}}, backend: {{}}, tempId: 0
+                        }});
+                        globalThis.nui_rpc.backend[name] = (...args) => {{
+                            globalThis.external.invoke(JSON.stringify({{
+                                name: name,
+                                id: id,
+                                args: [...args]
+                            }}))  
+                        }};
+                    }})();
+                )",
+                name,
+                impl_->callbacks.size() - 1);
 
-        impl_->view.init(script);
-        impl_->view.eval(script);
+            impl_->view.init(script);
+            impl_->view.eval(script);
+        };
+
+        std::scoped_lock lock{impl_->viewGuard};
+#if defined(_WIN32)
+        if (GetCurrentThreadId() == impl_->windowThreadId)
+            bindImpl();
+        else
+        {
+            impl_->toProcessOnWindowThread.push_back(bindImpl);
+            PostThreadMessage(impl_->windowThreadId, wakeUpMessage, 0, 0);
+        }
+#else
+        bindImpl();
+#endif
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::eval(std::string const& js)
@@ -326,9 +361,7 @@ namespace Nui
         std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
         if (GetCurrentThreadId() == impl_->windowThreadId)
-        {
             impl_->view.eval(js);
-        }
         else
         {
             impl_->toProcessOnWindowThread.push_back([this, js]() {
