@@ -5,6 +5,8 @@
 #include "rpc_addons/file.hpp"
 #include "rpc_addons/throttle.hpp"
 #include "rpc_addons/timer.hpp"
+#include "rpc_addons/screen.hpp"
+#include "rpc_addons/environment_variables.hpp"
 
 namespace Nui
 {
@@ -65,6 +67,15 @@ namespace Nui
         registerFunction("Nui::setWindowTitle", [this](std::string const& title) {
             window_->setTitle(title);
         });
+        registerFunction("Nui::setPosition", [this](int x, int y) {
+            window_->setPosition(x, y);
+        });
+        registerFunction("Nui::centerOnPrimaryDisplay", [this]() {
+            window_->centerOnPrimaryDisplay();
+        });
+        registerFunction("Nui::navigate", [this](std::string const& navTarget) {
+            window_->navigate(navTarget);
+        });
     }
     //---------------------------------------------------------------------------------------------------------------------
     void RpcHub::enableTimer()
@@ -77,6 +88,16 @@ namespace Nui
         registerFetch(*this);
     }
     //---------------------------------------------------------------------------------------------------------------------
+    void RpcHub::enableScreen()
+    {
+        registerScreen(*this);
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void RpcHub::enableEnvironmentVariables()
+    {
+        registerEnvironmentVariables(*this);
+    }
+    //---------------------------------------------------------------------------------------------------------------------
     void RpcHub::enableAll()
     {
         enableFileDialogs();
@@ -85,6 +106,8 @@ namespace Nui
         enableFile();
         enableThrottle();
         enableTimer();
+        enableScreen();
+        enableEnvironmentVariables();
     }
     // #####################################################################################################################
 }

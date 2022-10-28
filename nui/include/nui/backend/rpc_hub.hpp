@@ -176,6 +176,16 @@ namespace Nui
         void enableTimer();
 
         /**
+         * @brief Enables the screen functionality.
+         */
+        void enableScreen();
+
+        /**
+         * @brief Enables the environment variable functionality.
+         */
+        void enableEnvironmentVariables();
+
+        /**
          * @brief Enables all functionality.
          */
         void enableAll();

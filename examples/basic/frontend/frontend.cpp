@@ -25,5 +25,4 @@ EMSCRIPTEN_BINDINGS(mymod)
 {
     emscripten::function("main", &frontendMain);
 }
-
-#include <nui/bindings.hpp>
+#include <nui/frontend/bindings.hpp>

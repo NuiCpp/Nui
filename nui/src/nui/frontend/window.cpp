@@ -41,9 +41,9 @@ namespace Nui
         RpcClient::getRemoteCallable("Nui::setWindowSize")(width, height, static_cast<int>(hint));
     }
     //---------------------------------------------------------------------------------------------------------------------
-    void Window::navigate(const std::string&)
+    void Window::navigate(const std::string& location)
     {
-        // TODO: something smarter here. maybe some "react router" kind of thing?
+        RpcClient::getRemoteCallable("Nui::navigate")(location);
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::terminate()
@@ -54,6 +54,16 @@ namespace Nui
     void Window::openDevTools()
     {
         RpcClient::getRemoteCallable("Nui::openDevTools")();
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void Window::setPosition(int x, int y)
+    {
+        RpcClient::getRemoteCallable("Nui::setPosition")(x, y);
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void Window::centerOnPrimaryDisplay()
+    {
+        RpcClient::getRemoteCallable("Nui::centerOnPrimaryDisplay")();
     }
     // #####################################################################################################################
 }
