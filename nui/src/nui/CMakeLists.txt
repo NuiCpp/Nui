@@ -12,6 +12,7 @@ if (EMSCRIPTEN)
             frontend/api/throttle.cpp
             frontend/api/timer.cpp
             frontend/screen.cpp
+            frontend/environment_variables.cpp
     )
     add_library(Nui::frontend ALIAS nui-frontend)
     target_include_directories(
@@ -48,6 +49,7 @@ else()
             backend/rpc_addons/throttle.cpp
             backend/rpc_addons/timer.cpp
             backend/rpc_addons/screen.cpp
+            backend/rpc_addons/environment_variables.cpp
     )
     add_library(Nui::backend ALIAS nui-backend)
     target_include_directories(
@@ -74,9 +76,17 @@ else()
         target_include_directories(nui-backend PUBLIC ${CMAKE_BINARY_DIR}/libs/webview2/build/native/include)
         target_link_directories(nui-backend PUBLIC ${CMAKE_BINARY_DIR}/libs/webview2/build/native/x64)
         target_link_libraries(nui-backend PUBLIC WebView2Loader.dll ole32 shell32 shlwapi user32)
-        target_sources(nui-backend PRIVATE backend/screen_win.cpp)
+        target_sources(nui-backend 
+            PRIVATE 
+                backend/screen_win.cpp
+                backend/environment_variables_win.cpp
+        )
     else()
-        target_sources(nui-backend PRIVATE backend/screen_nix.cpp)
+        target_sources(nui-backend 
+            PRIVATE 
+                backend/screen_nix.cpp
+                backend/environment_variables_nix.cpp
+        )
     endif()
     nui_set_target_output_directories(nui-backend)
     target_compile_features(nui-backend PUBLIC cxx_std_20)

@@ -4,5 +4,5 @@
 
 namespace Nui
 {
-    void registerScreen(Nui::RpcHub& hub);
+    void registerScreen(Nui::RpcHub const& hub);
 }

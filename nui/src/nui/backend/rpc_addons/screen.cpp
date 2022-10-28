@@ -5,7 +5,7 @@
 
 namespace Nui
 {
-    void registerScreen(Nui::RpcHub& hub)
+    void registerScreen(Nui::RpcHub const& hub)
     {
         hub.registerFunction("Nui::Screen::getDisplays", [&hub](std::string const& responseId) {
             const auto displays = Screen::getDisplays();

@@ -6,6 +6,7 @@
 #include "rpc_addons/throttle.hpp"
 #include "rpc_addons/timer.hpp"
 #include "rpc_addons/screen.hpp"
+#include "rpc_addons/environment_variables.hpp"
 
 namespace Nui
 {
@@ -92,6 +93,11 @@ namespace Nui
         registerScreen(*this);
     }
     //---------------------------------------------------------------------------------------------------------------------
+    void RpcHub::enableEnvironmentVariables()
+    {
+        registerEnvironmentVariables(*this);
+    }
+    //---------------------------------------------------------------------------------------------------------------------
     void RpcHub::enableAll()
     {
         enableFileDialogs();
@@ -101,6 +107,7 @@ namespace Nui
         enableThrottle();
         enableTimer();
         enableScreen();
+        enableEnvironmentVariables();
     }
     // #####################################################################################################################
 }
