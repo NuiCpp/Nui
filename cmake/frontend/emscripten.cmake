@@ -3,7 +3,7 @@ function(nui_prepare_emscripten_target)
     cmake_parse_arguments(
         NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS
         ""
-        "TARGET;PREJS;STATIC"
+        "TARGET;PREJS;STATIC;UNPACKED_MODE"
         "EMSCRIPTEN_LINK_OPTIONS;EMSCRIPTEN_COMPILE_OPTIONS;PARCEL_ARGS"
         ${ARGN}
     )
@@ -24,11 +24,21 @@ function(nui_prepare_emscripten_target)
     add_custom_target(
         ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel 
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_STATIC} ${CMAKE_BINARY_DIR}/static
-        COMMAND ${CMAKE_BINARY_DIR}/node_modules/.bin/parcel build ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PARCEL_ARGS} --dist-dir ${CMAKE_BINARY_DIR}/bin
+        COMMAND ${CMAKE_BINARY_DIR}/node_modules/.bin/parcel build --dist-dir ${CMAKE_BINARY_DIR}/bin ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PARCEL_ARGS}
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         BYPRODUCTS ${CMAKE_BINARY_DIR}/bin/index.html
         DEPENDS ${CMAKE_BINARY_DIR}/bin/index.js
     )
+
+    if (NOT NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_UNPACKED_MODE)
+        set(NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_UNPACKED_MODE off)
+    endif()
+
+    if (${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_UNPACKED_MODE})
+        set(SINGLE_FILE_STRING "")
+    else()
+        set(SINGLE_FILE_STRING "-sSINGLE_FILE")
+    endif()
 
     string (REPLACE ";" " " EMSCRIPTEN_LINK "${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_EMSCRIPTEN_LINK_OPTIONS}")
     string (REPLACE ";" " " EMSCRIPTEN_COMPILE "${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_EMSCRIPTEN_COMPILE_OPTIONS}")
@@ -36,7 +46,7 @@ function(nui_prepare_emscripten_target)
         ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}
         PROPERTIES
             LINK_FLAGS
-                "-sENVIRONMENT=web -sSINGLE_FILE -sNO_EXIT_RUNTIME=1 ${EMSCRIPTEN_LINK} -lembind --pre-js=\"${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PREJS}\""
+                "-sENVIRONMENT=web ${SINGLE_FILE_STRING} -sNO_EXIT_RUNTIME=1 ${EMSCRIPTEN_LINK} -lembind --pre-js=\"${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PREJS}\""
             COMPILE_FLAGS
                 "${EMSCRIPTEN_COMPILE}"
     )

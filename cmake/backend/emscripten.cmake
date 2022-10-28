@@ -65,6 +65,8 @@ function(nui_add_emscripten_target)
         set(SOURCE_DIR ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_SOURCE_DIR})
     endif()
 
+    get_target_property(TARGET_TYPE ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} TYPE)
+
     string(REPLACE "-" "_" targetNormalized ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET})
 
     message(STATUS "emcmake: ${EMCMAKE}")
@@ -104,5 +106,9 @@ function(nui_add_emscripten_target)
         emscripten-setup
     )
 
-    target_include_directories(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} PRIVATE ${CMAKE_BINARY_DIR}/include)
+    if (${TARGET_TYPE} STREQUAL "INTERFACE_LIBRARY")
+        target_include_directories(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} INTERFACE ${CMAKE_BINARY_DIR}/include)
+    else()
+        target_include_directories(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} PRIVATE ${CMAKE_BINARY_DIR}/include)
+    endif()
 endfunction()
