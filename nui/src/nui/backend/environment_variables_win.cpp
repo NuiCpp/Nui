@@ -1,4 +1,5 @@
 #include <nui/environment_variables.hpp>
+#include <nui/utility/scope_exit.hpp>
 
 #include <cstring>
 
@@ -11,6 +12,9 @@ namespace Nui
         auto* envStrings = GetEnvironmentStrings();
         if (envStrings == nullptr)
             return {};
+        auto remover = ScopeExit{[&envStrings]() {
+            FreeEnvironmentStrings(envStrings);
+        }};
         // var1=value1\0var2=value2\0\0
         std::unordered_map<std::string, std::string> result;
         for (auto* env = envStrings; *env != '\0'; env += strlen(env) + 1)
@@ -22,5 +26,6 @@ namespace Nui
             else
                 result[envString] = "";
         }
+        return result;
     }
 }
