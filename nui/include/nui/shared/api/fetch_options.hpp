@@ -24,11 +24,22 @@ namespace Nui
         bool autoReferer = false;
         // body is encoded as base64 to get it through to the webview. setting this option preserves the body as base64
         bool dontDecodeBody = false;
+        bool verifyPeer = true;
+        bool verifyHost = true;
     };
     BOOST_DESCRIBE_STRUCT(
         FetchOptions,
         (),
-        (method, headers, body, verbose, followRedirects, maxRedirects, autoReferer, dontDecodeBody));
+        (method,
+         headers,
+         body,
+         verbose,
+         followRedirects,
+         maxRedirects,
+         autoReferer,
+         dontDecodeBody,
+         verifyPeer,
+         verifyHost));
 
     struct FetchResponse
     {

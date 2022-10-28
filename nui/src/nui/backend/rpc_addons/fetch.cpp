@@ -18,7 +18,10 @@ namespace Nui
         verbose,
         followRedirects,
         maxRedirects,
-        autoReferer)
+        autoReferer,
+        dontDecodeBody,
+        verifyPeer,
+        verifyHost);
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
         FetchResponse,
         curlCode,
@@ -60,6 +63,8 @@ namespace Nui
                     .verbose(options.verbose)
                     .setHeaderFields(options.headers)
                     .autoReferer(options.autoReferer)
+                    .verifyPeer(options.verifyPeer)
+                    .verifyHost(options.verifyHost)
                     .headerSink(headers);
                 if (!options.body.empty() && options.method != "GET")
                     request.source(options.body);
