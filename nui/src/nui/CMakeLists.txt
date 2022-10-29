@@ -6,6 +6,7 @@ if (EMSCRIPTEN)
             frontend/event_system/event_context.cpp
             frontend/filesystem/file_dialog.cpp
             frontend/filesystem/file.cpp
+            frontend/utility/fragment_listener.cpp
             frontend/utility/functions.cpp
             frontend/window.cpp
             frontend/api/fetch.cpp

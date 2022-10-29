@@ -4,7 +4,7 @@
 
 #include <tuple>
 
-namespace Nui
+namespace Nui::Elements
 {
     namespace Detail
     {
