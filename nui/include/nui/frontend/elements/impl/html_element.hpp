@@ -151,8 +151,8 @@ namespace Nui
 
         // Children:
         template <typename... ElementT>
-        requires((Dom::IsNotReferencePasser<ElementT> && ...) && (!IsObserved<ElementT> && ...))
-        constexpr auto operator()(ElementT&&... elements) &&
+        requires((Dom::IsNotReferencePasser<ElementT> && ...) && (!IsObserved<ElementT> && ...)) constexpr auto
+        operator()(ElementT&&... elements) &&
         {
             return [self = this->clone(), children = std::make_tuple(std::forward<ElementT>(elements)...)](
                        auto& parentElement, Renderer const& gen) {
@@ -307,12 +307,19 @@ namespace Nui
             };
         }
         template <std::invocable GeneratorT>
-        requires(!InvocableReturns<GeneratorT, std::string>)
-        constexpr auto operator()(GeneratorT&& ElementRenderer) &&
+        requires(!InvocableReturns<GeneratorT, std::string>) constexpr auto operator()(GeneratorT&& ElementRenderer) &&
         {
             return [self = this->clone(), ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](
                        auto& parentElement, Renderer const& gen) {
                 return ElementRenderer()(parentElement, gen);
+            };
+        }
+        template <typename T, std::invocable<T&, Renderer const&> GeneratorT>
+        constexpr auto operator()(GeneratorT&& ElementRenderer) &&
+        {
+            return [self = this->clone(), ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](
+                       auto& parentElement, Renderer const& gen) {
+                return ElementRenderer(parentElement, gen);
             };
         }
 

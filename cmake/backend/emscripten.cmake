@@ -70,6 +70,12 @@ function(nui_add_emscripten_target)
     string(REPLACE "-" "_" targetNormalized ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET})
 
     message(STATUS "emcmake: ${EMCMAKE}")
+    
+    if (${TARGET_TYPE} STREQUAL "INTERFACE_LIBRARY")
+        set(ENABLE_BIN2HPP "no")
+    else()
+        set(ENABLE_BIN2HPP "yes")
+    endif()
 
     ExternalProject_Add(
         "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten"
@@ -86,7 +92,7 @@ function(nui_add_emscripten_target)
         # emscripten make
         COMMAND ${EMMAKE} make ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_MAKE_OPTIONS} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
         # convert result to header file containing the page
-        COMMAND $<TARGET_FILE:bin2hpp> ${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html ${CMAKE_BINARY_DIR}/include/index.hpp index
+        COMMAND $<TARGET_FILE:bin2hpp> ${ENABLE_BIN2HPP} ${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html ${CMAKE_BINARY_DIR}/include/index.hpp index
         BINARY_DIR "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
         BUILD_ALWAYS 1
         INSTALL_COMMAND ""
