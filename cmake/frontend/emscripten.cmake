@@ -36,6 +36,11 @@ function(nui_prepare_emscripten_target)
 
     if (${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_UNPACKED_MODE})
         set(SINGLE_FILE_STRING "")
+        add_custom_target(
+            ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-copy-wasm
+            COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/bin/index.wasm ${CMAKE_BINARY_DIR}/../bin/index.wasm
+        )
+        add_dependencies(${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-copy-wasm)
     else()
         set(SINGLE_FILE_STRING "-sSINGLE_FILE")
     endif()

@@ -10,28 +10,38 @@ constexpr std::size_t lineWidth = 120;
 
 int main(int argc, char** argv)
 {
-    if (argc != 4)
+    if (argc != 5)
     {
-        std::cout << "Expected 3 arguments: <input file> <output file> <name>, but got " << argc - 1 << "\n";
-        std::cout << "Usage: " << argv[0] << " <input file> <output file> <name>"
+        std::cout << "Expected 4 arguments: <yes/no> <input file> <output file> <name>, but got " << argc - 1 << "\n";
+        std::cout << "Usage: " << argv[0] << " <yes/no> <input file> <output file> <name>"
                   << "\n";
         return 1;
     }
 
-    auto outputPath = std::filesystem::path(argv[2]).parent_path();
+    std::string enable = argv[1];
+    std::string inputFile = argv[2];
+    std::string outputFile = argv[3];
+    std::string name = argv[4];
+
+    if (enable == "no")
+    {
+        return 0;
+    }
+
+    auto outputPath = std::filesystem::path(outputFile).parent_path();
     if (!std::filesystem::exists(outputPath))
         std::filesystem::create_directories(outputPath);
 
-    std::ifstream input(argv[1], std::ios_base::binary);
-    std::ofstream output(argv[2], std::ios_base::binary);
+    std::ifstream input(inputFile, std::ios_base::binary);
+    std::ofstream output(outputFile, std::ios_base::binary);
     if (!input.is_open())
     {
-        std::cout << "Could not open file \"" << argv[1] << "\"\n";
+        std::cout << "Could not open file \"" << inputFile << "\"\n";
         return 1;
     }
     if (!output.is_open())
     {
-        std::cout << "Could not open file \"" << argv[2] << "\"\n";
+        std::cout << "Could not open file \"" << outputFile << "\"\n";
         return 1;
     }
 
@@ -40,7 +50,7 @@ int main(int argc, char** argv)
     output << "#include <string_view>\n";
     output << "#include <string>\n";
     output << "\n";
-    output << "static const std::string_view " << argv[3] << "_data[] = {\n";
+    output << "static const std::string_view " << name << "_data[] = {\n";
 
     do
     {
@@ -74,14 +84,14 @@ int main(int argc, char** argv)
     } while (input.gcount() > 0);
 
     output << "};\n\n";
-    output << "static std::string " << argv[3] << "()\n";
+    output << "static std::string " << name << "()\n";
     output << "{\n";
     output << "\tstatic std::string memo;\n";
     output << "\tif(!memo.empty())\n";
     output << "\t\treturn memo;\n";
-    output << "\tfor (std::size_t i = 0; i != sizeof(" << argv[3] << "_data) / sizeof(std::string_view)"
+    output << "\tfor (std::size_t i = 0; i != sizeof(" << name << "_data) / sizeof(std::string_view)"
            << "; ++i) {\n";
-    output << "\t\tmemo += " << argv[3] << "_data[i];\n";
+    output << "\t\tmemo += " << name << "_data[i];\n";
     output << "\t}\n";
     output << "\treturn memo;\n";
     output << "}\n";
