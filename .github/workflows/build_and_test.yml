@@ -64,7 +64,7 @@ jobs:
           install: mingw-w64-clang-x86_64-clang mingw-w64-clang-x86_64-make mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-boost mingw-w64-clang-x86_64-crypto++ mingw-w64-clang-x86_64-boost libcurl
 
       - name: Workspace Path Fixup
-        run: echo "WSPACE=$(cygpath ${{github.workspace}})" >> $GITHUB_ENV
+        run: echo "WSPACE=$(cygpath '${{github.workspace}}')" >> $GITHUB_ENV
 
       - name: Configure CMake
         run: cmake -B ${{env.WSPACE}}/build/clang_${{env.BUILD_TYPE}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DNUI_BUILD_EXAMPLES=off -DCMAKE_CXX_EXTENSIONS=on -DCMAKE_CXX_FLAGS="-fuse-ld=lld" -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_LINKER=lld -DCMAKE_CXX_STANDARD=20
