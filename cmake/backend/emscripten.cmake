@@ -6,7 +6,7 @@ include(FetchContent)
 FetchContent_Declare(
     emscripten
     GIT_REPOSITORY https://github.com/emscripten-core/emsdk.git
-    GIT_TAG        e41b8c68a248da5f18ebd03bd0420953945d52ff
+    GIT_TAG        17f6a2ef92f198f3c9ff30d07664e4090a0ecaf7
 )
 
 FetchContent_MakeAvailable(emscripten)

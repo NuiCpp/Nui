@@ -35,7 +35,7 @@ namespace Nui::Components
 
       public:
         template <typename... Args>
-        Table(CustomAttribute<const Observed<ContainerT<RowDataT>>&, tableModelTag>&& model, Args&&... args)
+        Table(CustomAttribute<Observed<ContainerT<RowDataT>>&, tableModelTag>&& model, Args&&... args)
             : tableModel_{model.get()}
             , captionModel_{[&]() -> decltype(captionModel_) {
                 // TODO: I need a better pattern for this. optional<static or observed>
