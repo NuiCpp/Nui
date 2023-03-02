@@ -67,7 +67,7 @@ jobs:
         run: echo "WSPACE=$(cygpath '${{github.workspace}}')" >> $GITHUB_ENV
 
       - name: Configure CMake
-        run: cmake -B ${{env.WSPACE}}/build/clang_${{env.BUILD_TYPE}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DNUI_BUILD_EXAMPLES=off -DCMAKE_CXX_EXTENSIONS=on -DCMAKE_CXX_FLAGS="-fuse-ld=lld" -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_LINKER=lld -DCMAKE_CXX_STANDARD=20
+        run: cmake -B ${{env.WSPACE}}/build/clang_${{env.BUILD_TYPE}} -G"MSYS Makefiles" -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DNUI_BUILD_EXAMPLES=off -DCMAKE_CXX_EXTENSIONS=on -DCMAKE_CXX_FLAGS="-fuse-ld=lld" -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_LINKER=lld -DCMAKE_CXX_STANDARD=20
 
       - name: Build
         run: cmake --build ${{env.WSPACE}}/build/clang_${{env.BUILD_TYPE}} --config ${{env.BUILD_TYPE}}
