@@ -33,8 +33,6 @@ jobs:
           boost_version: 1.81.0
           # OPTIONAL: Specify a platform version
           platform_version: 22.04
-          # OPTIONAL: Specify a toolset
-          toolset: clang
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
