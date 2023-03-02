@@ -58,6 +58,30 @@ namespace Nui::Components
                       args...)}
         {}
 
+        template <typename... Args>
+        Table(CustomAttribute<Observed<ContainerT<RowDataT>> const&, tableModelTag>&& model, Args&&... args)
+            : tableModel_{model.get()}
+            , captionModel_{[&]() -> decltype(captionModel_) {
+                // TODO: I need a better pattern for this. optional<static or observed>
+                auto attribute = extractOptionalAttributePtr<tableCaptionTag>(args...);
+                if constexpr (std::is_same_v<Detail::InvalidAttribute* const, decltype(attribute)>)
+                    return {};
+                else if constexpr (std::is_same_v<std::string, decltype(attribute->get())>)
+                    return attribute->get();
+                else if constexpr (std::is_same_v<Observed<std::string> const&, decltype(attribute->get())>)
+                    return &attribute->get();
+                else
+                    return {};
+            }()}
+            , rowRenderer_{extractAttribute<rowRendererTag>(args...)}
+            , headerRenderer_{extractOptionalAttributeFast<
+                  headerRendererTag,
+                  ExtractValueType_t<decltype(headerRenderer_)>>(args...)}
+            , footerRenderer_{
+                  extractOptionalAttributeFast<footerRendererTag, ExtractValueType_t<decltype(footerRenderer_)>>(
+                      args...)}
+        {}
+
       public:
         // Do not capture this in this function. Components are temporaray objects that produce functions which render
         // actual elements.
