@@ -1,4 +1,5 @@
 #include "test_observed_interval_ranges.hpp"
+#include "test_render.hpp"
 
 #include <gtest/gtest.h>
 

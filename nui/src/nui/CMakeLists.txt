@@ -1,20 +1,6 @@
 if (EMSCRIPTEN)
-    add_library(nui-frontend
-        STATIC
-            frontend/components/dialog.cpp
-            frontend/dom/dom.cpp
-            frontend/event_system/event_context.cpp
-            frontend/filesystem/file_dialog.cpp
-            frontend/filesystem/file.cpp
-            frontend/utility/fragment_listener.cpp
-            frontend/utility/functions.cpp
-            frontend/window.cpp
-            frontend/api/fetch.cpp
-            frontend/api/throttle.cpp
-            frontend/api/timer.cpp
-            frontend/screen.cpp
-            frontend/environment_variables.cpp
-    )
+    include(./frontend_sources.cmake)
+    add_library(nui-frontend STATIC ${NUI_FRONTEND_SOURCES})
     add_library(Nui::frontend ALIAS nui-frontend)
     target_include_directories(
         nui-frontend
