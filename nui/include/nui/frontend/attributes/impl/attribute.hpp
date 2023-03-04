@@ -5,6 +5,8 @@
 #include <nui/frontend/event_system/observed_value_combinator.hpp>
 #include <nui/utility/fixed_string.hpp>
 
+#include <emscripten/val.h>
+
 #include <utility>
 #include <string>
 #include <type_traits>
@@ -157,14 +159,14 @@ namespace Nui
                 return HTML_NAME; \
             }; \
             template <typename U> \
-            requires(!IsObserved<std::decay_t<U>>) Attribute<NAME##Tag, std::decay_t<U>> \
-            operator=(U val) const \
+            requires(!IsObserved<std::decay_t<U>>) \
+            Attribute<NAME##Tag, std::decay_t<U>> operator=(U val) const \
             { \
                 return Attribute<NAME##Tag, U>{std::move(val)}; \
             } \
             template <typename U> \
-            requires(IsObserved<std::decay_t<U>>) Attribute<NAME##Tag, std::decay_t<U>> \
-            operator=(U& val) const \
+            requires(IsObserved<std::decay_t<U>>) \
+            Attribute<NAME##Tag, std::decay_t<U>> operator=(U& val) const \
             { \
                 return Attribute<NAME##Tag, std::decay_t<U>>{val}; \
             } \
