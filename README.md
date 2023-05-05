@@ -1,5 +1,6 @@
 # Nui
 A C++ WebView UI Library
+Temporary example page: http://5cript.net/
 
 ## Setup
 ### Linux
