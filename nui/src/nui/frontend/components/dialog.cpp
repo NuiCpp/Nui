@@ -18,7 +18,7 @@
 
 namespace Nui::Components
 {
-    //#####################################################################################################################
+    // #####################################################################################################################
     DialogController::DialogController(ConstructionArgs&& args)
         : isOpen_{false}
         , element_{}
@@ -37,6 +37,13 @@ namespace Nui::Components
         isOpen_ = true;
         if (auto element = element_.lock())
             element->val().call<void>("show");
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void DialogController::hide()
+    {
+        isOpen_ = false;
+        if (auto element = element_.lock())
+            element->val().call<void>("close");
     }
     //---------------------------------------------------------------------------------------------------------------------
     bool DialogController::isOpen() const
@@ -152,6 +159,10 @@ namespace Nui::Components
                                     }("No")
                                 );
                             }
+                            case(DialogController::ButtonConfiguration::None):
+                            {
+                                return fragment();
+                            }
                         }
                     }
                 )
@@ -159,5 +170,5 @@ namespace Nui::Components
         );
         // clang-format on
     }
-    //#####################################################################################################################
+    // #####################################################################################################################
 }
