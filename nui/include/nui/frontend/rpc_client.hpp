@@ -38,7 +38,7 @@ namespace Nui
             template <typename FunctionT>
             constexpr static auto wrapFunction(FunctionT&& func)
             {
-                return [func = std::move(func)](emscripten::val const& args) {
+                return [func = std::move(func)](emscripten::val const& args) mutable {
                     func(args);
                 };
             }
@@ -50,7 +50,7 @@ namespace Nui
             template <typename FunctionT>
             constexpr static auto wrapFunction(FunctionT&& func)
             {
-                return [func = std::move(func)](emscripten::val const& arg) {
+                return [func = std::move(func)](emscripten::val const& arg) mutable {
                     func(extractMember<ArgType>(arg));
                 };
             }
@@ -62,7 +62,7 @@ namespace Nui
             template <typename FunctionT>
             constexpr static auto wrapFunction(FunctionT&& func)
             {
-                return [func = std::move(func)](emscripten::val const& args) {
+                return [func = std::move(func)](emscripten::val const& args) mutable {
                     func(extractMember<ArgsTypes>(args[Is])...);
                 };
             }
@@ -199,7 +199,7 @@ namespace Nui
                 tempIdString,
                 Nui::bind(
                     [func = Detail::FunctionWrapper<FunctionT>::wrapFunction(std::forward<FunctionT>(func)),
-                     tempIdString](emscripten::val param) {
+                     tempIdString](emscripten::val param) mutable {
                         func(param);
                         emscripten::val::global("nui_rpc")["frontend"].delete_(tempIdString);
                     },
@@ -226,7 +226,7 @@ namespace Nui
                 name.c_str(),
                 Nui::bind(
                     [func = Detail::FunctionWrapper<FunctionT>::wrapFunction(std::forward<FunctionT>(func))](
-                        emscripten::val param) {
+                        emscripten::val param) mutable {
                         func(param);
                     },
                     std::placeholders::_1));
