@@ -3,8 +3,8 @@ project(libcpppre-git NONE)
 include(FetchContent)
 FetchContent_Declare(
     libcpppre
-    GIT_REPOSITORY https://github.com/5cript/type_traits.git
-    GIT_TAG        b5973e734c51c9708e10e3a0623545c896cea78b   
+    GIT_REPOSITORY https://github.com/cpp-pre/type_traits.git
+    GIT_TAG        ffc013750515f9e73342eb2a51efed284826ead3   
 )
 
 FetchContent_GetProperties(libcpppre)
