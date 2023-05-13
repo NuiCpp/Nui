@@ -13,18 +13,24 @@ FetchContent_MakeAvailable(emscripten)
 
 if(UNIX)
     add_custom_command(
-        OUTPUT ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten
-        COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk install latest --build=Release
-        COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk activate latest
-        COMMAND $<TARGET_FILE:patch-acorn> ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/tools/acorn-optimizer.js
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/_deps/emscripten-src
+        OUTPUT "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten"
+        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" install latest --build=Release
+        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" activate latest
+        COMMAND $<TARGET_FILE:patch-acorn> "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/tools/acorn-optimizer.js"
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/emscripten-src"
     )
 else()
     add_custom_command(
-        OUTPUT ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten
-        COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk install latest --build=Release
-        COMMAND ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcc --generate-config
-        COMMAND $<TARGET_FILE:patch-acorn> ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/tools/acorn-optimizer.js
+        OUTPUT "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten"
+        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" install latest --build=Release
+        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcc" --generate-config
+        COMMAND $<TARGET_FILE:patch-acorn> "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/tools/acorn-optimizer.js"
+        COMMAND $<TARGET_FILE:patch-emscripten-config> 
+            "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten" 
+            "${CMAKE_BINARY_DIR}/_deps/binaryen_release-src" 
+            "${CMAKE_BINARY_DIR}/_deps/emscripten-src/java/bin/java.exe"
+            # not setting node, because global installed node might be preferred
+            # "${CMAKE_BINARY_DIR}/_deps/emscripten-src/node/bin/node.exe"
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/_deps/emscripten-src
     )
 endif()
@@ -47,7 +53,7 @@ function(nui_add_emscripten_target)
         NUI_ADD_EMSCRIPTEN_TARGET_ARGS
         ""
         "TARGET;PREJS;SOURCE_DIR"
-        "CMAKE_OPTIONS;MAKE_OPTIONS"
+        "CMAKE_OPTIONS"
         ${ARGN}
     )    
 
@@ -83,14 +89,14 @@ function(nui_add_emscripten_target)
         # emscripten cmake with passed down Release/Debug build type
         CONFIGURE_COMMAND 
             ${EMCMAKE} cmake 
-                -DCMAKE_CXX_STANDARD=20 
+                -DCMAKE_CXX_STANDARD=23 
                 -DCMAKE_EXPORT_COMPILE_COMMANDS=1 
                 ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS} 
                 ${SOURCE_DIR}
         # copy over package.json and fill parcel options that do not exist on it
         BUILD_COMMAND $<TARGET_FILE:parcel-adapter> ${SOURCE_DIR}/package.json ${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/package.json "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
         # emscripten make
-        COMMAND ${EMMAKE} make ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_MAKE_OPTIONS} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
+        COMMAND cmake --build "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}" --target ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
         # convert result to header file containing the page
         COMMAND $<TARGET_FILE:bin2hpp> ${ENABLE_BIN2HPP} ${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html ${CMAKE_BINARY_DIR}/include/index.hpp index
         BINARY_DIR "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
@@ -106,9 +112,10 @@ function(nui_add_emscripten_target)
     add_dependencies(
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-prejs
+        emscripten-setup
     )
     add_dependencies(
-        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
+        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}
         emscripten-setup
     )
 

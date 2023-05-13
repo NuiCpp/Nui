@@ -2,6 +2,12 @@
 
 #include <nui/frontend/rpc_client.hpp>
 
+#include <emscripten/val.h>
+
+#include <vector>
+#include <functional>
+#include <utility>
+
 namespace Nui
 {
     void Screen::getDisplays(std::function<void(std::vector<Display>&&)> callback)

@@ -2,6 +2,10 @@
 
 #include <nui/shared/api/fetch_options.hpp>
 
+#include <string>
+#include <functional>
+#include <optional>
+
 namespace Nui
 {
     /**

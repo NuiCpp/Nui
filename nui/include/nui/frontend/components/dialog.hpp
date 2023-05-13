@@ -26,7 +26,8 @@ namespace Nui::Components
         {
             Ok,
             OkCancel,
-            YesNo
+            YesNo,
+            None
         };
 
         struct ConstructionArgs
@@ -42,6 +43,7 @@ namespace Nui::Components
         DialogController(ConstructionArgs&& args);
         void showModal();
         void show();
+        void hide();
         bool isOpen() const;
         void setClassName(std::string const& className);
         void setButtonClassName(std::string const& className);

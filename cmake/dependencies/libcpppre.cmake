@@ -4,7 +4,7 @@ include(FetchContent)
 FetchContent_Declare(
     libcpppre
     GIT_REPOSITORY https://github.com/cpp-pre/type_traits.git
-    GIT_TAG        6babbfe9488760f94f5ad63e039807f032049c17    
+    GIT_TAG        ffc013750515f9e73342eb2a51efed284826ead3   
 )
 
 FetchContent_GetProperties(libcpppre)

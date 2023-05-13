@@ -1,5 +1,8 @@
 #include <nui/screen.hpp>
 
+#include <stdexcept>
+#include <vector>
+
 #include <windows.h>
 
 namespace Nui
