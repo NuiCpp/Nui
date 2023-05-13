@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <nui/frontend/elements/div.hpp>
+
 namespace Nui::Tests
 {
     class TestRender : public ::testing::Test
@@ -9,6 +11,8 @@ namespace Nui::Tests
 
     TEST_F(TestRender, CanRenderBasicDiv)
     {
-        // TODO:
+        using Nui::Elements::div;
+
+        div{}();
     }
 }
