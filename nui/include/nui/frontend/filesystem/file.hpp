@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <string>
+#include <functional>
 #include <optional>
 #include <cstdint>
 #include <ios>
