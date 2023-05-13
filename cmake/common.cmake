@@ -7,6 +7,4 @@ function(nui_set_target_output_directories target)
   )
 endfunction()
 
-add_library(project-warnings INTERFACE)
-include(${CMAKE_CURRENT_LIST_DIR}/compilerwarnings.cmake)
-nui_set_project_warnings(project-warnings)
+include(${CMAKE_CURRENT_LIST_DIR}/compiler_warnings.cmake)

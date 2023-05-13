@@ -1,5 +1,5 @@
 include(GoogleTest)
-include(../../src/nui/frontend_sources.cmake)
+include(../../src/nui/frontend/frontend_sources.cmake)
 
 add_library(nui-frontend-mocked STATIC ${NUI_FRONTEND_SOURCES})
 
