@@ -11,8 +11,6 @@
 #include <nui/frontend/attributes/value.hpp>
 #include <nui/frontend/attributes/on_input.hpp>
 
-#include <tuple>
-
 namespace Nui::Components
 {
     /**
