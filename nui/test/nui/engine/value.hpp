@@ -1,0 +1,91 @@
+#pragma once
+
+#include <concepts>
+#include <any>
+#include <string>
+#include <string_view>
+
+namespace Nui::Tests::Engine
+{
+    class Object;
+    class Array;
+    class Function;
+
+    class Value
+    {
+      public:
+        enum class Type
+        {
+            Undefined,
+            Null,
+            Boolean,
+            Number,
+            String,
+            Object,
+            Array,
+            Function
+        };
+
+        Value()
+            : type_{Type::Undefined}
+            , value_{std::any{}}
+        {}
+        Value(std::nullptr_t)
+            : type_{Type::Null}
+            , value_{std::any{}}
+        {}
+        Value(bool value)
+            : type_{Type::Boolean}
+            , value_{std::any{value}}
+        {}
+
+        Value(std::floating_point auto value)
+            : type_{Type::Number}
+            , value_{std::any{static_cast<long double>(value)}}
+        {}
+
+        Value(std::integral auto value)
+            : type_{Type::Number}
+            , value_{std::any{static_cast<long double>(value)}}
+        {}
+
+        Value(std::string_view value)
+            : type_{Type::String}
+            , value_{std::any{std::string{value}}}
+        {}
+
+        Value(std::string value)
+            : type_{Type::String}
+            , value_{std::any{std::move(value)}}
+        {}
+
+        Value(Object const& value);
+        Value(Array const& value);
+        Value(Function const& value);
+
+        Value(const Value&) = default;
+        Value(Value&&) = default;
+        Value& operator=(const Value&) = default;
+        Value& operator=(Value&&) = default;
+
+        Type type() const
+        {
+            return type_;
+        }
+
+        template <typename T>
+        T as()
+        {
+            return std::any_cast<T>(value_);
+        }
+        template <typename T>
+        T as() const
+        {
+            return std::any_cast<T>(value_);
+        }
+
+      private:
+        Type type_;
+        std::any value_;
+    };
+}
