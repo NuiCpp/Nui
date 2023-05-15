@@ -15,18 +15,19 @@
 
 namespace Nui
 {
-    template <typename DiscreteAttribute, typename T, typename Enable = void>
+    template <typename T, typename Enable = void>
     class Attribute
     {
       public:
-        using discrete_attribute = DiscreteAttribute;
         constexpr static bool is_static_value = true;
 
-        Attribute()
-            : value_{}
+        Attribute(char const* name)
+            : name_{name}
+            , value_{}
         {}
-        Attribute(T value)
-            : value_{std::move(value)}
+        Attribute(char const* name, T value)
+            : name_{name}
+            , value_{std::move(value)}
         {}
 
         Attribute(Attribute const&) = default;
@@ -34,9 +35,9 @@ namespace Nui
         Attribute& operator=(Attribute const&) = default;
         Attribute& operator=(Attribute&&) = default;
 
-        constexpr static char const* name()
+        char const* name() const
         {
-            return discrete_attribute::name();
+            return name_;
         }
 
         T const& value() const
@@ -48,23 +49,24 @@ namespace Nui
         {}
 
       private:
+        char const* name_;
         T value_;
     };
 
-    template <typename DiscreteAttribute, typename T>
-    class Attribute<DiscreteAttribute, Observed<T>, void>
+    template <typename T>
+    class Attribute<Observed<T>, void>
     {
       public:
-        using discrete_attribute = DiscreteAttribute;
         constexpr static bool is_static_value = false;
 
-        Attribute(Observed<T>& value)
-            : obs_{value}
+        Attribute(char const* name, Observed<T>& value)
+            : name_{name}
+            , obs_{value}
         {}
 
-        constexpr static char const* name()
+        char const* name() const
         {
-            return discrete_attribute::name();
+            return name_;
         }
 
         T const& value() const
@@ -98,23 +100,24 @@ namespace Nui
         }
 
       private:
+        char const* name_;
         Observed<T>& obs_;
     };
 
-    template <typename DiscreteAttribute, typename RendererType, typename... ObservedValueTypes>
-    class Attribute<DiscreteAttribute, ObservedValueCombinatorWithGenerator<RendererType, ObservedValueTypes...>, void>
+    template <typename RendererType, typename... ObservedValueTypes>
+    class Attribute<ObservedValueCombinatorWithGenerator<RendererType, ObservedValueTypes...>, void>
     {
       public:
-        using discrete_attribute = DiscreteAttribute;
         constexpr static bool is_static_value = false;
 
-        Attribute(ObservedValueCombinatorWithGenerator<RendererType, ObservedValueTypes...> value)
-            : combinator_{std::move(value)}
+        Attribute(char const* name, ObservedValueCombinatorWithGenerator<RendererType, ObservedValueTypes...> value)
+            : name_{name}
+            , combinator_{std::move(value)}
         {}
 
-        constexpr static char const* name()
+        char const* name() const
         {
-            return discrete_attribute::name();
+            return name_;
         }
 
         auto value() const
@@ -145,6 +148,7 @@ namespace Nui
         }
 
       private:
+        char const* name_;
         ObservedValueCombinatorWithGenerator<RendererType, ObservedValueTypes...> combinator_;
     };
 }
@@ -160,22 +164,22 @@ namespace Nui
             }; \
             template <typename U> \
             requires(!IsObserved<std::decay_t<U>>) \
-            Attribute<NAME##Tag, std::decay_t<U>> operator=(U val) const \
+            Attribute<std::decay_t<U>> operator=(U val) const \
             { \
-                return Attribute<NAME##Tag, U>{std::move(val)}; \
+                return Attribute<U>{name(), std::move(val)}; \
             } \
             template <typename U> \
             requires(IsObserved<std::decay_t<U>>) \
-            Attribute<NAME##Tag, std::decay_t<U>> operator=(U& val) const \
+            Attribute<std::decay_t<U>> operator=(U& val) const \
             { \
-                return Attribute<NAME##Tag, std::decay_t<U>>{val}; \
+                return Attribute<std::decay_t<U>>{name(), val}; \
             } \
             template <typename RendererType, typename... ObservedValues> \
-            Attribute<NAME##Tag, ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>> \
+            Attribute<ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>> \
             operator=(ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...> const& combinator) const \
             { \
-                return Attribute<NAME##Tag, ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>>{ \
-                    combinator}; \
+                return Attribute<ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>>{ \
+                    name(), combinator}; \
             } \
         } static constexpr NAME; \
     }
@@ -193,20 +197,21 @@ namespace Nui
             { \
                 return nameValue; \
             }; \
-            Attribute<NAME##Tag, std::function<void(emscripten::val)>> \
-            operator=(std::function<void(emscripten::val)> func) const \
+            Attribute<std::function<void(emscripten::val)>> operator=(std::function<void(emscripten::val)> func) const \
             { \
-                return Attribute<NAME##Tag, std::function<void(emscripten::val)>>{[func](emscripten::val val) { \
-                    func(val); \
-                    globalEventContext.executeActiveEventsImmediately(); \
-                }}; \
+                return Attribute<std::function<void(emscripten::val)>>{ \
+                    name(), [func](emscripten::val val) { \
+                        func(val); \
+                        globalEventContext.executeActiveEventsImmediately(); \
+                    }}; \
             } \
-            Attribute<NAME##Tag, std::function<void(emscripten::val)>> operator=(std::function<void()> func) const \
+            Attribute<std::function<void(emscripten::val)>> operator=(std::function<void()> func) const \
             { \
-                return Attribute<NAME##Tag, std::function<void(emscripten::val)>>{[func](emscripten::val) { \
-                    func(); \
-                    globalEventContext.executeActiveEventsImmediately(); \
-                }}; \
+                return Attribute<std::function<void(emscripten::val)>>{ \
+                    name(), [func](emscripten::val) { \
+                        func(); \
+                        globalEventContext.executeActiveEventsImmediately(); \
+                    }}; \
             } \
         } static constexpr NAME; \
     }
