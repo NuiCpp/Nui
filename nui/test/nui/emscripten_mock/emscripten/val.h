@@ -5,11 +5,13 @@
 #include "../../engine/object.hpp"
 #include "../../engine/function.hpp"
 #include "../../engine/value.hpp"
+#include "../../engine/warn.hpp"
 
 #include <utility>
 #include <type_traits>
 #include <vector>
 #include <variant>
+#include <string>
 
 namespace emscripten
 {
@@ -64,6 +66,9 @@ namespace emscripten
             : referenced_value_{Nui::Tests::Engine::Function{std::move(value)}}
         {}
         val(std::weak_ptr<Nui::Tests::Engine::Value> value)
+            : referenced_value_{std::move(value)}
+        {}
+        val(Nui::Tests::Engine::Value value)
             : referenced_value_{std::move(value)}
         {}
         val(char const* value)
@@ -154,17 +159,27 @@ namespace emscripten
         }
 
         template <typename Ret, typename... List>
-        Ret call(char const*, List... args)
+        Ret call(char const* name, List&&... args)
         {
-            // TODO:
-            if constexpr (std::is_same_v<Ret, void>)
-            {
-                return;
-            }
-            else
-            {
-                return {};
-            }
+            using namespace std::string_literals;
+
+            return withValueDo([name, ... args = std::forward<List>(args)](auto& value) {
+                if (value.type() == Nui::Tests::Engine::Value::Type::Object)
+                {
+                    auto& mem = value.template as<Nui::Tests::Engine::Object&>()[name];
+                    if (mem.type() == Nui::Tests::Engine::Value::Type::Function)
+                    {
+                        if constexpr (std::is_same_v<Ret, void>)
+                            return static_cast<void>(mem.template as<Nui::Tests::Engine::Function&>()(args...));
+                        else
+                            return mem.template as<Nui::Tests::Engine::Function&>()(args...).template as<Ret>();
+                    }
+                    else
+                        throw std::runtime_error{"val::call of "s + name + ": " + mem.typeOf() + " is not a function"};
+                }
+                else
+                    throw std::runtime_error{"val::call: value is not an object"};
+            });
         }
 
         static val global(char const* name)
@@ -220,8 +235,24 @@ namespace emscripten
         template <typename... List>
         val new_(List&&... args)
         {
-            // TODO:
-            return {};
+            return withValueDo([... args = std::forward<List>(args)](auto& value) {
+                if (value.type() == Nui::Tests::Engine::Value::Type::Object)
+                {
+                    auto& obj = value.template as<Nui::Tests::Engine::Object&>();
+                    if (obj.has("constructor"))
+                    {
+                        return obj["constructor"].template as<Nui::Tests::Engine::Function&>()(
+                            std::forward<List>(args)...);
+                    }
+                    else
+                    {
+                        Nui::Tests::Engine::warn("val::new_: object has no constructor");
+                        return Nui::Tests::Engine::Object{};
+                    }
+                }
+                else
+                    throw std::runtime_error{"val::new_: value is not an object"};
+            });
         }
         void delete_(std::string const& key)
         {
@@ -263,8 +294,12 @@ namespace emscripten
         template <typename... List>
         val operator()(List&&... args)
         {
-            // TODO:
-            return {};
+            return withValueDo([... args = std::forward<List>(args)](auto& value) {
+                if (value.type() == Nui::Tests::Engine::Value::Type::Function)
+                    return value.template as<Nui::Tests::Engine::Function&>()(args...);
+                else
+                    throw std::runtime_error{"val::operator(): value is not a function"};
+            });
         }
 
         template <typename T>
@@ -306,27 +341,7 @@ namespace emscripten
         val typeOf() const
         {
             return withValueDo([](auto& value) {
-                switch (value.type())
-                {
-                    case Nui::Tests::Engine::Value::Type::Null:
-                        return "null";
-                    case Nui::Tests::Engine::Value::Type::Undefined:
-                        return "undefined";
-                    case Nui::Tests::Engine::Value::Type::Boolean:
-                        return "boolean";
-                    case Nui::Tests::Engine::Value::Type::Number:
-                        return "number";
-                    case Nui::Tests::Engine::Value::Type::String:
-                        return "string";
-                    case Nui::Tests::Engine::Value::Type::Object:
-                        return "object";
-                    case Nui::Tests::Engine::Value::Type::Array:
-                        return "array";
-                    case Nui::Tests::Engine::Value::Type::Function:
-                        return "function";
-                    default:
-                        throw std::runtime_error{"val::typeOf: invalid value type"};
-                }
+                return val{value.typeOf()};
             });
         }
 

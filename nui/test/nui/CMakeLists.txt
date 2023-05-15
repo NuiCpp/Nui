@@ -21,6 +21,8 @@ set_target_properties(nui-frontend-mocked PROPERTIES CXX_EXTENSIONS ON)
 add_executable(nui-tests
     tests.cpp
     engine/value.cpp
+    engine/global_object.cpp
+    engine/warn.cpp
 )
 target_link_libraries(nui-tests PRIVATE 
     nui-frontend-mocked 

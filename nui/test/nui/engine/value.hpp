@@ -4,6 +4,7 @@
 #include <any>
 #include <string>
 #include <string_view>
+#include <memory>
 
 namespace Nui::Tests::Engine
 {
@@ -82,6 +83,37 @@ namespace Nui::Tests::Engine
         T as() const
         {
             return std::any_cast<T>(value_);
+        }
+
+        Value const& operator[](std::string_view key) const;
+        Value const& operator[](std::size_t index) const;
+        Value& operator[](std::string_view key);
+        Value& operator[](std::size_t index);
+        std::weak_ptr<Value> reference(std::string_view key);
+
+        std::string typeOf() const
+        {
+            switch (type())
+            {
+                case Nui::Tests::Engine::Value::Type::Null:
+                    return "null";
+                case Nui::Tests::Engine::Value::Type::Undefined:
+                    return "undefined";
+                case Nui::Tests::Engine::Value::Type::Boolean:
+                    return "boolean";
+                case Nui::Tests::Engine::Value::Type::Number:
+                    return "number";
+                case Nui::Tests::Engine::Value::Type::String:
+                    return "string";
+                case Nui::Tests::Engine::Value::Type::Object:
+                    return "object";
+                case Nui::Tests::Engine::Value::Type::Array:
+                    return "array";
+                case Nui::Tests::Engine::Value::Type::Function:
+                    return "function";
+                default:
+                    throw std::runtime_error{"typeOf: invalid value type"};
+            }
         }
 
       private:

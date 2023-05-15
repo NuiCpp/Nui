@@ -1,6 +1,13 @@
 #pragma once
 
+#include <pre/type_traits/function_traits.hpp>
+#include <pre/functional/to_std_function.hpp>
+
+#include <nui/utility/meta/function_traits.hpp>
+
 #include <functional>
+#include <any>
+#include <optional>
 #include <concepts>
 
 namespace Nui::Tests::Engine
@@ -55,6 +62,19 @@ namespace Nui::Tests::Engine
         {
             using deduced = FunctionYes;
         };
+
+        template <typename ArgTuple>
+        struct FunctionSignature
+        {};
+
+        template <typename... Args>
+        struct FunctionSignature<std::tuple<Args...>>
+        {
+            using type = std::function<Value(Args...)>;
+        };
+
+        template <typename T>
+        using FunctionSignature_t = typename FunctionSignature<T>::type;
     }
 
     template <typename T>
@@ -76,18 +96,27 @@ namespace Nui::Tests::Engine
         template <typename T>
         requires Callable<T>
         Function(T&& function)
-            : function_{}
+            : callable_{Detail::FunctionSignature_t<FunctionArgumentTypes_t<T>>{
+                  [function = std::forward<T>(function)](auto&&... args) {
+                      if constexpr (std::is_same_v<FunctionReturnType_t<T>, void>)
+                          return function(std::forward<decltype(args)>(args)...), Value{};
+                      else
+                          return Value{function(std::forward<decltype(args)>(args)...)};
+                  }}}
         {}
 
-        // TODO:
-        // template <typename... Args>
-        // auto operator()(Args&&... args) const
-        // {
-        //     return function_(std::forward<Args>(args)...);
-        // }
+        template <typename... Args>
+        Function(std::function<Value(Args const&...)> handler)
+            : callable_{handler}
+        {}
+
+        template <typename... Args>
+        Value operator()(Args&&... args) const
+        {
+            return std::any_cast<std::function<Value(Args...)>>(callable_)(std::forward<Args>(args)...);
+        }
 
       private:
-        // TODO:
-        std::function<Value(Value const&)> function_;
+        std::any callable_;
     };
 }
