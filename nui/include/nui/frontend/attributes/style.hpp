@@ -14,7 +14,6 @@
 #include <string>
 #include <sstream>
 #include <optional>
-#include <tuple>
 
 namespace Nui::Attributes
 {
@@ -198,16 +197,14 @@ namespace Nui::Attributes
         template <bool isStatic, typename... Properties>
         auto makeStyleGenerator(Properties&&... props)
         {
-            return [props = std::tuple<Properties...>{std::forward<Properties>(props)...}]() {
+            return [... props = std::forward<Properties>(props)]() {
                 // TODO: better performing version:
                 std::stringstream sstr;
-                std::apply(
-                    [&sstr](auto const& head, auto const&... tail) {
-                        using expander = int[];
-                        sstr << head();
-                        (void)expander{0, (sstr << ";" << tail(), void(), 0)...};
-                    },
-                    props);
+                [&sstr](auto const& head, auto const&... tail) {
+                    using expander = int[];
+                    sstr << head();
+                    (void)expander{0, (sstr << ";" << tail(), void(), 0)...};
+                }(props...);
                 return sstr.str();
             };
         }
