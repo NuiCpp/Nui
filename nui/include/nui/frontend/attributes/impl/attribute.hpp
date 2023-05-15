@@ -11,7 +11,6 @@
 #include <string>
 #include <type_traits>
 #include <any>
-#include <tuple>
 
 namespace Nui
 {
