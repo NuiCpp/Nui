@@ -125,7 +125,7 @@ namespace Nui
         }
     };
 
-    template <typename Derived, typename... Attributes>
+    template <typename... Attributes>
     class HtmlElement
     {
       public:
@@ -133,26 +133,29 @@ namespace Nui
 
         constexpr HtmlElement(HtmlElement const&) = default;
         constexpr HtmlElement(HtmlElement&&) = default;
-        constexpr HtmlElement(std::tuple<Attributes...> const& attributes)
-            : attributes_{attributes}
+        constexpr HtmlElement(char const* name, std::tuple<Attributes...> const& attributes)
+            : name_{name}
+            , attributes_{attributes}
         {}
-        constexpr HtmlElement(std::tuple<Attributes...>&& attributes)
-            : attributes_{std::move(attributes)}
+        constexpr HtmlElement(char const* name, std::tuple<Attributes...>&& attributes)
+            : name_{name}
+            , attributes_{std::move(attributes)}
         {}
         template <typename... T>
-        constexpr HtmlElement(T&&... attributes)
-            : attributes_{std::forward<T>(attributes)...}
+        constexpr HtmlElement(char const* name, T&&... attributes)
+            : name_{name}
+            , attributes_{std::forward<T>(attributes)...}
         {}
 
         HtmlElement clone() const
         {
-            return {attributes_};
+            return {name_, attributes_};
         }
 
         // Children:
         template <typename... ElementT>
-        requires((Dom::IsNotReferencePasser<ElementT> && ...) && (!IsObserved<ElementT> && ...)) constexpr auto
-        operator()(ElementT&&... elements) &&
+        requires((Dom::IsNotReferencePasser<ElementT> && ...) && (!IsObserved<ElementT> && ...))
+        constexpr auto operator()(ElementT&&... elements) &&
         {
             return [self = this->clone(), children = std::make_tuple(std::forward<ElementT>(elements)...)](
                        auto& parentElement, Renderer const& gen) {
@@ -307,7 +310,8 @@ namespace Nui
             };
         }
         template <std::invocable GeneratorT>
-        requires(!InvocableReturns<GeneratorT, std::string>) constexpr auto operator()(GeneratorT&& ElementRenderer) &&
+        requires(!InvocableReturns<GeneratorT, std::string>)
+        constexpr auto operator()(GeneratorT&& ElementRenderer) &&
         {
             return [self = this->clone(), ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](
                        auto& parentElement, Renderer const& gen) {
@@ -400,6 +404,11 @@ namespace Nui
         std::tuple<Attributes...> const& attributes() const
         {
             return attributes_;
+        }
+
+        char const* name() const
+        {
+            return name_;
         }
 
       private:
@@ -585,6 +594,7 @@ namespace Nui
         }
 
       private:
+        char const* name_;
         std::tuple<Attributes...> attributes_;
     };
 }
@@ -592,15 +602,22 @@ namespace Nui
 #define NUI_DECLARE_HTML_ELEMENT_RENAME(NAME, HTML_ACTUAL) \
     namespace Nui::Elements \
     { \
-        struct NAME##_ \
+        template <typename... Attributes> \
+        struct NAME : HtmlElement<Attributes...> \
         { \
             constexpr static char const* name = #HTML_ACTUAL; \
-        }; \
-\
-        template <typename... Attributes> \
-        struct NAME : HtmlElement<NAME##_, Attributes...> \
-        { \
-            using HtmlElement<NAME##_, Attributes...>::HtmlElement; \
+            constexpr NAME(NAME const&) = default; \
+            constexpr NAME(NAME&&) = default; \
+            constexpr NAME(std::tuple<Attributes...> const& attributes) \
+                : HtmlElement<Attributes...>{name, attributes} \
+            {} \
+            constexpr NAME(std::tuple<Attributes...>&& attributes) \
+                : HtmlElement<Attributes...>{name, std::move(attributes)} \
+            {} \
+            template <typename... T> \
+            constexpr NAME(T&&... attributes) \
+                : HtmlElement<Attributes...>{name, std::forward<T>(attributes)...} \
+            {} \
         }; \
         template <typename... Attributes> \
         NAME(Attributes&&...) -> NAME<Attributes...>; \

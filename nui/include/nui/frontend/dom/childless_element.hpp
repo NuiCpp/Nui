@@ -13,26 +13,26 @@ namespace Nui::Dom
     class ChildlessElement : public BasicElement
     {
       public:
-        template <typename T, typename... Attributes>
-        ChildlessElement(HtmlElement<T, Attributes...> const& elem)
+        template <typename... Attributes>
+        ChildlessElement(HtmlElement<Attributes...> const& elem)
             : BasicElement{ChildlessElement::createElement(elem).val()}
         {}
         ChildlessElement(emscripten::val val)
             : BasicElement{std::move(val)}
         {}
 
-        template <typename T, typename... Attributes>
-        static ChildlessElement createElement(HtmlElement<T, Attributes...> const&)
+        template <typename... Attributes>
+        static ChildlessElement createElement(HtmlElement<Attributes...> const& element)
         {
-            return {
-                emscripten::val::global("document").call<emscripten::val>("createElement", emscripten::val{T::name})};
+            return {emscripten::val::global("document")
+                        .call<emscripten::val>("createElement", emscripten::val{element.name()})};
         }
 
         /**
          * @brief Relies on weak_from_this and cannot be used from the constructor
          */
-        template <typename T, typename... Attributes>
-        void setup(HtmlElement<T, Attributes...> const& element)
+        template <typename... Attributes>
+        void setup(HtmlElement<Attributes...> const& element)
         {
             auto setSideEffect = [self = this](auto const& attribute) {
                 auto weak = self->weak_from_base<ChildlessElement>();
@@ -101,8 +101,8 @@ namespace Nui::Dom
         }
 
       protected:
-        template <typename U, typename... Attributes>
-        void replaceElement(HtmlElement<U, Attributes...> const& element)
+        template <typename... Attributes>
+        void replaceElement(HtmlElement<Attributes...> const& element)
         {
             auto replacement = ChildlessElement::createElement(element);
             replacement.setup(element);

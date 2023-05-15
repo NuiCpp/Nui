@@ -22,8 +22,8 @@ namespace Nui::Dom
         using iterator = collection_type::iterator;
         using const_iterator = collection_type::const_iterator;
 
-        template <typename T, typename... Attributes>
-        Element(HtmlElement<T, Attributes...> const& elem)
+        template <typename... Attributes>
+        Element(HtmlElement<Attributes...> const& elem)
             : ChildlessElement{elem}
             , children_{}
         {}
@@ -32,8 +32,8 @@ namespace Nui::Dom
             element_.call<void>("remove");
         }
 
-        template <typename U, typename... Attributes>
-        static std::shared_ptr<Element> makeElement(HtmlElement<U, Attributes...> const& element)
+        template <typename... Attributes>
+        static std::shared_ptr<Element> makeElement(HtmlElement<Attributes...> const& element)
         {
             auto elem = std::make_shared<Element>(element);
             elem->setup(element);
@@ -66,8 +66,8 @@ namespace Nui::Dom
         {
             fn(*this, Renderer{.type = RendererType::Append});
         }
-        template <typename U, typename... Attributes>
-        auto appendElement(HtmlElement<U, Attributes...> const& element)
+        template <typename... Attributes>
+        auto appendElement(HtmlElement<Attributes...> const& element)
         {
             auto elem = makeElement(element);
             element_.call<emscripten::val>("appendChild", elem->element_);
@@ -77,8 +77,8 @@ namespace Nui::Dom
         {
             fn(*this, Renderer{.type = RendererType::Replace});
         }
-        template <typename U, typename... Attributes>
-        auto replaceElement(HtmlElement<U, Attributes...> const& element)
+        template <typename... Attributes>
+        auto replaceElement(HtmlElement<Attributes...> const& element)
         {
             ChildlessElement::replaceElement(element);
             return shared_from_base<Element>();
@@ -107,8 +107,8 @@ namespace Nui::Dom
 #pragma clang diagnostic pop
         }
 
-        template <typename U, typename... Attributes>
-        auto insert(iterator where, HtmlElement<U, Attributes...> const& element)
+        template <typename... Attributes>
+        auto insert(iterator where, HtmlElement<Attributes...> const& element)
         {
             if (where == end())
                 return appendElement(element);
@@ -117,8 +117,8 @@ namespace Nui::Dom
             return *children_.insert(where, std::move(elem));
         }
 
-        template <typename U, typename... Attributes>
-        auto insert(std::size_t where, HtmlElement<U, Attributes...> const& element)
+        template <typename... Attributes>
+        auto insert(std::size_t where, HtmlElement<Attributes...> const& element)
         {
             if (where >= children_.size())
                 return appendElement(element);
