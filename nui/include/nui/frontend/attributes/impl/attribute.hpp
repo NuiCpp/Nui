@@ -15,7 +15,7 @@
 
 namespace Nui
 {
-    template <typename T, typename Enable = void>
+    template <typename T>
     class Attribute
     {
       public:
@@ -54,7 +54,7 @@ namespace Nui
     };
 
     template <typename T>
-    class Attribute<Observed<T>, void>
+    class Attribute<Observed<T>>
     {
       public:
         constexpr static bool is_static_value = false;
@@ -105,7 +105,7 @@ namespace Nui
     };
 
     template <typename RendererType, typename... ObservedValueTypes>
-    class Attribute<ObservedValueCombinatorWithGenerator<RendererType, ObservedValueTypes...>, void>
+    class Attribute<ObservedValueCombinatorWithGenerator<RendererType, ObservedValueTypes...>>
     {
       public:
         constexpr static bool is_static_value = false;

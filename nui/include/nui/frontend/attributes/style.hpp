@@ -265,33 +265,30 @@ namespace Nui::Attributes
 
     struct style_
     {
-        constexpr static char const* name()
-        {
-            return "style";
-        };
         template <typename U>
-        requires(!IsObserved<std::decay_t<U>>) constexpr Attribute<style_, std::decay_t<U>> operator=(U val) const
+        requires(!IsObserved<std::decay_t<U>>)
+        constexpr Attribute<std::decay_t<U>> operator=(U val) const
         {
-            return Attribute<style_, std::decay_t<U>>{std::move(val)};
+            return Attribute<std::decay_t<U>>{std::move(val)};
         }
         template <typename U>
-        requires(IsObserved<std::decay_t<U>>) constexpr Attribute<style_, std::decay_t<U>> operator=(U& val) const
+        requires(IsObserved<std::decay_t<U>>)
+        constexpr Attribute<std::decay_t<U>> operator=(U& val) const
         {
-            return Attribute<style_, std::decay_t<U>>{val};
+            return Attribute<std::decay_t<U>>{val};
         }
         template <typename... T>
         constexpr auto operator=(Style<T...>&& style) const
         {
             if constexpr (Style<T...>::isStatic())
             {
-                return Attribute<style_, std::string>{style.toString()};
+                return Attribute<std::string>{style.toString()};
             }
             else
             {
                 return std::apply(
                     [&style]<typename... ObservedValueTypes>(ObservedValueTypes&... obs) {
                         return Attribute<
-                            style_,
                             ObservedValueCombinatorWithGenerator<std::function<std::string()>, ObservedValueTypes...>>{
                             ObservedValueCombinator<ObservedValueTypes...>{obs...}.generate(
                                 std::move(style).ejectGenerator())};
