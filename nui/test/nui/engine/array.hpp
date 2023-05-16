@@ -53,6 +53,18 @@ namespace Nui::Tests::Engine
             return values_.empty();
         }
 
+        std::weak_ptr<Value> push_back(Value const& value)
+        {
+            values_.emplace_back(std::make_shared<Value>(value));
+            return values_.back();
+        }
+
+        std::weak_ptr<Value> push_back(std::shared_ptr<Value> const& value)
+        {
+            values_.push_back(value);
+            return values_.back();
+        }
+
       private:
         boost::container::stable_vector<std::shared_ptr<Value>> values_;
     };

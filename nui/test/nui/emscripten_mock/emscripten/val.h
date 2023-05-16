@@ -13,6 +13,9 @@
 #include <variant>
 #include <string>
 
+// REMOVE_ME
+#include <iostream>
+
 namespace emscripten
 {
     class val
@@ -184,6 +187,7 @@ namespace emscripten
 
         static val global(char const* name)
         {
+            std::cout << Nui::Tests::Engine::globalObject.reference(name).lock()->typeOf() << "\n";
             return Nui::Tests::Engine::globalObject.reference(name);
         }
 
@@ -194,7 +198,10 @@ namespace emscripten
 
         static val object()
         {
-            return val{Nui::Tests::Engine::Object{}};
+            using namespace std::string_literals;
+            static auto counter = 0;
+            return Nui::Tests::Engine::unreferencedObjects.emplace_back(
+                "_"s + std::to_string(counter++), Nui::Tests::Engine::Object{});
         }
 
         static val u8string()
@@ -350,6 +357,14 @@ namespace emscripten
             return {};
         }
 
+        std::weak_ptr<Nui::Tests::Engine::Value> handle() const
+        {
+            if (std::holds_alternative<std::weak_ptr<Nui::Tests::Engine::Value>>(referenced_value_))
+                return std::get<std::weak_ptr<Nui::Tests::Engine::Value>>(referenced_value_);
+            else
+                throw std::runtime_error{"val::handle: value is not a reference"};
+        }
+
       private:
         template <typename T>
         friend std::vector<T> vecFromJSArray(val const& v);
@@ -385,3 +400,5 @@ namespace emscripten
         return vecFromJSArray<T>(v);
     }
 }
+
+#include "../../engine/function.tpp"

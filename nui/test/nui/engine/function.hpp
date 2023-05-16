@@ -10,6 +10,11 @@
 #include <optional>
 #include <concepts>
 
+namespace emscripten
+{
+    class val;
+}
+
 namespace Nui::Tests::Engine
 {
     namespace Detail
@@ -70,7 +75,7 @@ namespace Nui::Tests::Engine
         template <typename... Args>
         struct FunctionSignature<std::tuple<Args...>>
         {
-            using type = std::function<Value(Args...)>;
+            using type = std::function<emscripten::val(Args...)>;
         };
 
         template <typename T>
@@ -95,26 +100,13 @@ namespace Nui::Tests::Engine
 
         template <typename T>
         requires Callable<T>
-        Function(T&& function)
-            : callable_{Detail::FunctionSignature_t<FunctionArgumentTypes_t<T>>{
-                  [function = std::forward<T>(function)](auto&&... args) {
-                      if constexpr (std::is_same_v<FunctionReturnType_t<T>, void>)
-                          return function(std::forward<decltype(args)>(args)...), Value{};
-                      else
-                          return Value{function(std::forward<decltype(args)>(args)...)};
-                  }}}
-        {}
+        Function(T&& function);
 
         template <typename... Args>
-        Function(std::function<Value(Args const&...)> handler)
-            : callable_{handler}
-        {}
+        Function(std::function<emscripten::val(Args const&...)> handler);
 
         template <typename... Args>
-        Value operator()(Args&&... args) const
-        {
-            return std::any_cast<std::function<Value(Args...)>>(callable_)(std::forward<Args>(args)...);
-        }
+        emscripten::val operator()(Args&&... args) const;
 
       private:
         std::any callable_;

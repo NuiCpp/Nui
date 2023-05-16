@@ -36,6 +36,13 @@ namespace Nui::Tests::Engine
             return members_.at(key.data());
         }
 
+        std::weak_ptr<Value> emplace_back(std::string_view key, Value const& value)
+        {
+            if (!members_.contains(key.data()))
+                members_.emplace(key.data(), std::make_shared<Value>(value));
+            return members_.at(key.data());
+        }
+
         bool has(std::string_view key) const
         {
             return members_.contains(key.data());

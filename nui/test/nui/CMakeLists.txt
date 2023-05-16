@@ -23,6 +23,7 @@ add_executable(nui-tests
     engine/value.cpp
     engine/global_object.cpp
     engine/warn.cpp
+    engine/document.cpp
 )
 target_link_libraries(nui-tests PRIVATE 
     nui-frontend-mocked 
