@@ -10,6 +10,16 @@ namespace Nui::Tests::Engine
                   else
                       return emscripten::val{function(std::forward<decltype(args)>(args)...)};
               }}}
+        , signature_{[]() -> std::string {
+            using argumentTuple = FunctionArgumentTypes_t<T>;
+            std::string signature = "emscripten::val(";
+            if constexpr (std::tuple_size_v<argumentTuple> > 0)
+            {
+                signature += Detail::TupleTypePrint<argumentTuple>::toString();
+            }
+            signature += ")";
+            return signature;
+        }()}
     {}
 
     template <typename... Args>
@@ -20,6 +30,7 @@ namespace Nui::Tests::Engine
     template <typename... Args>
     emscripten::val Function::operator()(Args&&... args) const
     {
-        return std::any_cast<std::function<emscripten::val(Args...)>>(callable_)(std::forward<Args>(args)...);
+        return std::any_cast<std::function<emscripten::val(std::decay_t<Args>...)>>(callable_)(
+            std::forward<Args>(args)...);
     }
 }

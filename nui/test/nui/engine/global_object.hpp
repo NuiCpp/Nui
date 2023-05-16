@@ -4,7 +4,7 @@
 
 namespace Nui::Tests::Engine
 {
-    static Object globalObject;
-    static Object moduleObject;
-    static Object unreferencedObjects;
+    extern Object globalObject;
+    extern Object moduleObject;
+    extern Object unreferencedObjects;
 }

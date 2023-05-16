@@ -55,4 +55,51 @@ namespace Nui::Tests::Engine
             throw std::runtime_error{"reference: invalid value type"};
         return as<Object&>().reference(key);
     }
+
+    void Value::print(int indent)
+    {
+        switch (type())
+        {
+            case Nui::Tests::Engine::Value::Type::Null:
+            {
+                std::cout << "null";
+                break;
+            }
+            case Nui::Tests::Engine::Value::Type::Undefined:
+            {
+                std::cout << "undefined";
+                break;
+            }
+            case Nui::Tests::Engine::Value::Type::Boolean:
+            {
+                std::cout << std::boolalpha << as<bool>();
+                break;
+            }
+            case Nui::Tests::Engine::Value::Type::Number:
+            {
+                std::cout << as<long double>();
+                break;
+            }
+            case Nui::Tests::Engine::Value::Type::String:
+            {
+                std::cout << as<std::string>();
+                break;
+            }
+            case Nui::Tests::Engine::Value::Type::Object:
+            {
+                as<Object>().print(indent);
+                break;
+            }
+            case Nui::Tests::Engine::Value::Type::Array:
+            {
+                as<Array>().print(indent);
+                break;
+            }
+            case Nui::Tests::Engine::Value::Type::Function:
+            {
+                as<Function>().print(indent);
+                break;
+            }
+        }
+    }
 }

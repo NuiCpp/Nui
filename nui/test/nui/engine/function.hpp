@@ -1,14 +1,16 @@
 #pragma once
 
+#include <nui/utility/meta/function_traits.hpp>
+
 #include <pre/type_traits/function_traits.hpp>
 #include <pre/functional/to_std_function.hpp>
-
-#include <nui/utility/meta/function_traits.hpp>
+#include <boost/type_index.hpp>
 
 #include <functional>
 #include <any>
 #include <optional>
 #include <concepts>
+#include <iostream>
 
 namespace emscripten
 {
@@ -80,6 +82,23 @@ namespace Nui::Tests::Engine
 
         template <typename T>
         using FunctionSignature_t = typename FunctionSignature<T>::type;
+
+        template <typename T>
+        struct TupleTypePrint
+        {};
+
+        template <typename... Args>
+        struct TupleTypePrint<std::tuple<Args...>>
+        {
+            static std::string toString()
+            {
+                std::string types;
+                ((types += boost::typeindex::type_id<Args>().pretty_name() += ", "), ...);
+                types.pop_back();
+                types.pop_back();
+                return types;
+            }
+        };
     }
 
     template <typename T>
@@ -108,7 +127,13 @@ namespace Nui::Tests::Engine
         template <typename... Args>
         emscripten::val operator()(Args&&... args) const;
 
+        void print(int indent) const
+        {
+            std::cout << signature_;
+        }
+
       private:
         std::any callable_;
+        std::string signature_;
     };
 }

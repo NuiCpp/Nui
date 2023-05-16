@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <memory>
+#include <iostream>
 
 namespace Nui::Tests::Engine
 {
@@ -75,12 +76,17 @@ namespace Nui::Tests::Engine
         }
 
         template <typename T>
-        T as()
+        T& as() &
         {
-            return std::any_cast<T>(value_);
+            return std::any_cast<T&>(value_);
         }
         template <typename T>
-        T as() const
+        T const& as() const&
+        {
+            return std::any_cast<T const&>(value_);
+        }
+        template <typename T>
+        T as() &&
         {
             return std::any_cast<T>(value_);
         }
@@ -115,6 +121,8 @@ namespace Nui::Tests::Engine
                     throw std::runtime_error{"typeOf: invalid value type"};
             }
         }
+
+        void print(int indent = 0);
 
       private:
         Type type_;

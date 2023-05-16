@@ -2,4 +2,7 @@
 
 namespace Nui::Tests::Engine
 {
+    Object globalObject;
+    Object moduleObject;
+    Object unreferencedObjects;
 }

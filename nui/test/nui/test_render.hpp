@@ -26,5 +26,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
 
         render(div{}());
+
+        EXPECT_EQ(emscripten::val::global("document")["body"]["tagName"].as<std::string>(), "div");
     }
 }
