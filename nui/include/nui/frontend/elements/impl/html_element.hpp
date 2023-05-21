@@ -16,7 +16,6 @@
 #include <concepts>
 #include <memory>
 #include <functional>
-#include <iostream>
 #include <optional>
 
 namespace Nui

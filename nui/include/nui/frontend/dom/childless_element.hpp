@@ -34,22 +34,12 @@ namespace Nui::Dom
         template <typename... Attributes>
         void setup(HtmlElement<Attributes...> const& element)
         {
-            auto setSideEffect = [self = this](auto const& attribute) {
-                auto weak = self->weak_from_base<ChildlessElement>();
-                attribute.createEvent(
-                    weak,
-                    [name = attribute.name()](
-                        std::shared_ptr<std::decay_t<decltype(*this)>> const& shared, auto const& value) {
-                        shared->setAttribute(name, value);
-                    });
-            };
-
 #pragma clang diagnostic push
 // 'this' may be unused when the tuple is empty? anyway this warning cannot be fixed.
 #pragma clang diagnostic ignored "-Wunused-lambda-capture"
-            tupleForEach(element.attributes(), [this, &setSideEffect](auto const& attribute) {
-                setAttribute(attribute.name(), attribute.value());
-                setSideEffect(attribute);
+            tupleForEach(element.attributes(), [self = this](auto const& attribute) {
+                attribute.setOn(*self);
+                attribute.createEvent(self->weak_from_base<ChildlessElement>());
             });
 #pragma clang diagnostic pop
         }

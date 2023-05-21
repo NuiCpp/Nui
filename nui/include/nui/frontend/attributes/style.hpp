@@ -1,11 +1,15 @@
 #pragma once
 
+#include <nui/frontend/dom/childless_element.hpp>
 #include <nui/frontend/attributes/impl/attribute.hpp>
+#include <nui/frontend/attributes/impl/attribute_factory.hpp>
+#include <nui/frontend/event_system/observed_value.hpp>
+#include <nui/frontend/event_system/observed_value_combinator.hpp>
+
 #include <nui/utility/meta/tuple_filter.hpp>
 #include <nui/utility/meta/tuple_transform.hpp>
 #include <nui/utility/meta/pick_first.hpp>
-#include <nui/frontend/event_system/observed_value.hpp>
-#include <nui/frontend/event_system/observed_value_combinator.hpp>
+
 #include <mplex/control/if.hpp>
 #include <mplex/functional/lift.hpp>
 #include <mplex/fundamental/integral.hpp>
@@ -264,31 +268,30 @@ namespace Nui::Attributes
     {
         template <typename U>
         requires(!IsObserved<std::decay_t<U>>)
-        constexpr Attribute<std::decay_t<U>> operator=(U val) const
+        Attribute operator=(U&& val) const
         {
-            return Attribute<std::decay_t<U>>{std::move(val)};
+            return AttributeFactory{"style"}.operator=(std::forward<U>(val));
         }
         template <typename U>
         requires(IsObserved<std::decay_t<U>>)
-        constexpr Attribute<std::decay_t<U>> operator=(U& val) const
+        Attribute operator=(U& val) const
         {
-            return Attribute<std::decay_t<U>>{val};
+            return AttributeFactory{"style"}.operator=(val);
         }
         template <typename... T>
-        constexpr auto operator=(Style<T...>&& style) const
+        auto operator=(Style<T...>&& style) const
         {
             if constexpr (Style<T...>::isStatic())
             {
-                return Attribute<std::string>{style.toString()};
+                return AttributeFactory{"style"}.operator=(style.toString());
             }
             else
             {
                 return std::apply(
                     [&style]<typename... ObservedValueTypes>(ObservedValueTypes&... obs) {
-                        return Attribute<
-                            ObservedValueCombinatorWithGenerator<std::function<std::string()>, ObservedValueTypes...>>{
+                        return AttributeFactory{"style"}.operator=(
                             ObservedValueCombinator<ObservedValueTypes...>{obs...}.generate(
-                                std::move(style).ejectGenerator())};
+                                std::move(style).ejectGenerator()));
                     },
                     std::move(style).ejectObservedValues());
             }
