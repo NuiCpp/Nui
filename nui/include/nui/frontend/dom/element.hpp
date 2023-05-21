@@ -90,18 +90,11 @@ namespace Nui::Dom
             element_.set("textContent", text);
         }
 
-        template <typename... Elements>
-        void appendElements(std::tuple<Elements...> const& elements)
+        void
+        appendElements(std::vector<std::function<std::shared_ptr<Element>(Element&, Renderer const&)>> const& elements)
         {
-#pragma clang diagnostic push
-// 'this' may be unused when the tuple is empty? anyway this warning cannot be fixed.
-#pragma clang diagnostic ignored "-Wunused-lambda-capture"
-            std::apply(
-                [this](auto const&... element) {
-                    (appendElement(element), ...);
-                },
-                elements);
-#pragma clang diagnostic pop
+            for (auto const& element : elements)
+                appendElement(element);
         }
 
         auto insert(iterator where, HtmlElement const& element)

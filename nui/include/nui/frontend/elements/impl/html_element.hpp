@@ -4,6 +4,7 @@
 #include <nui/frontend/event_system/observed_value_combinator.hpp>
 #include <nui/frontend/event_system/range.hpp>
 #include <nui/frontend/event_system/event_context.hpp>
+#include <nui/frontend/dom/element_fwd.hpp>
 #include <nui/frontend/dom/reference.hpp>
 #include <nui/frontend/elements/detail/fragment_context.hpp>
 #include <nui/frontend/attributes/impl/attribute.hpp>
@@ -12,13 +13,13 @@
 
 #include <emscripten/val.h>
 
-#include <tuple>
 #include <vector>
 #include <utility>
 #include <concepts>
 #include <memory>
 #include <functional>
 #include <optional>
+#include <initializer_list>
 
 namespace Nui
 {
@@ -133,6 +134,7 @@ namespace Nui
 
         constexpr HtmlElement(HtmlElement const&) = default;
         constexpr HtmlElement(HtmlElement&&) = default;
+        virtual ~HtmlElement() = default;
         constexpr HtmlElement(char const* name, std::vector<Attribute> const& attributes)
             : name_{name}
             , attributes_{attributes}
@@ -335,31 +337,34 @@ namespace Nui
         }
 
       public:
-        // Children:
         template <typename... ElementT>
         requires((Dom::IsNotReferencePasser<ElementT> && ...) && (!IsObserved<ElementT> && ...))
         constexpr auto operator()(ElementT&&... elements) &&
         {
-            return [self = this->clone(), children = std::make_tuple(std::forward<ElementT>(elements)...)](
-                       auto& parentElement, Renderer const& gen) {
-                auto materialized = renderElement(gen, parentElement, self);
-                materialized->appendElements(children);
-                return materialized;
-            };
+            return
+                [self = this->clone(),
+                 children = std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
+                     std::forward<ElementT>(elements)...}](auto& parentElement, Renderer const& gen) {
+                    auto materialized = renderElement(gen, parentElement, self);
+                    materialized->appendElements(children);
+                    return materialized;
+                };
         }
+
         template <typename ReferencePasserT, typename... ElementT>
         requires Dom::IsReferencePasser<ReferencePasserT>
         constexpr auto operator()(ReferencePasserT&& referencePasser, ElementT&&... elements) &&
         {
-            return [self = this->clone(),
-                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
-                    children = std::make_tuple(std::forward<ElementT>(elements)...)](
-                       auto& parentElement, Renderer const& gen) {
-                auto materialized = renderElement(gen, parentElement, self);
-                materialized->appendElements(children);
-                referencePasser(materialized);
-                return materialized;
-            };
+            return
+                [self = this->clone(),
+                 referencePasser = std::forward<ReferencePasserT>(referencePasser),
+                 children = std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
+                     std::forward<ElementT>(elements)...}](auto& parentElement, Renderer const& gen) {
+                    auto materialized = renderElement(gen, parentElement, self);
+                    materialized->appendElements(children);
+                    referencePasser(materialized);
+                    return materialized;
+                };
         }
 
         // Trivial case:
@@ -605,20 +610,19 @@ namespace Nui
     { \
         struct NAME : HtmlElement \
         { \
-            constexpr static char const* name = #HTML_ACTUAL; \
             constexpr NAME(NAME const&) = default; \
             constexpr NAME(NAME&&) = default; \
             constexpr NAME(std::vector<Attribute> const& attributes) \
-                : HtmlElement{name, attributes} \
+                : HtmlElement{HTML_ACTUAL, attributes} \
             {} \
             constexpr NAME(std::vector<Attribute>&& attributes) \
-                : HtmlElement{name, std::move(attributes)} \
+                : HtmlElement{HTML_ACTUAL, std::move(attributes)} \
             {} \
             template <typename... T> \
             constexpr NAME(T&&... attributes) \
-                : HtmlElement{name, std::forward<T>(attributes)...} \
+                : HtmlElement{HTML_ACTUAL, std::forward<T>(attributes)...} \
             {} \
         }; \
     }
 
-#define NUI_DECLARE_HTML_ELEMENT(NAME) NUI_DECLARE_HTML_ELEMENT_RENAME(NAME, NAME)
+#define NUI_DECLARE_HTML_ELEMENT(NAME) NUI_DECLARE_HTML_ELEMENT_RENAME(NAME, #NAME)
