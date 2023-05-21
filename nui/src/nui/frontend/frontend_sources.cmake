@@ -10,6 +10,7 @@ set(NUI_FRONTEND_SOURCES_RELATIVE
     api/fetch.cpp
     api/throttle.cpp
     api/timer.cpp
+    attributes/impl/attribute.cpp
     screen.cpp
     environment_variables.cpp
 )

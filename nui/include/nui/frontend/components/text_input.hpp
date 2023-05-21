@@ -16,12 +16,11 @@ namespace Nui::Components
     /**
      * @brief This component can be used like this TextInput(attributes...)(children...) instead of the C{}() syntax.
      *
-     * @param model The value model.
+     * @param model The value model (Observed<T>).
      * @param attributes Other attributes to forward.
      */
-    template <typename... Attributes>
-    constexpr auto
-    TextInput(Nui::Attribute<Nui::Attributes::valueTag, Observed<std::string>>&& model, Attributes&&... attributes)
+    template <typename T, typename... Attributes>
+    constexpr auto TextInput(Observed<T>& model, Attributes&&... attributes)
     {
         return [&model, ... attributes = std::forward<Attributes>(attributes)]<typename... Children>(
                    Children&&... children) mutable {
@@ -34,11 +33,10 @@ namespace Nui::Components
             return input{
                 std::move(attributes)...,
                 type = "text",
-                value = model.observed(),
+                value = model,
                 onInput =
                     [&model](auto const& event) {
-                        // bypass updates.
-                        model.observed().value() = event["target"]["value"].template as<std::string>();
+                        model = event["target"]["value"].template as<std::string>();
                     },
             }(std::forward<Children>(children)...);
         };
