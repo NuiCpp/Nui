@@ -6,12 +6,14 @@
 #include <nui/frontend/event_system/event_context.hpp>
 #include <nui/frontend/dom/reference.hpp>
 #include <nui/frontend/elements/detail/fragment_context.hpp>
+#include <nui/frontend/attributes/impl/attribute.hpp>
 #include <nui/concepts.hpp>
 #include <nui/utility/scope_exit.hpp>
 
 #include <emscripten/val.h>
 
 #include <tuple>
+#include <vector>
 #include <utility>
 #include <concepts>
 #include <memory>
@@ -124,7 +126,6 @@ namespace Nui
         }
     };
 
-    template <typename... Attributes>
     class HtmlElement
     {
       public:
@@ -132,11 +133,11 @@ namespace Nui
 
         constexpr HtmlElement(HtmlElement const&) = default;
         constexpr HtmlElement(HtmlElement&&) = default;
-        constexpr HtmlElement(char const* name, std::tuple<Attributes...> const& attributes)
+        constexpr HtmlElement(char const* name, std::vector<Attribute> const& attributes)
             : name_{name}
             , attributes_{attributes}
         {}
-        constexpr HtmlElement(char const* name, std::tuple<Attributes...>&& attributes)
+        constexpr HtmlElement(char const* name, std::vector<Attribute>&& attributes)
             : name_{name}
             , attributes_{std::move(attributes)}
         {}
@@ -149,265 +150,6 @@ namespace Nui
         HtmlElement clone() const
         {
             return {name_, attributes_};
-        }
-
-        // Children:
-        template <typename... ElementT>
-        requires((Dom::IsNotReferencePasser<ElementT> && ...) && (!IsObserved<ElementT> && ...))
-        constexpr auto operator()(ElementT&&... elements) &&
-        {
-            return [self = this->clone(), children = std::make_tuple(std::forward<ElementT>(elements)...)](
-                       auto& parentElement, Renderer const& gen) {
-                auto materialized = renderElement(gen, parentElement, self);
-                materialized->appendElements(children);
-                return materialized;
-            };
-        }
-        template <typename ReferencePasserT, typename... ElementT>
-        requires Dom::IsReferencePasser<ReferencePasserT>
-        constexpr auto operator()(ReferencePasserT&& referencePasser, ElementT&&... elements) &&
-        {
-            return [self = this->clone(),
-                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
-                    children = std::make_tuple(std::forward<ElementT>(elements)...)](
-                       auto& parentElement, Renderer const& gen) {
-                auto materialized = renderElement(gen, parentElement, self);
-                materialized->appendElements(children);
-                referencePasser(materialized);
-                return materialized;
-            };
-        }
-
-        // Trivial case:
-        constexpr auto operator()() &&
-        {
-            return [self = this->clone()](auto& parentElement, Renderer const& gen) {
-                return renderElement(gen, parentElement, self);
-            };
-        }
-        template <typename ReferencePasserT>
-        requires Dom::IsReferencePasser<ReferencePasserT>
-        constexpr auto operator()(ReferencePasserT&& referencePasser)
-        {
-            return [self = this->clone(), referencePasser = std::forward<ReferencePasserT>(referencePasser)](
-                       auto& parentElement, Renderer const& gen) {
-                auto materialized = renderElement(gen, parentElement, self);
-                referencePasser(materialized);
-                return materialized;
-            };
-        }
-
-        // Text content functions:
-        constexpr auto operator()(char const* text) &&
-        {
-            return [self = this->clone(), text](auto& parentElement, Renderer const& gen) {
-                auto materialized = renderElement(gen, parentElement, self);
-                materialized->setTextContent(text);
-                return materialized;
-            };
-        }
-        template <typename ReferencePasserT>
-        requires Dom::IsReferencePasser<ReferencePasserT>
-        constexpr auto operator()(ReferencePasserT&& referencePasser, char const* text) &&
-        {
-            return [self = this->clone(), referencePasser = std::forward<ReferencePasserT>(referencePasser), text](
-                       auto& parentElement, Renderer const& gen) {
-                auto materialized = renderElement(gen, parentElement, self);
-                materialized->setTextContent(text);
-                referencePasser(materialized);
-                return materialized;
-            };
-        }
-        auto operator()(std::string text) &&
-        {
-            return [self = this->clone(), text = std::move(text)](auto& parentElement, Renderer const& gen) {
-                auto materialized = renderElement(gen, parentElement, self);
-                materialized->setTextContent(text);
-                return materialized;
-            };
-        }
-        template <typename ReferencePasserT>
-        requires Dom::IsReferencePasser<ReferencePasserT>
-        auto operator()(ReferencePasserT&& referencePasser, std::string text) &&
-        {
-            return [self = this->clone(),
-                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
-                    text = std::move(text)](auto& parentElement, Renderer const& gen) {
-                auto materialized = renderElement(gen, parentElement, self);
-                materialized->setTextContent(text);
-                referencePasser(materialized);
-                return materialized;
-            };
-        }
-        constexpr auto operator()(std::string_view view) &&
-        {
-            return [self = this->clone(), view](auto& parentElement, Renderer const& gen) {
-                auto materialized = renderElement(gen, parentElement, self);
-                materialized->setTextContent(view);
-                return materialized;
-            };
-        }
-        template <typename ReferencePasserT>
-        requires Dom::IsReferencePasser<ReferencePasserT>
-        constexpr auto operator()(ReferencePasserT&& referencePasser, std::string_view view) &&
-        {
-            return [self = this->clone(), referencePasser = std::forward<ReferencePasserT>(referencePasser), view](
-                       auto& parentElement, Renderer const& gen) {
-                auto materialized = renderElement(gen, parentElement, self);
-                materialized->setTextContent(view);
-                referencePasser(materialized);
-                return materialized;
-            };
-        }
-        template <typename T>
-        requires Fundamental<T>
-        auto operator()(Observed<T> const& observedNumber) &&
-        {
-            return std::move(*this).operator()(observe(observedNumber), [&observedNumber]() -> std::string {
-                return std::to_string(observedNumber.value());
-            });
-        }
-        auto operator()(Observed<std::string> const& observedString) &&
-        {
-            return std::move(*this).operator()(observe(observedString), [&observedString]() -> std::string {
-                return observedString.value();
-            });
-        }
-        template <typename ReferencePasserT>
-        requires Dom::IsReferencePasser<ReferencePasserT>
-        auto operator()(ReferencePasserT&& referencePasser, Observed<std::string> const& observedString) &&
-        {
-            return std::move(*this).operator()(
-                std::forward<ReferencePasserT>(referencePasser),
-                observe(observedString),
-                [&observedString]() -> std::string {
-                    return observedString.value();
-                });
-        }
-        template <typename GeneratorT>
-        requires InvocableReturns<GeneratorT, std::string>
-        constexpr auto operator()(GeneratorT&& textGenerator) &&
-        {
-            return [self = this->clone(),
-                    textGenerator = std::forward<GeneratorT>(textGenerator)](auto& parentElement, Renderer const& gen) {
-                auto materialized = renderElement(gen, parentElement, self);
-                materialized->setTextContent(textGenerator());
-                return materialized;
-            };
-        }
-        template <typename ReferencePasserT, typename GeneratorT>
-        requires Dom::IsReferencePasser<ReferencePasserT> && InvocableReturns<GeneratorT, std::string>
-        constexpr auto operator()(ReferencePasserT&& referencePasser, GeneratorT&& textGenerator) &&
-        {
-            return [self = this->clone(),
-                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
-                    textGenerator = std::forward<GeneratorT>(textGenerator)](auto& parentElement, Renderer const& gen) {
-                auto materialized = renderElement(gen, parentElement, self);
-                materialized->setTextContent(textGenerator());
-                referencePasser(materialized);
-                return materialized;
-            };
-        }
-        template <std::invocable GeneratorT>
-        requires(!InvocableReturns<GeneratorT, std::string>)
-        constexpr auto operator()(GeneratorT&& ElementRenderer) &&
-        {
-            return [self = this->clone(), ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](
-                       auto& parentElement, Renderer const& gen) {
-                return ElementRenderer()(parentElement, gen);
-            };
-        }
-        template <typename T, std::invocable<T&, Renderer const&> GeneratorT>
-        constexpr auto operator()(GeneratorT&& ElementRenderer) &&
-        {
-            return [self = this->clone(), ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](
-                       auto& parentElement, Renderer const& gen) {
-                return ElementRenderer(parentElement, gen);
-            };
-        }
-
-        // Reactive functions:
-        template <typename ReferencePasserT, typename... ObservedValues, std::invocable GeneratorT>
-        requires Dom::IsReferencePasser<ReferencePasserT>
-        constexpr auto operator()(
-            ReferencePasserT&& referencePasser,
-            ObservedValueCombinatorWithGenerator<GeneratorT, ObservedValues...> combinator) &&
-        {
-            return std::move(*this).operator()(
-                std::forward<ReferencePasserT>(referencePasser),
-                std::move(combinator).split(),
-                std::move(combinator).generator());
-        }
-        template <typename... ObservedValues, std::invocable GeneratorT>
-        constexpr auto operator()(ObservedValueCombinatorWithGenerator<GeneratorT, ObservedValues...> combinator) &&
-        {
-            return std::move(*this).operator()(
-                Dom::ReferencePasser{[](auto&&) {}}, std::move(combinator).split(), std::move(combinator).generator());
-        }
-
-        template <typename ReferencePasserT, typename... ObservedValues, std::invocable GeneratorT>
-        requires Dom::IsReferencePasser<ReferencePasserT>
-        constexpr auto operator()(
-            ReferencePasserT&& referencePasser,
-            ObservedValueCombinator<ObservedValues...> observedValues,
-            GeneratorT&& ElementRenderer) &&
-        {
-            return std::move(*this).reactiveRender(
-                std::forward<ReferencePasserT>(referencePasser),
-                std::move(observedValues),
-                std::forward<GeneratorT>(ElementRenderer));
-        }
-        template <typename... ObservedValues, std::invocable GeneratorT>
-        constexpr auto
-        operator()(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& ElementRenderer) &&
-        {
-            return std::move(*this).reactiveRender(
-                Dom::ReferencePasser{[](auto&&) {}},
-                std::move(observedValues),
-                std::forward<GeneratorT>(ElementRenderer));
-        }
-
-        template <typename ReferencePasserT, typename ObservedValue, typename GeneratorT>
-        constexpr auto operator()(
-            ReferencePasserT&& referencePasser,
-            ObservedRange<ObservedValue> observedRange,
-            GeneratorT&& ElementRenderer) &&
-        {
-            return std::move(*this).rangeRender(
-                std::forward<ReferencePasserT>(referencePasser),
-                std::move(observedRange),
-                std::forward<GeneratorT>(ElementRenderer));
-        }
-        template <typename ObservedValue, typename GeneratorT>
-        constexpr auto operator()(ObservedRange<ObservedValue> observedRange, GeneratorT&& ElementRenderer) &&
-        {
-            return std::move(*this).rangeRender(
-                Dom::ReferencePasser{[](auto&&) {}},
-                std::move(observedRange),
-                std::forward<GeneratorT>(ElementRenderer));
-        }
-        template <typename ReferencePasserT, typename ObservedValue, typename GeneratorT>
-        constexpr auto
-        operator()(ReferencePasserT&& referencePasser, std::pair<ObservedRange<ObservedValue>, GeneratorT>&& mapPair) &&
-        {
-            return std::move(*this).rangeRender(
-                std::forward<ReferencePasserT>(referencePasser), std::move(mapPair.first), std::move(mapPair.second));
-        }
-        template <typename ObservedValue, typename GeneratorT>
-        constexpr auto operator()(std::pair<ObservedRange<ObservedValue>, GeneratorT>&& mapPair) &&
-        {
-            return std::move(*this).rangeRender(
-                Dom::ReferencePasser{[](auto&&) {}}, std::move(mapPair.first), std::move(mapPair.second));
-        }
-
-        std::tuple<Attributes...> const& attributes() const
-        {
-            return attributes_;
-        }
-
-        char const* name() const
-        {
-            return name_;
         }
 
       private:
@@ -592,36 +334,291 @@ namespace Nui
             };
         }
 
+      public:
+        // Children:
+        template <typename... ElementT>
+        requires((Dom::IsNotReferencePasser<ElementT> && ...) && (!IsObserved<ElementT> && ...))
+        constexpr auto operator()(ElementT&&... elements) &&
+        {
+            return [self = this->clone(), children = std::make_tuple(std::forward<ElementT>(elements)...)](
+                       auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->appendElements(children);
+                return materialized;
+            };
+        }
+        template <typename ReferencePasserT, typename... ElementT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(ReferencePasserT&& referencePasser, ElementT&&... elements) &&
+        {
+            return [self = this->clone(),
+                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
+                    children = std::make_tuple(std::forward<ElementT>(elements)...)](
+                       auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->appendElements(children);
+                referencePasser(materialized);
+                return materialized;
+            };
+        }
+
+        // Trivial case:
+        constexpr auto operator()() &&
+        {
+            return [self = this->clone()](auto& parentElement, Renderer const& gen) {
+                return renderElement(gen, parentElement, self);
+            };
+        }
+        template <typename ReferencePasserT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(ReferencePasserT&& referencePasser)
+        {
+            return [self = this->clone(), referencePasser = std::forward<ReferencePasserT>(referencePasser)](
+                       auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                referencePasser(materialized);
+                return materialized;
+            };
+        }
+
+        // Text content functions:
+        constexpr auto operator()(char const* text) &&
+        {
+            return [self = this->clone(), text](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(text);
+                return materialized;
+            };
+        }
+        template <typename ReferencePasserT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(ReferencePasserT&& referencePasser, char const* text) &&
+        {
+            return [self = this->clone(), referencePasser = std::forward<ReferencePasserT>(referencePasser), text](
+                       auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(text);
+                referencePasser(materialized);
+                return materialized;
+            };
+        }
+        auto operator()(std::string text) &&
+        {
+            return [self = this->clone(), text = std::move(text)](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(text);
+                return materialized;
+            };
+        }
+        template <typename ReferencePasserT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        auto operator()(ReferencePasserT&& referencePasser, std::string text) &&
+        {
+            return [self = this->clone(),
+                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
+                    text = std::move(text)](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(text);
+                referencePasser(materialized);
+                return materialized;
+            };
+        }
+        constexpr auto operator()(std::string_view view) &&
+        {
+            return [self = this->clone(), view](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(view);
+                return materialized;
+            };
+        }
+        template <typename ReferencePasserT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(ReferencePasserT&& referencePasser, std::string_view view) &&
+        {
+            return [self = this->clone(), referencePasser = std::forward<ReferencePasserT>(referencePasser), view](
+                       auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(view);
+                referencePasser(materialized);
+                return materialized;
+            };
+        }
+        template <typename T>
+        requires Fundamental<T>
+        auto operator()(Observed<T> const& observedNumber) &&
+        {
+            return std::move(*this).operator()(observe(observedNumber), [&observedNumber]() -> std::string {
+                return std::to_string(observedNumber.value());
+            });
+        }
+        template <typename ReferencePasserT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        auto operator()(ReferencePasserT&& referencePasser, Observed<std::string> const& observedString) &&
+        {
+            return std::move(*this).operator()(
+                std::forward<ReferencePasserT>(referencePasser),
+                observe(observedString),
+                [&observedString]() -> std::string {
+                    return observedString.value();
+                });
+        }
+        template <typename GeneratorT>
+        requires InvocableReturns<GeneratorT, std::string>
+        constexpr auto operator()(GeneratorT&& textGenerator) &&
+        {
+            return [self = this->clone(),
+                    textGenerator = std::forward<GeneratorT>(textGenerator)](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(textGenerator());
+                return materialized;
+            };
+        }
+        template <typename ReferencePasserT, typename GeneratorT>
+        requires Dom::IsReferencePasser<ReferencePasserT> && InvocableReturns<GeneratorT, std::string>
+        constexpr auto operator()(ReferencePasserT&& referencePasser, GeneratorT&& textGenerator) &&
+        {
+            return [self = this->clone(),
+                    referencePasser = std::forward<ReferencePasserT>(referencePasser),
+                    textGenerator = std::forward<GeneratorT>(textGenerator)](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(textGenerator());
+                referencePasser(materialized);
+                return materialized;
+            };
+        }
+        template <std::invocable GeneratorT>
+        requires(!InvocableReturns<GeneratorT, std::string>)
+        constexpr auto operator()(GeneratorT&& ElementRenderer) &&
+        {
+            return [self = this->clone(), ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](
+                       auto& parentElement, Renderer const& gen) {
+                return ElementRenderer()(parentElement, gen);
+            };
+        }
+        template <typename T, std::invocable<T&, Renderer const&> GeneratorT>
+        constexpr auto operator()(GeneratorT&& ElementRenderer) &&
+        {
+            return [self = this->clone(), ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](
+                       auto& parentElement, Renderer const& gen) {
+                return ElementRenderer(parentElement, gen);
+            };
+        }
+
+        // Reactive functions:
+        template <typename ReferencePasserT, typename... ObservedValues, std::invocable GeneratorT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(
+            ReferencePasserT&& referencePasser,
+            ObservedValueCombinatorWithGenerator<GeneratorT, ObservedValues...> combinator) &&
+        {
+            return std::move(*this).operator()(
+                std::forward<ReferencePasserT>(referencePasser),
+                std::move(combinator).split(),
+                std::move(combinator).generator());
+        }
+        template <typename... ObservedValues, std::invocable GeneratorT>
+        constexpr auto operator()(ObservedValueCombinatorWithGenerator<GeneratorT, ObservedValues...> combinator) &&
+        {
+            return std::move(*this).operator()(
+                Dom::ReferencePasser{[](auto&&) {}}, std::move(combinator).split(), std::move(combinator).generator());
+        }
+
+        template <typename ReferencePasserT, typename... ObservedValues, std::invocable GeneratorT>
+        requires Dom::IsReferencePasser<ReferencePasserT>
+        constexpr auto operator()(
+            ReferencePasserT&& referencePasser,
+            ObservedValueCombinator<ObservedValues...> observedValues,
+            GeneratorT&& ElementRenderer) &&
+        {
+            return std::move(*this).reactiveRender(
+                std::forward<ReferencePasserT>(referencePasser),
+                std::move(observedValues),
+                std::forward<GeneratorT>(ElementRenderer));
+        }
+        template <typename... ObservedValues, std::invocable GeneratorT>
+        constexpr auto
+        operator()(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& ElementRenderer) &&
+        {
+            return std::move(*this).reactiveRender(
+                Dom::ReferencePasser{[](auto&&) {}},
+                std::move(observedValues),
+                std::forward<GeneratorT>(ElementRenderer));
+        }
+
+        template <typename ReferencePasserT, typename ObservedValue, typename GeneratorT>
+        constexpr auto operator()(
+            ReferencePasserT&& referencePasser,
+            ObservedRange<ObservedValue> observedRange,
+            GeneratorT&& ElementRenderer) &&
+        {
+            return std::move(*this).rangeRender(
+                std::forward<ReferencePasserT>(referencePasser),
+                std::move(observedRange),
+                std::forward<GeneratorT>(ElementRenderer));
+        }
+        template <typename ObservedValue, typename GeneratorT>
+        constexpr auto operator()(ObservedRange<ObservedValue> observedRange, GeneratorT&& ElementRenderer) &&
+        {
+            return std::move(*this).rangeRender(
+                Dom::ReferencePasser{[](auto&&) {}},
+                std::move(observedRange),
+                std::forward<GeneratorT>(ElementRenderer));
+        }
+        template <typename ReferencePasserT, typename ObservedValue, typename GeneratorT>
+        constexpr auto
+        operator()(ReferencePasserT&& referencePasser, std::pair<ObservedRange<ObservedValue>, GeneratorT>&& mapPair) &&
+        {
+            return std::move(*this).rangeRender(
+                std::forward<ReferencePasserT>(referencePasser), std::move(mapPair.first), std::move(mapPair.second));
+        }
+        template <typename ObservedValue, typename GeneratorT>
+        constexpr auto operator()(std::pair<ObservedRange<ObservedValue>, GeneratorT>&& mapPair) &&
+        {
+            return std::move(*this).rangeRender(
+                Dom::ReferencePasser{[](auto&&) {}}, std::move(mapPair.first), std::move(mapPair.second));
+        }
+        auto operator()(Observed<std::string> const& observedString) &&
+        {
+            return std::move(*this).operator()(observe(observedString), [&observedString]() -> std::string {
+                return observedString.value();
+            });
+        }
+
+        std::vector<Attribute> const& attributes() const
+        {
+            return attributes_;
+        }
+
+        char const* name() const
+        {
+            return name_;
+        }
+
       private:
         char const* name_;
-        std::tuple<Attributes...> attributes_;
+        std::vector<Attribute> attributes_;
     };
 }
 
 #define NUI_DECLARE_HTML_ELEMENT_RENAME(NAME, HTML_ACTUAL) \
     namespace Nui::Elements \
     { \
-        template <typename... Attributes> \
-        struct NAME : HtmlElement<Attributes...> \
+        struct NAME : HtmlElement \
         { \
             constexpr static char const* name = #HTML_ACTUAL; \
             constexpr NAME(NAME const&) = default; \
             constexpr NAME(NAME&&) = default; \
-            constexpr NAME(std::tuple<Attributes...> const& attributes) \
-                : HtmlElement<Attributes...>{name, attributes} \
+            constexpr NAME(std::vector<Attribute> const& attributes) \
+                : HtmlElement{name, attributes} \
             {} \
-            constexpr NAME(std::tuple<Attributes...>&& attributes) \
-                : HtmlElement<Attributes...>{name, std::move(attributes)} \
+            constexpr NAME(std::vector<Attribute>&& attributes) \
+                : HtmlElement{name, std::move(attributes)} \
             {} \
             template <typename... T> \
             constexpr NAME(T&&... attributes) \
-                : HtmlElement<Attributes...>{name, std::forward<T>(attributes)...} \
+                : HtmlElement{name, std::forward<T>(attributes)...} \
             {} \
         }; \
-        template <typename... Attributes> \
-        NAME(Attributes&&...) -> NAME<Attributes...>; \
-        template <typename... Attributes> \
-        NAME(std::tuple<Attributes...>) -> NAME<Attributes...>; \
     }
 
 #define NUI_DECLARE_HTML_ELEMENT(NAME) NUI_DECLARE_HTML_ELEMENT_RENAME(NAME, NAME)

@@ -14,7 +14,7 @@ namespace Nui::Dom
     {
       public:
         template <typename... Attributes>
-        ChildlessElement(HtmlElement<Attributes...> const& elem)
+        ChildlessElement(HtmlElement const& elem)
             : BasicElement{ChildlessElement::createElement(elem).val()}
         {}
         ChildlessElement(emscripten::val val)
@@ -22,7 +22,7 @@ namespace Nui::Dom
         {}
 
         template <typename... Attributes>
-        static ChildlessElement createElement(HtmlElement<Attributes...> const& element)
+        static ChildlessElement createElement(HtmlElement const& element)
         {
             return {emscripten::val::global("document")
                         .call<emscripten::val>("createElement", emscripten::val{element.name()})};
@@ -32,16 +32,13 @@ namespace Nui::Dom
          * @brief Relies on weak_from_this and cannot be used from the constructor
          */
         template <typename... Attributes>
-        void setup(HtmlElement<Attributes...> const& element)
+        void setup(HtmlElement const& element)
         {
-#pragma clang diagnostic push
-// 'this' may be unused when the tuple is empty? anyway this warning cannot be fixed.
-#pragma clang diagnostic ignored "-Wunused-lambda-capture"
-            tupleForEach(element.attributes(), [self = this](auto const& attribute) {
-                attribute.setOn(*self);
-                attribute.createEvent(self->weak_from_base<ChildlessElement>());
-            });
-#pragma clang diagnostic pop
+            for (auto const& attribute : element.attributes())
+            {
+                attribute.setOn(*this);
+                attribute.createEvent(weak_from_base<ChildlessElement>());
+            }
         }
 
         // TODO: more overloads?
@@ -92,7 +89,7 @@ namespace Nui::Dom
 
       protected:
         template <typename... Attributes>
-        void replaceElement(HtmlElement<Attributes...> const& element)
+        void replaceElement(HtmlElement const& element)
         {
             auto replacement = ChildlessElement::createElement(element);
             replacement.setup(element);

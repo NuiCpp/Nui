@@ -14,7 +14,7 @@ namespace Nui::Elements
     template <typename... ParametersT>
     constexpr auto fragment(ParametersT&&... params)
     {
-        return [generator = HtmlElement<>{"fragmenterror"}(std::forward<ParametersT>(params)...)](
+        return [generator = HtmlElement{"fragmenterror"}(std::forward<ParametersT>(params)...)](
                    auto& parentElement, Renderer const&) {
             return generator(parentElement, Renderer{.type = RendererType::Inplace});
         };

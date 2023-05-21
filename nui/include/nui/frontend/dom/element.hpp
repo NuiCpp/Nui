@@ -22,8 +22,7 @@ namespace Nui::Dom
         using iterator = collection_type::iterator;
         using const_iterator = collection_type::const_iterator;
 
-        template <typename... Attributes>
-        Element(HtmlElement<Attributes...> const& elem)
+        Element(HtmlElement const& elem)
             : ChildlessElement{elem}
             , children_{}
         {}
@@ -33,7 +32,7 @@ namespace Nui::Dom
         }
 
         template <typename... Attributes>
-        static std::shared_ptr<Element> makeElement(HtmlElement<Attributes...> const& element)
+        static std::shared_ptr<Element> makeElement(HtmlElement const& element)
         {
             auto elem = std::make_shared<Element>(element);
             elem->setup(element);
@@ -66,8 +65,7 @@ namespace Nui::Dom
         {
             fn(*this, Renderer{.type = RendererType::Append});
         }
-        template <typename... Attributes>
-        auto appendElement(HtmlElement<Attributes...> const& element)
+        auto appendElement(HtmlElement const& element)
         {
             auto elem = makeElement(element);
             element_.call<emscripten::val>("appendChild", elem->element_);
@@ -77,8 +75,7 @@ namespace Nui::Dom
         {
             fn(*this, Renderer{.type = RendererType::Replace});
         }
-        template <typename... Attributes>
-        auto replaceElement(HtmlElement<Attributes...> const& element)
+        auto replaceElement(HtmlElement const& element)
         {
             ChildlessElement::replaceElement(element);
             return shared_from_base<Element>();
@@ -107,8 +104,7 @@ namespace Nui::Dom
 #pragma clang diagnostic pop
         }
 
-        template <typename... Attributes>
-        auto insert(iterator where, HtmlElement<Attributes...> const& element)
+        auto insert(iterator where, HtmlElement const& element)
         {
             if (where == end())
                 return appendElement(element);
@@ -117,8 +113,7 @@ namespace Nui::Dom
             return *children_.insert(where, std::move(elem));
         }
 
-        template <typename... Attributes>
-        auto insert(std::size_t where, HtmlElement<Attributes...> const& element)
+        auto insert(std::size_t where, HtmlElement const& element)
         {
             if (where >= children_.size())
                 return appendElement(element);
