@@ -194,7 +194,6 @@ namespace Nui
             auto tempId = emscripten::val::global("nui_rpc")["tempId"].as<uint32_t>() + 1;
             emscripten::val::global("nui_rpc").set("tempId", tempId);
             const auto tempIdString = "temp_"s + std::to_string(tempId);
-            // TODO: dry?
             emscripten::val::global("nui_rpc")["frontend"].set(
                 tempIdString,
                 Nui::bind(
