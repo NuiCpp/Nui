@@ -1,4 +1,3 @@
-# TODO: Allow emscripten args to be passed
 function(nui_prepare_emscripten_target)
     cmake_parse_arguments(
         NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS
