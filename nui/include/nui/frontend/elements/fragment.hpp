@@ -6,14 +6,6 @@
 
 namespace Nui::Elements
 {
-    namespace Detail
-    {
-        struct fragment_
-        {
-            constexpr static char const* name = "fragmenterror";
-        };
-    }
-
     /**
      * @brief A fragment is a collection of elements that can be inserted into a parent without an enclosing tag.
      *
@@ -22,7 +14,7 @@ namespace Nui::Elements
     template <typename... ParametersT>
     constexpr auto fragment(ParametersT&&... params)
     {
-        return [generator = HtmlElement<Detail::fragment_>{}(std::forward<ParametersT>(params)...)](
+        return [generator = HtmlElement{"fragmenterror"}(std::forward<ParametersT>(params)...)](
                    auto& parentElement, Renderer const&) {
             return generator(parentElement, Renderer{.type = RendererType::Inplace});
         };

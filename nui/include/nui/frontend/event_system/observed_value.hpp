@@ -183,28 +183,30 @@ namespace Nui
         }
 
         template <typename T = ContainedT, typename U>
-        requires PlusAssignable<T, U> ModifiableObserved<T>
-        &operator+=(U const& rhs)
+        requires PlusAssignable<T, U>
+        ModifiableObserved<T>& operator+=(U const& rhs)
         {
             this->contained_ += rhs;
             return *this;
         }
         template <typename T = ContainedT, typename U>
-        requires MinusAssignable<T, U> ModifiableObserved<T>
-        &operator-=(U const& rhs)
+        requires MinusAssignable<T, U>
+        ModifiableObserved<T>& operator-=(U const& rhs)
         {
             this->contained_ -= rhs;
             return *this;
         }
 
         template <typename T = ContainedT>
-        requires std::equality_comparable<T> && Fundamental<T> ModifiableObserved& operator=(T&& t)
+        requires std::equality_comparable<T> && Fundamental<T>
+        ModifiableObserved& operator=(T&& t)
         {
             return assignChecked(t);
         }
 
         template <typename T = ContainedT>
-        requires std::equality_comparable<T> ModifiableObserved& assignChecked(T&& other)
+        requires std::equality_comparable<T>
+        ModifiableObserved& assignChecked(T&& other)
         {
             if (contained_ != other)
             {
@@ -607,7 +609,6 @@ namespace Nui
         }
 
         // Iterators
-        // TODO:
         iterator begin() noexcept
         {
             return iterator{this, contained_.begin()};
@@ -910,7 +911,7 @@ namespace Nui
         auto registerAfterEffect()
         {
             return globalEventContext.registerAfterEffect(Event{[this](EventContext::EventIdType) {
-                rangeContext_.reset(contained_.size(), true);
+                rangeContext_.reset(static_cast<long>(contained_.size()), true);
                 return true;
             }});
         }
@@ -1035,4 +1036,34 @@ namespace Nui
 
     template <typename T>
     concept IsObserved = Detail::IsObserved<std::decay_t<T>>::value;
+
+    namespace Detail
+    {
+        template <typename T>
+        struct CopiableObservedWrap // minimal wrapper to make Observed<T> copiable
+        {
+          public:
+            constexpr CopiableObservedWrap(Observed<T> const& observed)
+                : observed_{&observed}
+            {}
+
+            inline T value() const
+            {
+                return observed_->value();
+            }
+
+            inline void attachEvent(auto eventId) const
+            {
+                observed_->attachEvent(eventId);
+            }
+
+            inline void unattachEvent(auto eventId) const
+            {
+                observed_->unattachEvent(eventId);
+            }
+
+          private:
+            Observed<T> const* observed_;
+        };
+    }
 }

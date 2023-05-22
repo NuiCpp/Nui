@@ -13,6 +13,7 @@
 
 namespace Nui
 {
+    // FIXME: This class is redundant.
     template <typename T, typename Tag>
     class CustomAttribute
     {
@@ -149,13 +150,14 @@ namespace Nui
     struct NAME##Tag \
     { \
         template <typename T> \
-        requires(!IsObserved<std::decay_t<T>>) CustomAttribute<std::decay_t<T>, NAME##Tag> operator=(T&& param) const \
+        requires(!IsObserved<std::decay_t<T>>) \
+        CustomAttribute<std::decay_t<T>, NAME##Tag> operator=(T&& param) const \
         { \
             return {std::forward<T>(param)}; \
         } \
         template <typename T> \
-        requires(IsObserved<std::decay_t<T>>) CustomAttribute<T&, NAME##Tag> \
-        operator=(T& param) const \
+        requires(IsObserved<std::decay_t<T>>) \
+        CustomAttribute<T&, NAME##Tag> operator=(T& param) const \
         { \
             return {param}; \
         } \

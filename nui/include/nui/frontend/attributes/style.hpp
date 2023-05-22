@@ -1,11 +1,15 @@
 #pragma once
 
+#include <nui/frontend/dom/childless_element.hpp>
 #include <nui/frontend/attributes/impl/attribute.hpp>
+#include <nui/frontend/attributes/impl/attribute_factory.hpp>
+#include <nui/frontend/event_system/observed_value.hpp>
+#include <nui/frontend/event_system/observed_value_combinator.hpp>
+
 #include <nui/utility/meta/tuple_filter.hpp>
 #include <nui/utility/meta/tuple_transform.hpp>
 #include <nui/utility/meta/pick_first.hpp>
-#include <nui/frontend/event_system/observed_value.hpp>
-#include <nui/frontend/event_system/observed_value_combinator.hpp>
+
 #include <mplex/control/if.hpp>
 #include <mplex/functional/lift.hpp>
 #include <mplex/fundamental/integral.hpp>
@@ -14,7 +18,6 @@
 #include <string>
 #include <sstream>
 #include <optional>
-#include <tuple>
 
 namespace Nui::Attributes
 {
@@ -198,16 +201,14 @@ namespace Nui::Attributes
         template <bool isStatic, typename... Properties>
         auto makeStyleGenerator(Properties&&... props)
         {
-            return [props = std::tuple<Properties...>{std::forward<Properties>(props)...}]() {
+            return [... props = std::forward<Properties>(props)]() {
                 // TODO: better performing version:
                 std::stringstream sstr;
-                std::apply(
-                    [&sstr](auto const& head, auto const&... tail) {
-                        using expander = int[];
-                        sstr << head();
-                        (void)expander{0, (sstr << ";" << tail(), void(), 0)...};
-                    },
-                    props);
+                [&sstr](auto const& head, auto const&... tail) {
+                    using expander = int[];
+                    sstr << head();
+                    (void)expander{0, (sstr << ";" << tail(), void(), 0)...};
+                }(props...);
                 return sstr.str();
             };
         }
@@ -265,36 +266,32 @@ namespace Nui::Attributes
 
     struct style_
     {
-        constexpr static char const* name()
-        {
-            return "style";
-        };
         template <typename U>
-        requires(!IsObserved<std::decay_t<U>>) constexpr Attribute<style_, std::decay_t<U>> operator=(U val) const
+        requires(!IsObserved<std::decay_t<U>>)
+        Attribute operator=(U&& val) const
         {
-            return Attribute<style_, std::decay_t<U>>{std::move(val)};
+            return AttributeFactory{"style"}.operator=(std::forward<U>(val));
         }
         template <typename U>
-        requires(IsObserved<std::decay_t<U>>) constexpr Attribute<style_, std::decay_t<U>> operator=(U& val) const
+        requires(IsObserved<std::decay_t<U>>)
+        Attribute operator=(U& val) const
         {
-            return Attribute<style_, std::decay_t<U>>{val};
+            return AttributeFactory{"style"}.operator=(val);
         }
         template <typename... T>
-        constexpr auto operator=(Style<T...>&& style) const
+        auto operator=(Style<T...>&& style) const
         {
             if constexpr (Style<T...>::isStatic())
             {
-                return Attribute<style_, std::string>{style.toString()};
+                return AttributeFactory{"style"}.operator=(style.toString());
             }
             else
             {
                 return std::apply(
                     [&style]<typename... ObservedValueTypes>(ObservedValueTypes&... obs) {
-                        return Attribute<
-                            style_,
-                            ObservedValueCombinatorWithGenerator<std::function<std::string()>, ObservedValueTypes...>>{
+                        return AttributeFactory{"style"}.operator=(
                             ObservedValueCombinator<ObservedValueTypes...>{obs...}.generate(
-                                std::move(style).ejectGenerator())};
+                                std::move(style).ejectGenerator()));
                     },
                     std::move(style).ejectObservedValues());
             }

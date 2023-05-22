@@ -22,28 +22,30 @@ namespace Nui::Dom
         using iterator = collection_type::iterator;
         using const_iterator = collection_type::const_iterator;
 
-        template <typename T, typename... Attributes>
-        Element(HtmlElement<T, Attributes...> const& elem)
+        Element(HtmlElement const& elem)
             : ChildlessElement{elem}
             , children_{}
+            , unsetup_{}
         {}
+
+        Element(emscripten::val val)
+            : ChildlessElement{std::move(val)}
+            , children_{}
+            , unsetup_{}
+        {}
+
         virtual ~Element()
         {
             element_.call<void>("remove");
         }
 
-        template <typename U, typename... Attributes>
-        static std::shared_ptr<Element> makeElement(HtmlElement<U, Attributes...> const& element)
+        template <typename... Attributes>
+        static std::shared_ptr<Element> makeElement(HtmlElement const& element)
         {
             auto elem = std::make_shared<Element>(element);
             elem->setup(element);
             return elem;
         }
-
-        Element(emscripten::val val)
-            : ChildlessElement{std::move(val)}
-            , children_{}
-        {}
 
         iterator begin()
         {
@@ -66,8 +68,7 @@ namespace Nui::Dom
         {
             fn(*this, Renderer{.type = RendererType::Append});
         }
-        template <typename U, typename... Attributes>
-        auto appendElement(HtmlElement<U, Attributes...> const& element)
+        auto appendElement(HtmlElement const& element)
         {
             auto elem = makeElement(element);
             element_.call<emscripten::val>("appendChild", elem->element_);
@@ -77,10 +78,9 @@ namespace Nui::Dom
         {
             fn(*this, Renderer{.type = RendererType::Replace});
         }
-        template <typename U, typename... Attributes>
-        auto replaceElement(HtmlElement<U, Attributes...> const& element)
+        auto replaceElement(HtmlElement const& element)
         {
-            ChildlessElement::replaceElement(element);
+            replaceElementImpl(element);
             return shared_from_base<Element>();
         }
 
@@ -93,22 +93,14 @@ namespace Nui::Dom
             element_.set("textContent", text);
         }
 
-        template <typename... Elements>
-        void appendElements(std::tuple<Elements...> const& elements)
+        void
+        appendElements(std::vector<std::function<std::shared_ptr<Element>(Element&, Renderer const&)>> const& elements)
         {
-#pragma clang diagnostic push
-// 'this' may be unused when the tuple is empty? anyway this warning cannot be fixed.
-#pragma clang diagnostic ignored "-Wunused-lambda-capture"
-            std::apply(
-                [this](auto const&... element) {
-                    (appendElement(element), ...);
-                },
-                elements);
-#pragma clang diagnostic pop
+            for (auto const& element : elements)
+                appendElement(element);
         }
 
-        template <typename U, typename... Attributes>
-        auto insert(iterator where, HtmlElement<U, Attributes...> const& element)
+        auto insert(iterator where, HtmlElement const& element)
         {
             if (where == end())
                 return appendElement(element);
@@ -117,8 +109,29 @@ namespace Nui::Dom
             return *children_.insert(where, std::move(elem));
         }
 
-        template <typename U, typename... Attributes>
-        auto insert(std::size_t where, HtmlElement<U, Attributes...> const& element)
+        /**
+         * @brief Relies on weak_from_this and cannot be used from the constructor
+         */
+        void setup(HtmlElement const& element)
+        {
+            std::vector<std::function<void()>> eventClearers;
+            eventClearers.reserve(element.attributes().size());
+            for (auto const& attribute : element.attributes())
+            {
+                attribute.setOn(*this);
+                eventClearers.push_back(
+                    [clear = attribute.getEventClear(), id = attribute.createEvent(weak_from_base<Element>())]() {
+                        if (clear)
+                            clear(id);
+                    });
+            }
+            unsetup_ = [eventClearers = std::move(eventClearers)]() {
+                for (auto const& clear : eventClearers)
+                    clear();
+            };
+        }
+
+        auto insert(std::size_t where, HtmlElement const& element)
         {
             if (where >= children_.size())
                 return appendElement(element);
@@ -146,6 +159,21 @@ namespace Nui::Dom
         }
 
       private:
+        void replaceElementImpl(HtmlElement const& element)
+        {
+            clearChildren();
+            if (unsetup_)
+                unsetup_();
+            unsetup_ = {};
+
+            auto replacement = createElement(element).val();
+            element_.call<emscripten::val>("replaceWith", replacement);
+            element_ = std::move(replacement);
+            setup(element);
+        }
+
+      private:
         collection_type children_;
+        std::function<void()> unsetup_;
     };
 }

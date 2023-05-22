@@ -77,7 +77,7 @@ namespace Nui
             return ObservedValueCombinator<ObservedValues...>{std::move(this->observedValues_)};
         }
 
-        constexpr auto generate() const
+        constexpr auto value() const
         {
             return generator_();
         }

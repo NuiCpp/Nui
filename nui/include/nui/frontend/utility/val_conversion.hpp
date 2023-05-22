@@ -39,7 +39,8 @@ namespace Nui
     template <typename T>
     emscripten::val convertToVal(std::optional<T> const& option);
     template <typename T>
-    requires Fundamental<T> emscripten::val convertToVal(T const& value);
+    requires Fundamental<T>
+    emscripten::val convertToVal(T const& value);
     emscripten::val convertToVal(std::string const& value);
     emscripten::val convertToVal(std::filesystem::path const& value);
     emscripten::val convertToVal(emscripten::val value);
@@ -109,10 +110,11 @@ namespace Nui
     template <typename T>
     emscripten::val convertToVal(std::optional<T> const& option)
     {
-        return option ? emscripten::val(*option) : emscripten::val::undefined();
+        return option ? convertToVal(*option) : emscripten::val::undefined();
     }
     template <typename T>
-    requires Fundamental<T> emscripten::val convertToVal(T const& value)
+    requires Fundamental<T>
+    emscripten::val convertToVal(T const& value)
     {
         return emscripten::val{value};
     }

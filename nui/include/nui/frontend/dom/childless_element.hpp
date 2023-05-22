@@ -13,46 +13,12 @@ namespace Nui::Dom
     class ChildlessElement : public BasicElement
     {
       public:
-        template <typename T, typename... Attributes>
-        ChildlessElement(HtmlElement<T, Attributes...> const& elem)
+        ChildlessElement(HtmlElement const& elem)
             : BasicElement{ChildlessElement::createElement(elem).val()}
         {}
         ChildlessElement(emscripten::val val)
             : BasicElement{std::move(val)}
         {}
-
-        template <typename T, typename... Attributes>
-        static ChildlessElement createElement(HtmlElement<T, Attributes...> const&)
-        {
-            return {
-                emscripten::val::global("document").call<emscripten::val>("createElement", emscripten::val{T::name})};
-        }
-
-        /**
-         * @brief Relies on weak_from_this and cannot be used from the constructor
-         */
-        template <typename T, typename... Attributes>
-        void setup(HtmlElement<T, Attributes...> const& element)
-        {
-            auto setSideEffect = [self = this](auto const& attribute) {
-                auto weak = self->weak_from_base<ChildlessElement>();
-                attribute.createEvent(
-                    weak,
-                    [name = attribute.name()](
-                        std::shared_ptr<std::decay_t<decltype(*this)>> const& shared, auto const& value) {
-                        shared->setAttribute(name, value);
-                    });
-            };
-
-#pragma clang diagnostic push
-// 'this' may be unused when the tuple is empty? anyway this warning cannot be fixed.
-#pragma clang diagnostic ignored "-Wunused-lambda-capture"
-            tupleForEach(element.attributes(), [this, &setSideEffect](auto const& attribute) {
-                setAttribute(attribute.name(), attribute.value());
-                setSideEffect(attribute);
-            });
-#pragma clang diagnostic pop
-        }
 
         // TODO: more overloads?
         void setAttribute(std::string_view key, std::string const& value)
@@ -101,13 +67,10 @@ namespace Nui::Dom
         }
 
       protected:
-        template <typename U, typename... Attributes>
-        void replaceElement(HtmlElement<U, Attributes...> const& element)
+        static ChildlessElement createElement(HtmlElement const& element)
         {
-            auto replacement = ChildlessElement::createElement(element);
-            replacement.setup(element);
-            element_.call<emscripten::val>("replaceWith", replacement.val());
-            element_ = std::move(replacement).val();
+            return {emscripten::val::global("document")
+                        .call<emscripten::val>("createElement", emscripten::val{element.name()})};
         }
     };
 };
