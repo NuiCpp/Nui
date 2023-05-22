@@ -9,17 +9,39 @@ namespace Nui::Tests::Engine
     Value::Value(Object const& value)
         : type_{Type::Object}
         , value_{std::any{value}}
+        , isInteger_{false}
     {}
 
     Value::Value(Array const& value)
         : type_{Type::Array}
         , value_{std::any{value}}
+        , isInteger_{false}
     {}
 
     Value::Value(Function const& value)
         : type_{Type::Function}
         , value_{std::any{value}}
+        , isInteger_{false}
     {}
+
+    Value& Value::operator=(Object const& value)
+    {
+        type_ = Type::Object;
+        value_ = std::any{value};
+        return *this;
+    }
+    Value& Value::operator=(Array const& value)
+    {
+        type_ = Type::Array;
+        value_ = std::any{value};
+        return *this;
+    }
+    Value& Value::operator=(Function const& value)
+    {
+        type_ = Type::Function;
+        value_ = std::any{value};
+        return *this;
+    }
 
     Value const& Value::operator[](std::string_view key) const
     {
@@ -49,7 +71,7 @@ namespace Nui::Tests::Engine
         return as<Array&>()[index];
     }
 
-    std::weak_ptr<Value> Value::reference(std::string_view key)
+    std::shared_ptr<ReferenceType> Value::reference(std::string_view key)
     {
         if (type() != Type::Object)
             throw std::runtime_error{"reference: invalid value type"};
@@ -87,17 +109,17 @@ namespace Nui::Tests::Engine
             }
             case Nui::Tests::Engine::Value::Type::Object:
             {
-                as<Object>().print(indent);
+                as<Object const&>().print(indent, instanceCounter_);
                 break;
             }
             case Nui::Tests::Engine::Value::Type::Array:
             {
-                as<Array>().print(indent);
+                as<Array const&>().print(indent);
                 break;
             }
             case Nui::Tests::Engine::Value::Type::Function:
             {
-                as<Function>().print(indent);
+                as<Function const&>().print(indent);
                 break;
             }
         }

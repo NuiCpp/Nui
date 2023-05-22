@@ -14,7 +14,7 @@ namespace Nui::Attributes
     namespace Detail
     {
         template <typename ElementT, typename T>
-        void defaultSetEvent(std::weak_ptr<ElementT> element, T const& obs, char const* name)
+        EventContext::EventIdType defaultSetEvent(std::weak_ptr<ElementT> element, T const& obs, char const* name)
         {
             const auto eventId = globalEventContext.registerEvent(Event{
                 [element, obs, name](auto eventId) {
@@ -30,6 +30,7 @@ namespace Nui::Attributes
                     return !element.expired();
                 }});
             obs.attachEvent(eventId);
+            return eventId;
         }
     }
 
@@ -68,7 +69,10 @@ namespace Nui::Attributes
                     element.setAttribute(name, val.value());
                 },
                 [name = name(), &val](std::weak_ptr<Dom::ChildlessElement>&& element) {
-                    Detail::defaultSetEvent(std::move(element), Nui::Detail::CopiableObservedWrap{val}, name);
+                    return Detail::defaultSetEvent(std::move(element), Nui::Detail::CopiableObservedWrap{val}, name);
+                },
+                [&val](EventContext::EventIdType const& id) {
+                    val.unattachEvent(id);
                 }};
         }
         template <typename RendererType, typename... ObservedValues>
@@ -80,7 +84,10 @@ namespace Nui::Attributes
                     element.setAttribute(name, combinator.value());
                 },
                 [name = name(), combinator](std::weak_ptr<Dom::ChildlessElement>&& element) {
-                    Detail::defaultSetEvent(std::move(element), combinator, name);
+                    return Detail::defaultSetEvent(std::move(element), combinator, name);
+                },
+                [combinator](EventContext::EventIdType const& id) {
+                    combinator.unattachEvent(id);
                 }};
         }
 

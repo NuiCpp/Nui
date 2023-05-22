@@ -1,6 +1,7 @@
 #pragma once
 
 #include "value.hpp"
+#include "reference_type.hpp"
 #include "print.hpp"
 
 #include <unordered_map>
@@ -18,93 +19,25 @@ namespace Nui::Tests::Engine
         Object& operator=(const Object&) = default;
         Object& operator=(Object&&) = default;
 
-        Value& operator[](std::string_view key)
+        Value& operator[](std::string_view key);
+        const Value& operator[](std::string_view key) const;
+        std::shared_ptr<ReferenceType> reference(std::string_view key) const;
+        template <typename... ValueCtorArgs>
+        std::shared_ptr<ReferenceType> emplace(std::string_view key, ValueCtorArgs&&... value)
         {
-            if (!members_.contains(key.data()))
-                members_.emplace(key.data(), std::make_shared<Value>());
-            return *members_.at(key.data());
+            return members_[std::string{key}] =
+                       std::make_shared<ReferenceType>(createValue(std::forward<ValueCtorArgs>(value)...));
         }
-
-        const Value& operator[](std::string_view key) const
-        {
-            return *members_.at(key.data());
-        }
-
-        std::shared_ptr<Value> reference(std::string_view key)
-        {
-            if (!members_.contains(key.data()))
-                members_.emplace(key.data(), std::make_shared<Value>());
-            return members_.at(key.data());
-        }
-
-        std::shared_ptr<Value> emplace_back(std::string_view key, Value const& value)
-        {
-            if (!members_.contains(key.data()))
-                members_.emplace(key.data(), std::make_shared<Value>(value));
-            return members_.at(key.data());
-        }
-
-        void set(std::string_view key, std::shared_ptr<Value> value)
-        {
-            members_[key.data()] = std::move(value);
-        }
-
-        bool has(std::string_view key) const
-        {
-            return members_.contains(key.data());
-        }
-
-        auto begin() const
-        {
-            return members_.begin();
-        }
-
-        auto end() const
-        {
-            return members_.end();
-        }
-
-        auto size() const
-        {
-            return members_.size();
-        }
-
-        bool empty() const
-        {
-            return members_.empty();
-        }
-
-        void erase(std::string_view key)
-        {
-            members_.erase(key.data());
-        }
-
-        void print(int indent = 0) const
-        {
-            if (members_.empty())
-            {
-                std::cout << "{}";
-                return;
-            }
-
-            std::cout << "{\n";
-            auto begin = members_.begin();
-            printIndent(indent + 1);
-            std::cout << "\"" << begin->first << "\": ";
-            begin->second->print(indent + 1);
-            for (auto it = ++begin; it != members_.end(); ++it)
-            {
-                std::cout << ",\n";
-                printIndent(indent + 1);
-                std::cout << "\"" << it->first << "\": ";
-                it->second->print(indent + 1);
-            }
-            std::cout << "\n";
-            printIndent(indent);
-            std::cout << "}";
-        }
+        void set(std::string_view key, std::shared_ptr<ReferenceType> const& value);
+        bool has(std::string_view key) const;
+        auto begin() const;
+        auto end() const;
+        auto size() const;
+        bool empty() const;
+        void erase(std::string_view key);
+        void print(int indent = 0, ReferenceType instanceCounter_ = ReferenceType{-1}) const;
 
       private:
-        std::unordered_map<std::string, std::shared_ptr<Value>> members_;
+        std::unordered_map<std::string, std::shared_ptr<ReferenceType>> members_;
     };
 }

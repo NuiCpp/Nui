@@ -11,9 +11,15 @@ namespace Nui
             setter_(element);
     }
 
-    void Attribute::createEvent(std::weak_ptr<Dom::ChildlessElement>&& element) const
+    EventContext::EventIdType Attribute::createEvent(std::weak_ptr<Dom::ChildlessElement>&& element) const
     {
         if (createEvent_)
-            createEvent_(std::move(element));
+            return createEvent_(std::move(element));
+        return EventContext::EventIdType{};
+    }
+
+    std::function<void(EventContext::EventIdType const&)> Attribute::getEventClear() const
+    {
+        return clearEvent_;
     }
 }

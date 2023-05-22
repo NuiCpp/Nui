@@ -4,7 +4,7 @@ namespace Nui::Tests::Engine
     requires Callable<T>
     Function::Function(T&& function)
         : callable_{Detail::FunctionSignature_t<FunctionArgumentTypes_t<T>>{
-              [function = std::forward<T>(function)](auto&&... args) {
+              [function = std::forward<T>(function)](auto&&... args) mutable {
                   if constexpr (std::is_same_v<FunctionReturnType_t<T>, void>)
                       return function(std::forward<decltype(args)>(args)...), emscripten::val{};
                   else

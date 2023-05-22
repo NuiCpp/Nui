@@ -24,6 +24,8 @@ add_executable(nui-tests
     engine/global_object.cpp
     engine/warn.cpp
     engine/document.cpp
+    engine/object.cpp
+    engine/array.cpp
 )
 target_link_libraries(nui-tests PRIVATE 
     nui-frontend-mocked 

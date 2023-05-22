@@ -25,7 +25,15 @@ namespace Nui::Dom
         Element(HtmlElement const& elem)
             : ChildlessElement{elem}
             , children_{}
+            , unsetup_{}
         {}
+
+        Element(emscripten::val val)
+            : ChildlessElement{std::move(val)}
+            , children_{}
+            , unsetup_{}
+        {}
+
         virtual ~Element()
         {
             element_.call<void>("remove");
@@ -38,11 +46,6 @@ namespace Nui::Dom
             elem->setup(element);
             return elem;
         }
-
-        Element(emscripten::val val)
-            : ChildlessElement{std::move(val)}
-            , children_{}
-        {}
 
         iterator begin()
         {
@@ -77,7 +80,7 @@ namespace Nui::Dom
         }
         auto replaceElement(HtmlElement const& element)
         {
-            ChildlessElement::replaceElement(element);
+            replaceElementImpl(element);
             return shared_from_base<Element>();
         }
 
@@ -104,6 +107,28 @@ namespace Nui::Dom
             auto elem = makeElement(element);
             element_.call<emscripten::val>("insertBefore", elem->element_, (*where)->element_);
             return *children_.insert(where, std::move(elem));
+        }
+
+        /**
+         * @brief Relies on weak_from_this and cannot be used from the constructor
+         */
+        void setup(HtmlElement const& element)
+        {
+            std::vector<std::function<void()>> eventClearers;
+            eventClearers.reserve(element.attributes().size());
+            for (auto const& attribute : element.attributes())
+            {
+                attribute.setOn(*this);
+                eventClearers.push_back(
+                    [clear = attribute.getEventClear(), id = attribute.createEvent(weak_from_base<Element>())]() {
+                        if (clear)
+                            clear(id);
+                    });
+            }
+            unsetup_ = [eventClearers = std::move(eventClearers)]() {
+                for (auto const& clear : eventClearers)
+                    clear();
+            };
         }
 
         auto insert(std::size_t where, HtmlElement const& element)
@@ -134,6 +159,21 @@ namespace Nui::Dom
         }
 
       private:
+        void replaceElementImpl(HtmlElement const& element)
+        {
+            clearChildren();
+            if (unsetup_)
+                unsetup_();
+            unsetup_ = {};
+
+            auto replacement = createElement(element).val();
+            element_.call<emscripten::val>("replaceWith", replacement);
+            element_ = std::move(replacement);
+            setup(element);
+        }
+
+      private:
         collection_type children_;
+        std::function<void()> unsetup_;
     };
 }

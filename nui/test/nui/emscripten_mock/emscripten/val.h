@@ -6,6 +6,7 @@
 #include "../../engine/function.hpp"
 #include "../../engine/value.hpp"
 #include "../../engine/warn.hpp"
+#include "../../engine/reference_type.hpp"
 
 #include <utility>
 #include <type_traits>
@@ -20,59 +21,44 @@ namespace emscripten
 {
     class val
     {
-      private:
+      public:
         auto withValueDo(auto&& fn) -> decltype(auto)
         {
-            return std::visit(
-                [fn = std::forward<decltype(fn)>(fn)](auto& value) {
-                    if constexpr (std::is_same_v<std::decay_t<decltype(value)>, Nui::Tests::Engine::Value>)
-                        return fn(value);
-                    else
-                        return fn(*value);
-                },
-                referenced_value_);
+            return fn(Nui::Tests::Engine::allValues[*referenced_value_]);
         }
         auto withValueDo(auto&& fn) const -> decltype(auto)
         {
-            return std::visit(
-                [fn = std::forward<decltype(fn)>(fn)](auto const& value) {
-                    if constexpr (std::is_same_v<std::decay_t<decltype(value)>, Nui::Tests::Engine::Value>)
-                        return fn(value);
-                    else
-                        return fn(*value);
-                },
-                referenced_value_);
+            return fn(Nui::Tests::Engine::allValues[*referenced_value_]);
         }
         auto withValueDo(auto&& fn) const&&
         {
-            return std::visit(
-                [fn = std::forward<decltype(fn)>(fn)](auto const& value) {
-                    if constexpr (std::is_same_v<std::decay_t<decltype(value)>, Nui::Tests::Engine::Value>)
-                        return fn(value);
-                    else
-                        return fn(*value);
-                },
-                referenced_value_);
+            return fn(Nui::Tests::Engine::allValues[*referenced_value_]);
         }
 
       public:
         template <typename T>
         val(T value)
-            : referenced_value_{Nui::Tests::Engine::Value{std::move(value)}}
+            : referenced_value_{std::make_shared<Nui::Tests::Engine::ReferenceType>(
+                  Nui::Tests::Engine::createValue(std::move(value)))}
         {}
         template <typename T>
         requires Nui::Tests::Engine::Callable<T>
         val(T value)
-            : referenced_value_{Nui::Tests::Engine::Function{std::move(value)}}
+            : referenced_value_{std::make_shared<Nui::Tests::Engine::ReferenceType>(
+                  Nui::Tests::Engine::createValue(Nui::Tests::Engine::Function{std::move(value)}))}
         {}
-        val(std::shared_ptr<Nui::Tests::Engine::Value> value)
+        val(Nui::Tests::Engine::ReferenceType value)
+            : referenced_value_{std::make_shared<Nui::Tests::Engine::ReferenceType>(value)}
+        {}
+        val(std::shared_ptr<Nui::Tests::Engine::ReferenceType> value)
             : referenced_value_{std::move(value)}
         {}
-        val(Nui::Tests::Engine::Value value)
-            : referenced_value_{std::move(value)}
+        val(Nui::Tests::Engine::Value const& value)
+            : referenced_value_{std::make_shared<Nui::Tests::Engine::ReferenceType>(value.instanceCounter())}
         {}
         val(char const* value)
-            : referenced_value_{Nui::Tests::Engine::Value{std::string{value}}}
+            : referenced_value_{std::make_shared<Nui::Tests::Engine::ReferenceType>(
+                  Nui::Tests::Engine::createValue(std::string{value}))}
         {}
         val(val const& other)
             : referenced_value_{other.referenced_value_}
@@ -81,7 +67,7 @@ namespace emscripten
             : referenced_value_{std::move(other.referenced_value_)}
         {}
         val()
-            : referenced_value_{Nui::Tests::Engine::Value{nullptr}}
+            : referenced_value_{std::make_shared<Nui::Tests::Engine::ReferenceType>(-1)}
         {}
 
         val& operator=(val const& other)
@@ -102,9 +88,7 @@ namespace emscripten
             if constexpr (std::is_same_v<T, val>)
                 return *this;
             else
-                return withValueDo([](auto const& value) -> decltype(auto) {
-                    return value.template as<T const&>();
-                });
+                return Nui::Tests::Engine::allValues[*referenced_value_].template as<T const&>();
         }
 
         template <typename T>
@@ -137,6 +121,8 @@ namespace emscripten
             auto fn = [key](Nui::Tests::Engine::Value& value) {
                 if (value.type() == Nui::Tests::Engine::Value::Type::Object)
                     return value.template as<Nui::Tests::Engine::Object&>().reference(key);
+                else if (value.type() == Nui::Tests::Engine::Value::Type::Array)
+                    return value.template as<Nui::Tests::Engine::Array&>().asObject().reference(key);
                 else
                     throw std::runtime_error{"val::operator[]: value is not an object"};
             };
@@ -150,7 +136,7 @@ namespace emscripten
 #endif
             auto fn = [key](Nui::Tests::Engine::Value const& value) {
                 if (value.type() == Nui::Tests::Engine::Value::Type::Object)
-                    return value.template as<Nui::Tests::Engine::Object const&>()[key];
+                    return value.template as<Nui::Tests::Engine::Object const&>().reference(key);
                 else
                     throw std::runtime_error{"val::operator[]: value is not an object"};
             };
@@ -177,7 +163,7 @@ namespace emscripten
 #endif
             return withValueDo([index](auto const& value) {
                 if (value.type() == Nui::Tests::Engine::Value::Type::Array)
-                    return value.template as<Nui::Tests::Engine::Array const&>()[index];
+                    return value.template as<Nui::Tests::Engine::Array const&>().reference(index);
                 else
                     throw std::runtime_error{"val::operator[]: value is not an array"};
             });
@@ -247,7 +233,7 @@ namespace emscripten
 #ifdef NUI_TEST_DEBUG_PRINT
             std::cout << "val::array()\n";
 #endif
-            return val{Nui::Tests::Engine::Array{}};
+            return Nui::Tests::Engine::createValue(Nui::Tests::Engine::Array{});
         }
 
         static val object()
@@ -257,8 +243,7 @@ namespace emscripten
 #endif
             using namespace std::string_literals;
             static auto counter = 0;
-            return Nui::Tests::Engine::unreferencedObjects.emplace_back(
-                "_"s + std::to_string(counter++), Nui::Tests::Engine::Object{});
+            return Nui::Tests::Engine::createValue(Nui::Tests::Engine::Object{});
         }
 
         static val u8string()
@@ -267,7 +252,7 @@ namespace emscripten
             std::cout << "val::u8string()\n";
 #endif
 
-            return val{Nui::Tests::Engine::Value{std::string{}}};
+            return Nui::Tests::Engine::createValue(std::string{});
         }
 
         static val u16string()
@@ -275,7 +260,7 @@ namespace emscripten
 #ifdef NUI_TEST_DEBUG_PRINT
             std::cout << "val::u16string()\n";
 #endif
-            return val{Nui::Tests::Engine::Value{std::string{}}};
+            return Nui::Tests::Engine::createValue(std::string{});
         }
 
         static val undefined()
@@ -291,7 +276,7 @@ namespace emscripten
 #ifdef NUI_TEST_DEBUG_PRINT
             std::cout << "val::null()\n";
 #endif
-            return val{Nui::Tests::Engine::Value{nullptr}};
+            return Nui::Tests::Engine::createValue(nullptr);
         }
 
         val module_property(char const* key)
@@ -353,7 +338,7 @@ namespace emscripten
             });
         };
 
-        void set(char const* key, val const& val)
+        void set(char const* key, val const& val) const
         {
 #ifdef NUI_TEST_DEBUG_PRINT
             std::cout << "val::set(" << key << ", " << val.typeOf().template as<std::string>() << ")\n";
@@ -362,16 +347,13 @@ namespace emscripten
                 if (value.type() == Nui::Tests::Engine::Value::Type::Object)
                 {
                     auto& object = value.template as<Nui::Tests::Engine::Object&>();
-                    if (std::holds_alternative<std::shared_ptr<Nui::Tests::Engine::Value>>(val.referenced_value_))
-                        object.set(key, std::get<std::shared_ptr<Nui::Tests::Engine::Value>>(val.referenced_value_));
-                    else
-                        object[key] = std::get<Nui::Tests::Engine::Value>(val.referenced_value_);
+                    object.set(key, val.referenced_value_);
                 }
                 else
                     throw std::runtime_error{"val::set: value is not an object"};
             });
         }
-        void set(val keyVal, val const& val)
+        void set(val keyVal, val const& val) const
         {
             std::string key;
             keyVal.withValueDo([&keyVal, &val, &key](auto& value) {
@@ -438,12 +420,9 @@ namespace emscripten
             return {};
         }
 
-        std::shared_ptr<Nui::Tests::Engine::Value> handle() const
+        std::shared_ptr<Nui::Tests::Engine::ReferenceType> handle() const
         {
-            if (std::holds_alternative<std::shared_ptr<Nui::Tests::Engine::Value>>(referenced_value_))
-                return std::get<std::shared_ptr<Nui::Tests::Engine::Value>>(referenced_value_);
-            else
-                throw std::runtime_error{"val::handle: value is not a reference"};
+            return referenced_value_;
         }
 
       private:
@@ -454,7 +433,7 @@ namespace emscripten
         friend std::vector<T> convertJSArrayToNumberVector(val const& v);
 
       private:
-        std::variant<std::shared_ptr<Nui::Tests::Engine::Value>, Nui::Tests::Engine::Value> referenced_value_;
+        std::shared_ptr<Nui::Tests::Engine::ReferenceType> referenced_value_;
     };
 
     template <typename T>
@@ -467,7 +446,7 @@ namespace emscripten
                 std::vector<T> result;
                 result.reserve(array.size());
                 for (auto& item : array)
-                    result.push_back(item->template as<T>());
+                    result.push_back(Nui::Tests::Engine::allValues[*item].template as<T>());
                 return result;
             }
             else

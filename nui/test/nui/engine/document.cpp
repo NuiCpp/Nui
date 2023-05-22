@@ -15,10 +15,10 @@ namespace Nui::Tests::Engine
         // inefficient but simple
         void cleanUndefinedDom(emscripten::val v)
         {
-            if (v.hasOwnProperty("children"))
+            if (!v.isNull() && !v.isUndefined() && v.hasOwnProperty("children"))
             {
-                auto& children = v["children"].handle()->template as<Array&>();
-                children.clearUndefined();
+                auto& children = v["children"].template as<Array&>();
+                children.clearUndefinedAndNull();
                 for (auto& child : children)
                     cleanUndefinedDom(emscripten::val{child});
             }
@@ -29,25 +29,37 @@ namespace Nui::Tests::Engine
             auto elem = emscripten::val::object();
             elem.set("tagName", tag.template as<std::string>());
             elem.set("children", emscripten::val::array());
-            elem.set("appendChild", Function{[self = elem.handle()](emscripten::val value) -> emscripten::val {
-                         return (*self)["children"].template as<Array&>().push_back(value.handle());
+            elem.set("appendChild", Function{[self = elem](emscripten::val value) -> emscripten::val {
+                         return self["children"].template as<Array&>().push_back(value.handle());
                      }});
-            elem.set("replaceWith", Function{[self = elem.handle()](emscripten::val value) -> emscripten::val {
-                         *self = *value.handle();
+            elem.set("replaceWith", Function{[self = elem](emscripten::val value) mutable -> emscripten::val {
+                         *self.handle() = *value.handle();
                          return self;
                      }});
-            elem.set("remove", Function{[self = elem.handle()]() -> emscripten::val {
-                         *self = Value{};
-                         cleanUndefinedDom(emscripten::val::global("document")["body"]);
+            elem.set("remove", Function{[self = elem]() -> emscripten::val {
+                         allValues[*self.handle()] = nullptr;
+                         if (!globalObject.has("document"))
+                             return emscripten::val::undefined();
+                         if (emscripten::val::global("document").hasOwnProperty("body"))
+                             cleanUndefinedDom(emscripten::val::global("document")["body"]);
                          return emscripten::val::undefined();
                      }});
+            elem.set(
+                "setAttribute", Function{[self = elem](emscripten::val name, emscripten::val value) -> emscripten::val {
+                    if (!self.template as<Object&>().has("attributes"))
+                        self.set("attributes", createValue(Object{}));
+
+                    self["attributes"].set(name.template as<std::string>(), *value.handle());
+
+                    return emscripten::val::undefined();
+                }});
             return elem;
         }
     }
 
     Document::Document()
     {
-        globalObject.emplace_back("document", Object{});
+        globalObject.emplace("document", Object{});
         emscripten::val::global("document").set("createElement", createElement);
         emscripten::val::global("document").set("body", createElement("body"));
     }

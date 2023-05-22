@@ -13,33 +13,12 @@ namespace Nui::Dom
     class ChildlessElement : public BasicElement
     {
       public:
-        template <typename... Attributes>
         ChildlessElement(HtmlElement const& elem)
             : BasicElement{ChildlessElement::createElement(elem).val()}
         {}
         ChildlessElement(emscripten::val val)
             : BasicElement{std::move(val)}
         {}
-
-        template <typename... Attributes>
-        static ChildlessElement createElement(HtmlElement const& element)
-        {
-            return {emscripten::val::global("document")
-                        .call<emscripten::val>("createElement", emscripten::val{element.name()})};
-        }
-
-        /**
-         * @brief Relies on weak_from_this and cannot be used from the constructor
-         */
-        template <typename... Attributes>
-        void setup(HtmlElement const& element)
-        {
-            for (auto const& attribute : element.attributes())
-            {
-                attribute.setOn(*this);
-                attribute.createEvent(weak_from_base<ChildlessElement>());
-            }
-        }
 
         // TODO: more overloads?
         void setAttribute(std::string_view key, std::string const& value)
@@ -88,13 +67,10 @@ namespace Nui::Dom
         }
 
       protected:
-        template <typename... Attributes>
-        void replaceElement(HtmlElement const& element)
+        static ChildlessElement createElement(HtmlElement const& element)
         {
-            auto replacement = ChildlessElement::createElement(element);
-            replacement.setup(element);
-            element_.call<emscripten::val>("replaceWith", replacement.val());
-            element_ = std::move(replacement).val();
+            return {emscripten::val::global("document")
+                        .call<emscripten::val>("createElement", emscripten::val{element.name()})};
         }
     };
 };
