@@ -7,6 +7,7 @@
 #include "engine/document.hpp"
 
 #include <nui/frontend/elements.hpp>
+#include <nui/frontend/dom/reference.hpp>
 
 namespace Nui::Tests
 {
@@ -60,5 +61,52 @@ namespace Nui::Tests
         ASSERT_EQ(emscripten::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
         EXPECT_EQ(
             emscripten::val::global("document")["body"]["children"][0]["textContent"].as<std::string>(), "Hello World");
+    }
+
+    TEST_F(TestRender, CanGetReferenceToElement)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using Nui::Attributes::id;
+        using Nui::Attributes::reference;
+
+        std::weak_ptr<Dom::BasicElement> ref;
+
+        render(body{id = "A", reference = ref}("Hello World"));
+
+        ASSERT_FALSE(ref.expired());
+        EXPECT_EQ(ref.lock()->val()["attributes"]["id"].as<std::string>(), "A");
+    }
+
+    TEST_F(TestRender, CanGetReferenceToElementUsingFunction)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using Nui::Attributes::id;
+        using Nui::Attributes::reference;
+
+        std::weak_ptr<Dom::BasicElement> ref;
+
+        render(body{id = "A", reference = [&](auto&& weak) {
+                        ref = std::move(weak);
+                    }}("Hello World"));
+
+        ASSERT_FALSE(ref.expired());
+        EXPECT_EQ(ref.lock()->val()["attributes"]["id"].as<std::string>(), "A");
+    }
+
+    TEST_F(TestRender, CanGetReferenceToElementWithChildren)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using Nui::Attributes::id;
+        using Nui::Attributes::reference;
+
+        std::weak_ptr<Dom::BasicElement> ref;
+
+        render(body{id = "A", reference = ref}(div{id = "B"}()));
+
+        ASSERT_FALSE(ref.expired());
+        EXPECT_EQ(ref.lock()->val()["attributes"]["id"].as<std::string>(), "A");
     }
 }

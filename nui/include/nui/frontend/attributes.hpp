@@ -162,6 +162,7 @@
 #include <nui/frontend/attributes/poster.hpp>
 #include <nui/frontend/attributes/preload.hpp>
 #include <nui/frontend/attributes/read_only.hpp>
+#include <nui/frontend/attributes/reference.hpp>
 #include <nui/frontend/attributes/rel.hpp>
 #include <nui/frontend/attributes/required.hpp>
 #include <nui/frontend/attributes/referrer_policy.hpp>
