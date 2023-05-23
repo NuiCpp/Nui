@@ -326,6 +326,7 @@ namespace Nui
         }
 
       public:
+        // Children functions:
         template <typename... ElementT>
         requires(!IsObserved<ElementT> && ...)
         constexpr auto operator()(ElementT&&... elements) &&
@@ -373,14 +374,8 @@ namespace Nui
                 return materialized;
             };
         }
-        template <typename T>
-        requires Fundamental<T>
-        auto operator()(Observed<T> const& observedNumber) &&
-        {
-            return std::move(*this).operator()(observe(observedNumber), [&observedNumber]() -> std::string {
-                return std::to_string(observedNumber.value());
-            });
-        }
+
+        // Generator functions:
         template <typename GeneratorT>
         requires InvocableReturns<GeneratorT, std::string>
         constexpr auto operator()(GeneratorT&& textGenerator) &&
@@ -398,15 +393,16 @@ namespace Nui
         {
             return [self = this->clone(), ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](
                        auto& parentElement, Renderer const& gen) {
-                return ElementRenderer()(parentElement, gen);
+                return ElementRenderer()(parentElement, Renderer{.type = RendererType::Append});
             };
         }
         template <typename T, std::invocable<T&, Renderer const&> GeneratorT>
+        requires InvocableReturns<GeneratorT, std::string>
         constexpr auto operator()(GeneratorT&& ElementRenderer) &&
         {
             return [self = this->clone(), ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](
                        auto& parentElement, Renderer const& gen) {
-                return ElementRenderer(parentElement, gen);
+                return ElementRenderer(parentElement, Renderer{.type = RendererType::Append});
             };
         }
 
@@ -433,10 +429,20 @@ namespace Nui
         {
             return std::move(*this).rangeRender(std::move(mapPair.first), std::move(mapPair.second));
         }
+
+        // Observed text and number content functions:
         auto operator()(Observed<std::string> const& observedString) &&
         {
             return std::move(*this).operator()(observe(observedString), [&observedString]() -> std::string {
                 return observedString.value();
+            });
+        }
+        template <typename T>
+        requires Fundamental<T>
+        auto operator()(Observed<T> const& observedNumber) &&
+        {
+            return std::move(*this).operator()(observe(observedNumber), [&observedNumber]() -> std::string {
+                return std::to_string(observedNumber.value());
             });
         }
 

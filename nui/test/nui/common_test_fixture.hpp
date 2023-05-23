@@ -27,6 +27,13 @@ namespace Nui::Tests
             dom_.setBody(std::forward<T>(factory));
         }
 
+        static auto accumulateReferences(std::vector<emscripten::val>& references)
+        {
+            return [&references](std::weak_ptr<Dom::BasicElement>&& weak) {
+                references.push_back(weak.lock()->val());
+            };
+        };
+
         int preConstructionHelper_;
         Engine::Document document_;
         Dom::Dom dom_;

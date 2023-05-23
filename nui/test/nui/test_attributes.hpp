@@ -36,7 +36,7 @@ namespace Nui::Tests
 
         render(div{class_ = "asdf", id = "qwer"}());
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"].template as<Object const&>().size(), 2);
+        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"].as<Object const&>().size(), 2);
         EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
         EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "qwer");
     }
@@ -48,7 +48,7 @@ namespace Nui::Tests
 
         render(div{class_ = "asdf"}(div{}()));
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"].template as<Object const&>().size(), 1);
+        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"].as<Object const&>().size(), 1);
         EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
     }
 
@@ -61,10 +61,7 @@ namespace Nui::Tests
 
         EXPECT_FALSE(emscripten::val::global("document")["body"].hasOwnProperty("attributes"));
         EXPECT_EQ(
-            emscripten::val::global("document")["body"]["children"][0]["attributes"]
-                .template as<Object const&>()
-                .size(),
-            1);
+            emscripten::val::global("document")["body"]["children"][0]["attributes"].as<Object const&>().size(), 1);
         EXPECT_EQ(
             emscripten::val::global("document")["body"]["children"][0]["attributes"]["class"].as<std::string>(),
             "asdf");
@@ -80,10 +77,7 @@ namespace Nui::Tests
 
         EXPECT_FALSE(emscripten::val::global("document")["body"].hasOwnProperty("attributes"));
         EXPECT_EQ(
-            emscripten::val::global("document")["body"]["children"][0]["attributes"]
-                .template as<Object const&>()
-                .size(),
-            2);
+            emscripten::val::global("document")["body"]["children"][0]["attributes"].as<Object const&>().size(), 2);
         EXPECT_EQ(
             emscripten::val::global("document")["body"]["children"][0]["attributes"]["class"].as<std::string>(),
             "asdf");
@@ -114,10 +108,7 @@ namespace Nui::Tests
 
         EXPECT_FALSE(emscripten::val::global("document")["body"].hasOwnProperty("attributes"));
         EXPECT_EQ(
-            emscripten::val::global("document")["body"]["children"][0]["attributes"]
-                .template as<Object const&>()
-                .size(),
-            1);
+            emscripten::val::global("document")["body"]["children"][0]["attributes"].as<Object const&>().size(), 1);
     }
 
     TEST_F(TestAttributes, ChangingObservedValueChangesTheDomWhenEventsAreProcessed)
@@ -218,6 +209,30 @@ namespace Nui::Tests
         observedClass = 1;
         globalEventContext.executeActiveEventsImmediately();
         EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "C1");
+    }
+
+    TEST_F(TestAttributes, GeneratorCanUpdateOnMultipleObservedValues)
+    {
+        using Nui::Elements::div;
+        using namespace Nui::Attributes;
+
+        emscripten::val ref;
+        Observed<int> number{0};
+        Observed<std::string> text{"asdf"};
+
+        render(div{reference = ref, class_ = observe(number, text).generate([&number, &text]() {
+                       return text.value() + std::to_string(number.value());
+                   })}());
+
+        EXPECT_EQ(ref["attributes"]["class"].as<std::string>(), "asdf0");
+
+        number = 1;
+        globalEventContext.executeActiveEventsImmediately();
+        EXPECT_EQ(ref["attributes"]["class"].as<std::string>(), "asdf1");
+
+        text = "qwer";
+        globalEventContext.executeActiveEventsImmediately();
+        EXPECT_EQ(ref["attributes"]["class"].as<std::string>(), "qwer1");
     }
 
     TEST_F(TestAttributes, StyleAttributeCanBeString)
@@ -374,7 +389,7 @@ namespace Nui::Tests
 
         std::optional<long long> prop = 0;
         render(div{onClick = [&prop](const emscripten::val& event) {
-            prop = event["prop"].template as<long long>();
+            prop = event["prop"].as<long long>();
         }}());
 
         Object event;
@@ -403,5 +418,52 @@ namespace Nui::Tests
         emscripten::val::global("document")["body"]["onclick"](emscripten::val{});
         EXPECT_TRUE(clicked.value());
         EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "clicked");
+    }
+
+    TEST_F(TestAttributes, CanGetReferenceToElement)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using Nui::Attributes::id;
+        using Nui::Attributes::reference;
+
+        std::weak_ptr<Dom::BasicElement> ref;
+
+        render(body{id = "A", reference = ref}("Hello World"));
+
+        ASSERT_FALSE(ref.expired());
+        EXPECT_EQ(ref.lock()->val()["attributes"]["id"].as<std::string>(), "A");
+    }
+
+    TEST_F(TestAttributes, CanGetReferenceToElementUsingFunction)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using Nui::Attributes::id;
+        using Nui::Attributes::reference;
+
+        std::weak_ptr<Dom::BasicElement> ref;
+
+        render(body{id = "A", reference = [&](auto&& weak) {
+                        ref = std::move(weak);
+                    }}("Hello World"));
+
+        ASSERT_FALSE(ref.expired());
+        EXPECT_EQ(ref.lock()->val()["attributes"]["id"].as<std::string>(), "A");
+    }
+
+    TEST_F(TestAttributes, CanGetReferenceToElementWithChildren)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using Nui::Attributes::id;
+        using Nui::Attributes::reference;
+
+        std::weak_ptr<Dom::BasicElement> ref;
+
+        render(body{id = "A", reference = ref}(div{id = "B"}()));
+
+        ASSERT_FALSE(ref.expired());
+        EXPECT_EQ(ref.lock()->val()["attributes"]["id"].as<std::string>(), "A");
     }
 }

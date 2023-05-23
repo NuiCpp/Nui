@@ -309,9 +309,9 @@ namespace Nui
             {
                 return ref_;
             }
-            void operator=(T& ref)
+            void operator=(T&& ref)
             {
-                ref_ = ref;
+                ref_ = std::forward<T>(ref);
                 owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
             }
 
@@ -324,7 +324,7 @@ namespace Nui
         class PointerWrapper
         {
           public:
-            PointerWrapper(ObservedContainer<ContainerT>* owner, std::size_t pos, T* ptr)
+            PointerWrapper(ObservedContainer<ContainerT>* owner, std::size_t pos, T* ptr) noexcept
                 : owner_{owner}
                 , pos_{pos}
                 , ptr_{ptr}
@@ -336,11 +336,11 @@ namespace Nui
             T& operator*()
             {
                 owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
-                return ptr_;
+                return *ptr_;
             }
             T const& operator*() const
             {
-                return ptr_;
+                return *ptr_;
             }
             T* operator->()
             {
@@ -429,8 +429,12 @@ namespace Nui
             }
             auto operator*()
             {
-                return ReferenceWrapper<value_type, ContainerT>{
-                    owner_, static_cast<std::size_t>(it_ - owner_->contained_.begin()), *it_};
+                if constexpr (std::is_same_v<WrappedIterator, typename ContainerT::reverse_iterator>)
+                    return ReferenceWrapper<value_type, ContainerT>{
+                        owner_, static_cast<std::size_t>(it_ - owner_->contained_.rbegin()), *it_};
+                else
+                    return ReferenceWrapper<value_type, ContainerT>{
+                        owner_, static_cast<std::size_t>(it_ - owner_->contained_.begin()), *it_};
             }
             auto operator*() const
             {
@@ -438,8 +442,12 @@ namespace Nui
             }
             auto operator->()
             {
-                return PointerWrapper<value_type, ContainerT>{
-                    owner_, static_cast<std::size_t>(it_ - owner_->contained_.begin()), &*it_};
+                if constexpr (std::is_same_v<WrappedIterator, typename ContainerT::reverse_iterator>)
+                    return PointerWrapper<value_type, ContainerT>{
+                        owner_, static_cast<std::size_t>(it_ - owner_->contained_.rbegin()), &*it_};
+                else
+                    return PointerWrapper<value_type, ContainerT>{
+                        owner_, static_cast<std::size_t>(it_ - owner_->contained_.begin()), &*it_};
             }
             auto operator->() const
             {
@@ -584,7 +592,7 @@ namespace Nui
         }
         pointer data() noexcept
         {
-            return contained_.data();
+            return pointer{this, 0, contained_.data()};
         }
         const_pointer data() const noexcept
         {
@@ -592,8 +600,7 @@ namespace Nui
         }
         reference at(size_type pos)
         {
-            reference ref = contained_.at(pos);
-            return reference{this, pos, ref};
+            return reference{this, pos, contained_.at(pos)};
         }
         const_reference at(size_type pos) const
         {
@@ -673,7 +680,8 @@ namespace Nui
             return contained_.max_size();
         }
         template <typename U = ContainerT>
-        Detail::PickFirst_t<void, decltype(std::declval<U>().reserve())> reserve(size_type capacity)
+        Detail::PickFirst_t<void, decltype(std::declval<U>().reserve(std::declval<std::size_t>()))>
+        reserve(size_type capacity)
         {
             return contained_.reserve(capacity);
         }
@@ -777,7 +785,7 @@ namespace Nui
         }
         iterator erase(iterator first, iterator last)
         {
-            const auto distance = first - cbegin();
+            const auto distance = first - begin();
             auto it = contained_.erase(first.getWrapped(), last.getWrapped());
             insertRangeChecked(distance, distance + std::distance(first, last), RangeStateType::Erase);
             return iterator{this, it};
@@ -800,13 +808,15 @@ namespace Nui
             insertRangeChecked(size() - 1, size() - 1, RangeStateType::Insert);
         }
         template <typename U = ContainerT>
-        Detail::PickFirst_t<void, decltype(std::declval<U>().push_front())> push_front(const value_type& value)
+        Detail::PickFirst_t<void, decltype(std::declval<U>().push_front(std::declval<const value_type&>()))>
+        push_front(const value_type& value)
         {
             contained_.push_front(value);
             insertRangeChecked(0, 0, RangeStateType::Insert);
         }
         template <typename U = ContainerT>
-        Detail::PickFirst_t<void, decltype(std::declval<U>().push_front())> push_front(value_type&& value)
+        Detail::PickFirst_t<void, decltype(std::declval<U>().push_front(std::declval<value_type>()))>
+        push_front(value_type&& value)
         {
             contained_.push_front(std::move(value));
             insertRangeChecked(0, 0, RangeStateType::Insert);
@@ -835,10 +845,24 @@ namespace Nui
             insertRangeChecked(0, 0, RangeStateType::Erase);
         }
         template <typename U = ContainerT>
-        Detail::PickFirst_t<void, decltype(std::declval<U>().resize())> resize(size_type count)
+        Detail::PickFirst_t<void, decltype(std::declval<U>().resize(std::declval<std::size_t>()))>
+        resize(size_type count)
         {
             const auto sizeBefore = contained_.size();
             contained_.resize(count);
+            if (sizeBefore < count)
+                insertRangeChecked(sizeBefore, count, RangeStateType::Insert);
+            else
+                insertRangeChecked(count, sizeBefore, RangeStateType::Erase);
+        }
+        template <typename U = ContainerT>
+        Detail::PickFirst_t<
+            void,
+            decltype(std::declval<U>().resize(std::declval<std::size_t>(), std::declval<value_type const&>()))>
+        resize(size_type count, value_type const& fillValue)
+        {
+            const auto sizeBefore = contained_.size();
+            contained_.resize(count, fillValue);
             if (sizeBefore < count)
                 insertRangeChecked(sizeBefore, count, RangeStateType::Insert);
             else
@@ -880,32 +904,31 @@ namespace Nui
       private:
         void insertRangeChecked(std::size_t low, std::size_t high, RangeStateType type)
         {
-            const auto result = rangeContext_.insertModificationRange(contained_.size(), low, high, type);
-            if (result == RangeEventContext::InsertResult::Final)
-            {
-                update();
-                globalEventContext.executeActiveEventsImmediately();
-            }
-            else if (result == RangeEventContext::InsertResult::Retry)
-            {
-                update();
-                globalEventContext.executeActiveEventsImmediately();
-                const auto innerResult = rangeContext_.insertModificationRange(contained_.size(), low, high, type);
-                if (innerResult == RangeEventContext::InsertResult::Final)
+            std::function<void(int)> doInsert;
+            doInsert = [&](int retries) {
+                const auto result = rangeContext_.insertModificationRange(contained_.size(), low, high, type);
+                if (result == RangeEventContext::InsertResult::Final)
                 {
                     update();
                     globalEventContext.executeActiveEventsImmediately();
                 }
-                else if (innerResult == RangeEventContext::InsertResult::Retry)
+                else if (result == RangeEventContext::InsertResult::Retry)
                 {
-                    std::cout << "RangeEventContext::insertModificationRange() returned Retry twice in a row.\n";
-                    return;
+                    if (retries < 3)
+                        doInsert(retries + 1);
+                    else
+                    {
+                        rangeContext_.reset(contained_.size(), true);
+                        update();
+                        globalEventContext.executeActiveEventsImmediately();
+                        return;
+                    }
                 }
                 else
                     update();
-            }
-            else
-                update();
+            };
+
+            doInsert(0);
         }
 
         auto registerAfterEffect()

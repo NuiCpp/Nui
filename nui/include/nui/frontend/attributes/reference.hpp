@@ -21,5 +21,12 @@ namespace Nui::Attributes
                 ref = std::move(element);
             });
         }
+
+        Attribute operator=(emscripten::val& ref) const
+        {
+            return operator=([&ref](std::weak_ptr<Dom::BasicElement>&& element) {
+                ref = element.lock()->val();
+            });
+        }
     } static constexpr reference;
 }
