@@ -123,6 +123,13 @@ namespace emscripten
                     return value.template as<Nui::Tests::Engine::Object&>().reference(key);
                 else if (value.type() == Nui::Tests::Engine::Value::Type::Array)
                     return value.template as<Nui::Tests::Engine::Array&>().asObject().reference(key);
+                else if (value.type() == Nui::Tests::Engine::Value::Type::Function)
+                {
+                    if (std::string{key} == "opcall")
+                        return std::make_shared<Nui::Tests::Engine::ReferenceType>(value.instanceCounter());
+                    else
+                        throw std::runtime_error{"val::operator[]: function has no member " + std::string{key}};
+                }
                 else
                     throw std::runtime_error{"val::operator[]: value is not an object"};
             };
@@ -212,6 +219,20 @@ namespace emscripten
                     }
                     else
                         throw std::runtime_error{"val::call of "s + name + ": " + mem.typeOf() + " is not a function"};
+                }
+                else if (value.type() == Nui::Tests::Engine::Value::Type::Function)
+                {
+                    // so far only used to bind this correctly for functions.
+                    // ignore for now.
+                    if (std::string{name} == "bind")
+                    {
+                        if constexpr (std::is_same_v<Ret, void>)
+                            return;
+                        else
+                            return val{value.instanceCounter()};
+                    }
+                    else
+                        throw std::runtime_error{"val::call of "s + name + ": function has no member " + name};
                 }
                 else
                     throw std::runtime_error{"val::call: value is not an object"};
