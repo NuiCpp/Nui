@@ -30,9 +30,9 @@ namespace Nui::Tests::Engine
         }
         void set(std::string_view key, std::shared_ptr<ReferenceType> const& value);
         bool has(std::string_view key) const;
-        auto begin() const;
-        auto end() const;
-        auto size() const;
+        std::unordered_map<std::string, std::shared_ptr<ReferenceType>>::const_iterator begin() const;
+        std::unordered_map<std::string, std::shared_ptr<ReferenceType>>::const_iterator end() const;
+        std::size_t size() const;
         bool empty() const;
         void erase(std::string_view key);
         void print(int indent = 0, ReferenceType instanceCounter_ = ReferenceType{-1}) const;

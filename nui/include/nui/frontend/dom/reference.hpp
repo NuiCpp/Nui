@@ -16,13 +16,13 @@ namespace Nui::Dom
         ReferencePasser(T&& func)
             : func_{std::move(func)}
         {}
-        void operator()(std::weak_ptr<Dom::BasicElement>&& weakElement) const
+        void operator()(std::weak_ptr<BasicElement>&& weakElement) const
         {
             func_(std::move(weakElement));
         }
 
       private:
-        std::function<void(std::weak_ptr<Dom::BasicElement>&&)> func_;
+        std::function<void(std::weak_ptr<BasicElement>&&)> func_;
     };
 
     namespace Detail
@@ -39,10 +39,4 @@ namespace Nui::Dom
     concept IsNotReferencePasser = !Detail::IsReferencePasser<T>::value;
     template <typename T>
     concept IsReferencePasser = Detail::IsReferencePasser<T>::value;
-
-    template <typename T>
-    requires std::invocable<T, std::weak_ptr<Dom::BasicElement> &&> auto reference(T&& func)
-    {
-        return ReferencePasser<T>{std::forward<T>(func)};
-    }
 }

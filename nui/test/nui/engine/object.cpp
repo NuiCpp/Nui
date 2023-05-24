@@ -38,17 +38,17 @@ namespace Nui::Tests::Engine
         return members_.contains(key.data());
     }
 
-    auto Object::begin() const
+    std::unordered_map<std::string, std::shared_ptr<ReferenceType>>::const_iterator Object::begin() const
     {
         return members_.begin();
     }
 
-    auto Object::end() const
+    std::unordered_map<std::string, std::shared_ptr<ReferenceType>>::const_iterator Object::end() const
     {
         return members_.end();
     }
 
-    auto Object::size() const
+    std::size_t Object::size() const
     {
         return members_.size();
     }

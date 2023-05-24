@@ -10,9 +10,10 @@
 #include <nui/frontend/attributes/open.hpp>
 #include <nui/frontend/attributes/class.hpp>
 #include <nui/frontend/attributes/method.hpp>
-#include <nui/frontend/attributes/type.hpp>
 #include <nui/frontend/attributes/mouse_events.hpp>
+#include <nui/frontend/attributes/reference.hpp>
 #include <nui/frontend/attributes/style.hpp>
+#include <nui/frontend/attributes/type.hpp>
 
 #include <emscripten.h>
 
@@ -88,11 +89,11 @@ namespace Nui::Components
 
         // clang-format off
         return dialog{
-            class_ = controller.args_.className
-        }(
-            Dom::reference([&controller](auto element){
+            class_ = controller.args_.className,
+            reference = [&controller](auto&& element){
                 controller.element_ = std::static_pointer_cast<Dom::Element>(element.lock());
-            }),
+            }
+        }(
             form{
                 method = "dialog"
             }(
