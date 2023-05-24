@@ -391,8 +391,8 @@ namespace Nui
         requires(!InvocableReturns<GeneratorT, std::string>)
         constexpr auto operator()(GeneratorT&& ElementRenderer) &&
         {
-            return [self = this->clone(), ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](
-                       auto& parentElement, Renderer const& gen) {
+            return [self = this->clone(),
+                    ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](auto& parentElement, Renderer const&) {
                 return ElementRenderer()(parentElement, Renderer{.type = RendererType::Append});
             };
         }
@@ -400,8 +400,8 @@ namespace Nui
         requires InvocableReturns<GeneratorT, std::string>
         constexpr auto operator()(GeneratorT&& ElementRenderer) &&
         {
-            return [self = this->clone(), ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](
-                       auto& parentElement, Renderer const& gen) {
+            return [self = this->clone(),
+                    ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](auto& parentElement, Renderer const&) {
                 return ElementRenderer(parentElement, Renderer{.type = RendererType::Append});
             };
         }
