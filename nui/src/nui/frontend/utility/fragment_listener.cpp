@@ -4,7 +4,7 @@
 #include <nui/frontend/api/console.hpp>
 #include <nui/frontend/event_system/event_context.hpp>
 
-#include <emscripten/val.h>
+#include <nui/frontend/val.hpp>
 
 using namespace std::string_literals;
 
@@ -12,11 +12,11 @@ namespace Nui
 {
     void listenToFragmentChanges(Observed<std::string>& fragment)
     {
-        emscripten::val::global("window").call<void>(
+        Nui::val::global("window").call<void>(
             "addEventListener",
             "hashchange"s,
             Nui::bind(
-                [&fragment](emscripten::val event) {
+                [&fragment](Nui::val event) {
                     auto movedTo = event["newURL"].as<std::string>();
                     auto hashPos = movedTo.find_last_of('#');
                     if (hashPos != std::string::npos)

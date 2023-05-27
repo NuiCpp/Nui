@@ -4,7 +4,7 @@
 #include <nui/frontend/utility/val_conversion.hpp>
 #include <nui/frontend/api/console.hpp>
 
-#include <emscripten/val.h>
+#include <nui/frontend/val.hpp>
 
 namespace Nui
 {
@@ -14,11 +14,11 @@ namespace Nui
         std::function<void(std::optional<FetchResponse> const&)> callback)
     {
         Nui::RpcClient::getRemoteCallableWithBackChannel(
-            "Nui::fetch", [callback = std::move(callback), options](emscripten::val response) {
+            "Nui::fetch", [callback = std::move(callback), options](Nui::val response) {
                 std::optional<FetchResponse> resp;
                 Nui::convertFromVal(response, resp);
                 if (resp && !options.dontDecodeBody)
-                    resp->body = emscripten::val::global("atob")(resp->body).as<std::string>();
+                    resp->body = Nui::val::global("atob")(resp->body).as<std::string>();
                 callback(resp);
             })(uri, options);
     }

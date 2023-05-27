@@ -22,7 +22,7 @@ namespace Nui::Attributes
             });
         }
 
-        Attribute operator=(emscripten::val& ref) const
+        Attribute operator=(Nui::val& ref) const
         {
             return operator=([&ref](std::weak_ptr<Dom::BasicElement>&& element) {
                 ref = element.lock()->val();

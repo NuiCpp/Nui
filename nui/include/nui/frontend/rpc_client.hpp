@@ -1,6 +1,6 @@
 #pragma once
 
-#include <emscripten/val.h>
+#include <nui/frontend/val.hpp>
 
 #include <nui/frontend/api/console.hpp>
 #include <nui/frontend/utility/functions.hpp>
@@ -20,9 +20,9 @@ namespace Nui
         {};
 
         template <typename ArgT>
-        constexpr static auto extractMember(emscripten::val const& val) -> decltype(auto)
+        constexpr static auto extractMember(Nui::val const& val) -> decltype(auto)
         {
-            if constexpr (std::is_same_v<std::decay_t<ArgT>, emscripten::val>)
+            if constexpr (std::is_same_v<std::decay_t<ArgT>, Nui::val>)
                 return val;
             else
             {
@@ -33,12 +33,12 @@ namespace Nui
         }
 
         template <typename ReturnType>
-        struct FunctionWrapperImpl<ReturnType, std::tuple<emscripten::val>, std::index_sequence<0>>
+        struct FunctionWrapperImpl<ReturnType, std::tuple<Nui::val>, std::index_sequence<0>>
         {
             template <typename FunctionT>
             constexpr static auto wrapFunction(FunctionT&& func)
             {
-                return [func = std::move(func)](emscripten::val const& args) mutable {
+                return [func = std::move(func)](Nui::val const& args) mutable {
                     func(args);
                 };
             }
@@ -50,7 +50,7 @@ namespace Nui
             template <typename FunctionT>
             constexpr static auto wrapFunction(FunctionT&& func)
             {
-                return [func = std::move(func)](emscripten::val const& arg) mutable {
+                return [func = std::move(func)](Nui::val const& arg) mutable {
                     func(extractMember<ArgType>(arg));
                 };
             }
@@ -62,7 +62,7 @@ namespace Nui
             template <typename FunctionT>
             constexpr static auto wrapFunction(FunctionT&& func)
             {
-                return [func = std::move(func)](emscripten::val const& args) mutable {
+                return [func = std::move(func)](Nui::val const& args) mutable {
                     func(extractMember<ArgsTypes>(args[Is])...);
                 };
             }
@@ -98,20 +98,20 @@ namespace Nui
                 if (!resolve())
                 {
                     Console::error("Remote callable with name '"s + name_ + "' is undefined");
-                    return emscripten::val::undefined();
+                    return Nui::val::undefined();
                 }
                 if (backChannel_.empty())
                     return callable_(convertToVal(args)...);
                 else
                     return callable_(convertToVal(backChannel_), convertToVal(args)...);
             }
-            auto operator()(emscripten::val val) const
+            auto operator()(Nui::val val) const
             {
                 using namespace std::string_literals;
                 if (!resolve())
                 {
                     Console::error("Remote callable with name '"s + name_ + "' is undefined");
-                    return emscripten::val::undefined();
+                    return Nui::val::undefined();
                 }
                 if (backChannel_.empty())
                     return callable_(val);
@@ -122,14 +122,14 @@ namespace Nui
             RemoteCallable(std::string name)
                 : name_{std::move(name)}
                 , backChannel_{}
-                , callable_{emscripten::val::undefined()}
+                , callable_{Nui::val::undefined()}
                 , isSet_{false}
             {}
 
             RemoteCallable(std::string name, std::string backChannel)
                 : name_{std::move(name)}
                 , backChannel_{std::move(backChannel)}
-                , callable_{emscripten::val::undefined()}
+                , callable_{Nui::val::undefined()}
                 , isSet_{false}
             {}
 
@@ -140,11 +140,11 @@ namespace Nui
                 if (isSet_)
                     return true;
 
-                const auto rpcObject = emscripten::val::global("nui_rpc");
+                const auto rpcObject = Nui::val::global("nui_rpc");
                 if (rpcObject.isUndefined())
                     return false;
 
-                callable_ = emscripten::val::global("nui_rpc")["backend"][name_.c_str()];
+                callable_ = Nui::val::global("nui_rpc")["backend"][name_.c_str()];
                 isSet_ = !callable_.isUndefined();
                 return isSet_;
             }
@@ -152,7 +152,7 @@ namespace Nui
           private:
             std::string name_;
             std::string backChannel_;
-            mutable emscripten::val callable_;
+            mutable Nui::val callable_;
             mutable bool isSet_;
         };
 
@@ -186,21 +186,21 @@ namespace Nui
         static std::string registerFunctionOnce(FunctionT&& func)
         {
             using namespace std::string_literals;
-            if (emscripten::val::global("nui_rpc").isUndefined())
+            if (Nui::val::global("nui_rpc").isUndefined())
             {
                 Console::error("rpc was not setup by backend"s);
                 return {};
             }
-            auto tempId = emscripten::val::global("nui_rpc")["tempId"].as<uint32_t>() + 1;
-            emscripten::val::global("nui_rpc").set("tempId", tempId);
+            auto tempId = Nui::val::global("nui_rpc")["tempId"].as<uint32_t>() + 1;
+            Nui::val::global("nui_rpc").set("tempId", tempId);
             const auto tempIdString = "temp_"s + std::to_string(tempId);
-            emscripten::val::global("nui_rpc")["frontend"].set(
+            Nui::val::global("nui_rpc")["frontend"].set(
                 tempIdString,
                 Nui::bind(
                     [func = Detail::FunctionWrapper<FunctionT>::wrapFunction(std::forward<FunctionT>(func)),
-                     tempIdString](emscripten::val param) mutable {
+                     tempIdString](Nui::val param) mutable {
                         func(param);
-                        emscripten::val::global("nui_rpc")["frontend"].delete_(tempIdString);
+                        Nui::val::global("nui_rpc")["frontend"].delete_(tempIdString);
                     },
                     std::placeholders::_1));
             return tempIdString;
@@ -216,16 +216,16 @@ namespace Nui
         static void registerFunction(std::string const& name, FunctionT&& func)
         {
             using namespace std::string_literals;
-            if (emscripten::val::global("nui_rpc").isUndefined())
+            if (Nui::val::global("nui_rpc").isUndefined())
             {
                 Console::error("rpc was not setup by backend"s);
                 return;
             }
-            emscripten::val::global("nui_rpc")["frontend"].set(
+            Nui::val::global("nui_rpc")["frontend"].set(
                 name.c_str(),
                 Nui::bind(
                     [func = Detail::FunctionWrapper<FunctionT>::wrapFunction(std::forward<FunctionT>(func))](
-                        emscripten::val param) mutable {
+                        Nui::val param) mutable {
                         func(param);
                     },
                     std::placeholders::_1));
@@ -234,12 +234,12 @@ namespace Nui
         static void unregisterFunction(std::string const& name)
         {
             using namespace std::string_literals;
-            if (emscripten::val::global("nui_rpc").isUndefined())
+            if (Nui::val::global("nui_rpc").isUndefined())
             {
                 Console::error("rpc was not setup by backend"s);
                 return;
             }
-            emscripten::val::global("nui_rpc")["frontend"].delete_(name.c_str());
+            Nui::val::global("nui_rpc")["frontend"].delete_(name.c_str());
         }
     };
 }

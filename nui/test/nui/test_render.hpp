@@ -26,7 +26,7 @@ namespace Nui::Tests
 
         render(div{}());
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["tagName"].as<std::string>(), "div");
+        EXPECT_EQ(Nui::val::global("document")["body"]["tagName"].as<std::string>(), "div");
     }
 
     TEST_F(TestRender, CanRenderSpan)
@@ -35,7 +35,7 @@ namespace Nui::Tests
 
         render(span{}());
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["tagName"].as<std::string>(), "span");
+        EXPECT_EQ(Nui::val::global("document")["body"]["tagName"].as<std::string>(), "span");
     }
 
     TEST_F(TestRender, SingleChildIsRendered)
@@ -45,8 +45,8 @@ namespace Nui::Tests
 
         render(div{}(span{}()));
 
-        ASSERT_EQ(emscripten::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
-        EXPECT_EQ(emscripten::val::global("document")["body"]["children"][0]["tagName"].as<std::string>(), "span");
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["tagName"].as<std::string>(), "span");
     }
 
     TEST_F(TestRender, MultipleChildrenAreRendered)
@@ -54,9 +54,9 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Elements::span;
         render(div{}(span{}(), div{}()));
-        ASSERT_EQ(emscripten::val::global("document")["body"]["children"]["length"].as<long long>(), 2);
-        EXPECT_EQ(emscripten::val::global("document")["body"]["children"][0]["tagName"].as<std::string>(), "span");
-        EXPECT_EQ(emscripten::val::global("document")["body"]["children"][1]["tagName"].as<std::string>(), "div");
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 2);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["tagName"].as<std::string>(), "span");
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][1]["tagName"].as<std::string>(), "div");
     }
 
     TEST_F(TestRender, CanRenderText)
@@ -64,9 +64,8 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Elements::span;
         render(div{}(span{}("Hello World")));
-        ASSERT_EQ(emscripten::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
-        EXPECT_EQ(
-            emscripten::val::global("document")["body"]["children"][0]["textContent"].as<std::string>(), "Hello World");
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["textContent"].as<std::string>(), "Hello World");
     }
 
     TEST_F(TestRender, TextBodyCanBeObservedVariable)
@@ -75,7 +74,7 @@ namespace Nui::Tests
         using Nui::Elements::span;
         using namespace Nui::Attributes;
 
-        emscripten::val elem;
+        Nui::val elem;
         Observed<std::string> textContent = "Hello World";
 
         render(div{}(span{reference = elem}(textContent)));
@@ -92,7 +91,7 @@ namespace Nui::Tests
         using Nui::Elements::span;
         using namespace Nui::Attributes;
 
-        emscripten::val elem;
+        Nui::val elem;
         Observed<int> textContent = 13;
 
         render(div{}(span{reference = elem}(textContent)));
@@ -109,7 +108,7 @@ namespace Nui::Tests
         using Nui::Elements::span;
         using namespace Nui::Attributes;
 
-        emscripten::val elem;
+        Nui::val elem;
         Observed<double> textContent = 13.5;
 
         render(div{}(span{reference = elem}(textContent)));
@@ -130,8 +129,8 @@ namespace Nui::Tests
             return div{}();
         }));
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
-        EXPECT_EQ(emscripten::val::global("document")["body"]["children"][0]["tagName"].as<std::string>(), "div");
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["tagName"].as<std::string>(), "div");
     }
 
     TEST_F(TestRender, CanRenderUsingFunctionReturningString)
@@ -144,7 +143,7 @@ namespace Nui::Tests
             return std::string{"testContent"};
         }));
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["textContent"].as<std::string>(), "testContent");
+        EXPECT_EQ(Nui::val::global("document")["body"]["textContent"].as<std::string>(), "testContent");
     }
 
     TEST_F(TestRender, CanRenderUsingFunctionDependingOnObserved)
@@ -153,7 +152,7 @@ namespace Nui::Tests
         using Nui::Elements::body;
         using namespace Nui::Attributes;
 
-        emscripten::val nested;
+        Nui::val nested;
         Observed<bool> toggle = true;
 
         render(body{}(observe(toggle), [&toggle, &nested]() {
@@ -167,7 +166,7 @@ namespace Nui::Tests
             }
         }));
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
         EXPECT_EQ(nested["textContent"].as<std::string>(), "Hello");
         toggle = false;
         globalEventContext.executeActiveEventsImmediately();
@@ -180,7 +179,7 @@ namespace Nui::Tests
         using Nui::Elements::body;
         using namespace Nui::Attributes;
 
-        emscripten::val nested;
+        Nui::val nested;
         Observed<bool> toggle = true;
         Observed<std::string> text = "Hello";
 
@@ -195,7 +194,7 @@ namespace Nui::Tests
             }
         }));
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
         EXPECT_EQ(nested["textContent"].as<std::string>(), "Hello");
 
         text = "Changed";
@@ -219,12 +218,12 @@ namespace Nui::Tests
             return div{}(std::string{element} + ":" + std::to_string(i));
         }));
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["children"]["length"].as<long long>(), 4);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 4);
 
         for (int i = 0; i != vec.size(); ++i)
         {
             EXPECT_EQ(
-                emscripten::val::global("document")["body"]["children"][i]["textContent"].as<std::string>(),
+                Nui::val::global("document")["body"]["children"][i]["textContent"].as<std::string>(),
                 std::string{vec[i]} + ":" + std::to_string(i));
         }
     }
@@ -239,12 +238,12 @@ namespace Nui::Tests
 
         auto verifyParity = [&vec]() {
             EXPECT_EQ(
-                emscripten::val::global("document")["body"]["children"]["length"].as<long long>(),
+                Nui::val::global("document")["body"]["children"]["length"].as<long long>(),
                 static_cast<long long>(vec.size()));
             for (int i = 0; i != vec.size(); ++i)
             {
                 EXPECT_EQ(
-                    emscripten::val::global("document")["body"]["children"][i]["textContent"].as<std::string>(),
+                    Nui::val::global("document")["body"]["children"][i]["textContent"].as<std::string>(),
                     std::string{vec[i]} + ":" + std::to_string(i));
             }
         };

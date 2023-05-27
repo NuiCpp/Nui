@@ -25,7 +25,7 @@ namespace Nui::Tests
     {
       protected:
         template <template <typename...> typename ContainerT, typename RangeElementType>
-        void rangeTextBodyRender(Observed<ContainerT<RangeElementType>> const& observedRange, emscripten::val& parent)
+        void rangeTextBodyRender(Observed<ContainerT<RangeElementType>> const& observedRange, Nui::val& parent)
         {
             using Nui::Elements::div;
             using Nui::Elements::body;
@@ -37,8 +37,7 @@ namespace Nui::Tests
         }
 
         template <template <typename...> typename ContainerT, typename RangeElementType>
-        void
-        textBodyParityTest(Observed<ContainerT<RangeElementType>> const& observedRange, emscripten::val const& parent)
+        void textBodyParityTest(Observed<ContainerT<RangeElementType>> const& observedRange, Nui::val const& parent)
         {
             EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(observedRange.size()));
             for (int i = 0; i != observedRange.size(); ++i)
@@ -52,7 +51,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, SubscriptOperatorAssignmentUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec, parent);
@@ -65,7 +64,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, FullAssignmentUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec, parent);
@@ -78,7 +77,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, PushBackUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec, parent);
@@ -96,7 +95,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, PopBackUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec, parent);
@@ -109,7 +108,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, InsertUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
         std::vector vec2 = {'1', '2', '3'};
 
@@ -160,7 +159,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, EraseUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<char>> vec;
 
         vec.reserve(26);
@@ -189,7 +188,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, ClearUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec, parent);
@@ -202,7 +201,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, SwapUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<char>> vec1 = {{'A', 'B', 'C', 'D'}};
         std::vector<char> vec2 = {'X', 'Y', 'Z'};
 
@@ -216,7 +215,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, ResizeUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec, parent);
@@ -229,7 +228,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, ResizeWithFillValueUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec, parent);
@@ -242,7 +241,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, AssignWithFillValueUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<char>> vec1 = {{'A', 'B', 'C', 'D'}};
         std::vector<char> vec2 = {'X', 'Y', 'Z'};
 
@@ -264,7 +263,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, AssignWithRangeUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<char>> vec1 = {{'A', 'B', 'C', 'D'}};
         std::vector<char> vec2 = {'X', 'Y', 'Z'};
 
@@ -278,7 +277,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, AssignWithInitializerListUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<char>> vec1 = {{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec1, parent);
@@ -291,7 +290,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, EmplaceBackUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
 
         rangeTextBodyRender(vec, parent);
@@ -304,7 +303,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, EmplaceUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
 
         rangeTextBodyRender(vec, parent);
@@ -317,7 +316,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, ModificationThroughPointerUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
 
         rangeTextBodyRender(vec, parent);
@@ -330,7 +329,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, ModificationThroughReferenceUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
 
         rangeTextBodyRender(vec, parent);
@@ -343,7 +342,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, ModificationThroughIteratorUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
 
         rangeTextBodyRender(vec, parent);
@@ -356,7 +355,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, ChangeOfReferenceFromBackUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
 
         rangeTextBodyRender(vec, parent);
@@ -369,7 +368,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, ChangeOfReferenceFromAtUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
 
         rangeTextBodyRender(vec, parent);
@@ -382,7 +381,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, ChangeOfIteratorFromEndUpdateView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
 
         rangeTextBodyRender(vec, parent);
@@ -395,7 +394,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, ChangeOfIteratorFromRbeginUpdateView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
         auto rbegin = vec.rbegin();
 
@@ -409,7 +408,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, ChangeOfIteratorFromRendUpdateView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
         auto rend = vec.rend();
 
@@ -423,7 +422,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, PushFrontUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::deque<char>> container = {{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(container, parent);
@@ -441,7 +440,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, PopFrontUpdatesView)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::deque<char>> container = {{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(container, parent);
@@ -454,7 +453,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, AggregatedInsertsUpdateCorrectly)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::deque<char>> container = {{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(container, parent);
@@ -468,7 +467,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, AggregatedInsertsUpdateCorrectly2)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::deque<char>> container = {{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(container, parent);
@@ -483,7 +482,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, MixOfInsertionAndErasureUpdateCorrectly)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::deque<char>> container = {{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(container, parent);
@@ -497,7 +496,7 @@ namespace Nui::Tests
 
     TEST_F(TestRanges, RandomOrderOfModificationsProcessesCorrectly)
     {
-        emscripten::val parent;
+        Nui::val parent;
         Observed<std::deque<char>> container;
         for (char c = 'A'; c <= 'Z'; ++c)
             container.push_back(c);

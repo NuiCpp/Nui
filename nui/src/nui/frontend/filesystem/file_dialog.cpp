@@ -4,24 +4,24 @@
 #include <nui/frontend/api/console.hpp>
 #include <nui/frontend/event_system/event_context.hpp>
 
-#include <emscripten/val.h>
+#include <nui/frontend/val.hpp>
 
 #include <algorithm>
 
 namespace Nui::FileDialog
 {
-    //#####################################################################################################################
+    // #####################################################################################################################
     namespace
     {
         template <typename T>
-        void convertOptions(emscripten::val& opts, T const& options)
+        void convertOptions(Nui::val& opts, T const& options)
         {
             opts.set("title", convertToVal(options.title));
             opts.set("defaultPath", convertToVal(options.defaultPath));
-            opts.set("filters", emscripten::val::array());
+            opts.set("filters", Nui::val::array());
             for (auto const& filter : options.filters)
             {
-                emscripten::val filterVal;
+                Nui::val filterVal;
                 filterVal.set("name", convertToVal(filter.name));
                 filterVal.set("masks", convertToVal(filter.masks));
                 opts["filter"].call<void>("push", filterVal);
@@ -34,10 +34,10 @@ namespace Nui::FileDialog
         OpenDialogOptions const& options,
         std::function<void(std::optional<std::vector<std::filesystem::path>>)> onResult)
     {
-        emscripten::val opts = emscripten::val::object();
+        Nui::val opts = Nui::val::object();
         convertOptions(opts, options);
         opts.set("allowMultiSelect", options.allowMultiSelect);
-        const auto id = RpcClient::registerFunctionOnce([onResult](emscripten::val const& param) {
+        const auto id = RpcClient::registerFunctionOnce([onResult](Nui::val const& param) {
             if (param.typeOf().as<std::string>() == "null")
                 onResult(std::nullopt);
             else
@@ -59,9 +59,9 @@ namespace Nui::FileDialog
         DirectoryDialogOptions const& options,
         std::function<void(std::optional<std::vector<std::filesystem::path>>)> onResult)
     {
-        emscripten::val opts = emscripten::val::object();
+        Nui::val opts = Nui::val::object();
         convertOptions(opts, options);
-        const auto id = RpcClient::registerFunctionOnce([onResult = std::move(onResult)](emscripten::val const& param) {
+        const auto id = RpcClient::registerFunctionOnce([onResult = std::move(onResult)](Nui::val const& param) {
             Console::log(param);
             if (param.typeOf().as<std::string>() == "null")
                 onResult(std::nullopt);
@@ -83,10 +83,10 @@ namespace Nui::FileDialog
     void
     showSaveDialog(SaveDialogOptions const& options, std::function<void(std::optional<std::filesystem::path>)> onResult)
     {
-        emscripten::val opts = emscripten::val::object();
+        Nui::val opts = Nui::val::object();
         convertOptions(opts, options);
         opts.set("forceOverwrite", options.forceOverwrite);
-        const auto id = RpcClient::registerFunctionOnce([onResult = std::move(onResult)](emscripten::val const& param) {
+        const auto id = RpcClient::registerFunctionOnce([onResult = std::move(onResult)](Nui::val const& param) {
             if (param.typeOf().as<std::string>() == "null")
                 onResult(std::nullopt);
             else
@@ -96,5 +96,5 @@ namespace Nui::FileDialog
         opts.set("callbackId", id);
         RpcClient::getRemoteCallable("Nui::showSaveDialog")(opts);
     }
-    //#####################################################################################################################
+    // #####################################################################################################################
 }

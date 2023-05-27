@@ -10,7 +10,7 @@
 #include <boost/mp11/algorithm.hpp>
 #pragma clang diagnostic pop
 
-#include <emscripten/val.h>
+#include <nui/frontend/val.hpp>
 
 #include <optional>
 #include <vector>
@@ -35,56 +35,56 @@ namespace Nui
         class Bases = boost::describe::describe_bases<T, boost::describe::mod_any_access>,
         class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>,
         class Enable = std::enable_if_t<!std::is_union<T>::value>>
-    void convertToVal(emscripten::val& val, T const& obj);
+    void convertToVal(Nui::val& val, T const& obj);
     template <typename T>
-    emscripten::val convertToVal(std::optional<T> const& option);
+    Nui::val convertToVal(std::optional<T> const& option);
     template <typename T>
     requires Fundamental<T>
-    emscripten::val convertToVal(T const& value);
-    emscripten::val convertToVal(std::string const& value);
-    emscripten::val convertToVal(std::filesystem::path const& value);
-    emscripten::val convertToVal(emscripten::val value);
-    emscripten::val convertToVal(char const* value);
+    Nui::val convertToVal(T const& value);
+    Nui::val convertToVal(std::string const& value);
+    Nui::val convertToVal(std::filesystem::path const& value);
+    Nui::val convertToVal(Nui::val value);
+    Nui::val convertToVal(char const* value);
     template <typename T>
-    emscripten::val convertToVal(std::vector<T> const& vector);
+    Nui::val convertToVal(std::vector<T> const& vector);
     template <typename T>
-    emscripten::val convertToVal(Observed<T> const& observed);
+    Nui::val convertToVal(Observed<T> const& observed);
     template <typename T>
-    emscripten::val convertToVal(std::unordered_map<std::string, T> const& map);
-    inline emscripten::val convertToVal(long long)
+    Nui::val convertToVal(std::unordered_map<std::string, T> const& map);
+    inline Nui::val convertToVal(long long)
     {
         throw std::runtime_error("Cannot convert long long to val");
     }
 
     template <typename T, class Bases, class Members, class Enable>
-    void convertFromVal(emscripten::val const& val, T& obj);
+    void convertFromVal(Nui::val const& val, T& obj);
     template <typename T>
     requires Fundamental<T>
-    void convertFromVal(emscripten::val const& val, T& value);
-    void convertFromVal(emscripten::val const& val, std::string& str);
+    void convertFromVal(Nui::val const& val, T& value);
+    void convertFromVal(Nui::val const& val, std::string& str);
     template <typename T>
-    void convertFromVal(emscripten::val const& val, std::optional<T>& option);
-    void convertFromVal(emscripten::val const& val, std::filesystem::path& value);
-    void convertFromVal(emscripten::val const& val, emscripten::val& value);
+    void convertFromVal(Nui::val const& val, std::optional<T>& option);
+    void convertFromVal(Nui::val const& val, std::filesystem::path& value);
+    void convertFromVal(Nui::val const& val, Nui::val& value);
     template <typename T>
-    void convertFromVal(emscripten::val const& val, std::vector<T>& vector);
+    void convertFromVal(Nui::val const& val, std::vector<T>& vector);
     template <typename T>
     requires Fundamental<T>
-    void convertFromVal(emscripten::val const& val, std::vector<T>& vector);
+    void convertFromVal(Nui::val const& val, std::vector<T>& vector);
     template <typename T>
-    void convertFromVal(emscripten::val const& val, Observed<T>& observed);
+    void convertFromVal(Nui::val const& val, Observed<T>& observed);
     template <typename T>
-    void convertFromVal(emscripten::val const& val, std::unordered_map<std::string, T>& map);
-    inline void convertFromVal(emscripten::val const&, long long)
+    void convertFromVal(Nui::val const& val, std::unordered_map<std::string, T>& map);
+    inline void convertFromVal(Nui::val const&, long long)
     {
         throw std::invalid_argument("Cannot convert from val to long long");
     }
 
     template <typename T, class Bases, class Members, class Enable>
-    void convertToVal(emscripten::val& val, T const& obj)
+    void convertToVal(Nui::val& val, T const& obj)
     {
         if (val.typeOf().as<std::string>() != "object")
-            val = emscripten::val::object();
+            val = Nui::val::object();
 
         boost::mp11::mp_for_each<Bases>([&](auto&& base) {
             using type = typename std::decay_t<decltype(base)>::type;
@@ -100,57 +100,57 @@ namespace Nui
         class Bases = boost::describe::describe_bases<T, boost::describe::mod_any_access>,
         class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>,
         class Enable = std::enable_if_t<!std::is_union<T>::value>>
-    emscripten::val convertToVal(T const& obj)
+    Nui::val convertToVal(T const& obj)
     {
-        emscripten::val val = emscripten::val::object();
+        Nui::val val = Nui::val::object();
         convertToVal(val, obj);
         return val;
     }
 
     template <typename T>
-    emscripten::val convertToVal(std::optional<T> const& option)
+    Nui::val convertToVal(std::optional<T> const& option)
     {
-        return option ? convertToVal(*option) : emscripten::val::undefined();
+        return option ? convertToVal(*option) : Nui::val::undefined();
     }
     template <typename T>
     requires Fundamental<T>
-    emscripten::val convertToVal(T const& value)
+    Nui::val convertToVal(T const& value)
     {
-        return emscripten::val{value};
+        return Nui::val{value};
     }
-    inline emscripten::val convertToVal(std::string const& value)
+    inline Nui::val convertToVal(std::string const& value)
     {
-        return emscripten::val{value};
+        return Nui::val{value};
     }
-    inline emscripten::val convertToVal(std::filesystem::path const& value)
+    inline Nui::val convertToVal(std::filesystem::path const& value)
     {
-        return emscripten::val{value.string()};
+        return Nui::val{value.string()};
     }
-    inline emscripten::val convertToVal(emscripten::val value)
+    inline Nui::val convertToVal(Nui::val value)
     {
         return value;
     }
-    inline emscripten::val convertToVal(char const* value)
+    inline Nui::val convertToVal(char const* value)
     {
-        return emscripten::val{std::string{value}};
+        return Nui::val{std::string{value}};
     }
     template <typename T>
-    emscripten::val convertToVal(std::vector<T> const& vector)
+    Nui::val convertToVal(std::vector<T> const& vector)
     {
-        emscripten::val result = emscripten::val::array();
+        Nui::val result = Nui::val::array();
         for (auto const& element : vector)
             result.call<void>("push", convertToVal(element));
         return result;
     }
     template <typename T>
-    emscripten::val convertToVal(Observed<T> const& observed)
+    Nui::val convertToVal(Observed<T> const& observed)
     {
         return convertToVal(observed.value());
     }
     template <typename T>
-    emscripten::val convertToVal(std::unordered_map<std::string, T> const& map)
+    Nui::val convertToVal(std::unordered_map<std::string, T> const& map)
     {
-        emscripten::val result = emscripten::val::object();
+        Nui::val result = Nui::val::object();
         for (auto const& [key, value] : map)
             result.set(key, convertToVal(value));
         return result;
@@ -161,7 +161,7 @@ namespace Nui
         class Bases = boost::describe::describe_bases<T, boost::describe::mod_any_access>,
         class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>,
         class Enable = std::enable_if_t<!std::is_union<T>::value>>
-    void convertFromVal(emscripten::val const& val, T& obj)
+    void convertFromVal(Nui::val const& val, T& obj)
     {
         boost::mp11::mp_for_each<Bases>([&](auto&& base) {
             using type = typename std::decay_t<decltype(base)>::type;
@@ -174,7 +174,7 @@ namespace Nui
                 if constexpr (!Detail::IsOptional<decltype(obj.*memAccessor.pointer)>::value)
                 {
                     if (val[memAccessor.name].isNull() || val[memAccessor.name].isUndefined())
-                        emscripten::val::global("console").call<void>(
+                        Nui::val::global("console").call<void>(
                             "error",
                             std::string{"Expected member "} + memAccessor.name + " to be defined and non null");
                     else
@@ -187,16 +187,16 @@ namespace Nui
     }
     template <typename T>
     requires Fundamental<T>
-    void convertFromVal(emscripten::val const& val, T& value)
+    void convertFromVal(Nui::val const& val, T& value)
     {
         value = val.as<T>();
     }
-    inline void convertFromVal(emscripten::val const& val, std::string& str)
+    inline void convertFromVal(Nui::val const& val, std::string& str)
     {
         str = val.as<std::string>();
     }
     template <typename T>
-    void convertFromVal(emscripten::val const& val, std::optional<T>& option)
+    void convertFromVal(Nui::val const& val, std::optional<T>& option)
     {
         if (val.isNull() || val.isUndefined())
             option = std::nullopt;
@@ -207,16 +207,16 @@ namespace Nui
             option = value;
         }
     }
-    inline void convertFromVal(emscripten::val const& val, std::filesystem::path& value)
+    inline void convertFromVal(Nui::val const& val, std::filesystem::path& value)
     {
         value = val.as<std::string>();
     }
-    inline void convertFromVal(emscripten::val const& val, emscripten::val& value)
+    inline void convertFromVal(Nui::val const& val, Nui::val& value)
     {
         value = val;
     }
     template <typename T>
-    void convertFromVal(emscripten::val const& val, std::vector<T>& vector)
+    void convertFromVal(Nui::val const& val, std::vector<T>& vector)
     {
         vector.clear();
         const auto length = val["length"].as<std::size_t>();
@@ -230,21 +230,21 @@ namespace Nui
     }
     template <typename T>
     requires Fundamental<T>
-    void convertFromVal(emscripten::val const& val, std::vector<T>& vector)
+    void convertFromVal(Nui::val const& val, std::vector<T>& vector)
     {
         vector = emscripten::convertJSArrayToNumberVector<T>(val);
     }
     template <typename T>
-    void convertFromVal(emscripten::val const& val, Observed<T>& observed)
+    void convertFromVal(Nui::val const& val, Observed<T>& observed)
     {
         auto proxy = observed.modify();
         convertFromVal(val, proxy.value());
     }
     template <typename T>
-    void convertFromVal(emscripten::val const& val, std::unordered_map<std::string, T>& map)
+    void convertFromVal(Nui::val const& val, std::unordered_map<std::string, T>& map)
     {
         map.clear();
-        const auto keys = emscripten::val::global("Object").call<emscripten::val>("keys", val);
+        const auto keys = Nui::val::global("Object").call<Nui::val>("keys", val);
         const auto length = keys["length"].as<std::size_t>();
         for (std::size_t i = 0; i < length; ++i)
         {

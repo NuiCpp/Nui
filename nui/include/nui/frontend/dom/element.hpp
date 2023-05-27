@@ -5,7 +5,7 @@
 #include <nui/frontend/dom/childless_element.hpp>
 #include <nui/utility/tuple_for_each.hpp>
 
-#include <emscripten/val.h>
+#include <nui/frontend/val.hpp>
 
 #include <concepts>
 #include <string>
@@ -28,7 +28,7 @@ namespace Nui::Dom
             , unsetup_{}
         {}
 
-        Element(emscripten::val val)
+        Element(Nui::val val)
             : ChildlessElement{std::move(val)}
             , children_{}
             , unsetup_{}
@@ -71,7 +71,7 @@ namespace Nui::Dom
         auto appendElement(HtmlElement const& element)
         {
             auto elem = makeElement(element);
-            element_.call<emscripten::val>("appendChild", elem->element_);
+            element_.call<Nui::val>("appendChild", elem->element_);
             return children_.emplace_back(std::move(elem));
         }
         void replaceElement(std::invocable<Element&, Renderer const&> auto&& fn)
@@ -92,6 +92,10 @@ namespace Nui::Dom
         {
             element_.set("textContent", text);
         }
+        void setTextContent(std::string_view text)
+        {
+            element_.set("textContent", text);
+        }
 
         void
         appendElements(std::vector<std::function<std::shared_ptr<Element>(Element&, Renderer const&)>> const& elements)
@@ -105,7 +109,7 @@ namespace Nui::Dom
             if (where == end())
                 return appendElement(element);
             auto elem = makeElement(element);
-            element_.call<emscripten::val>("insertBefore", elem->element_, (*where)->element_);
+            element_.call<Nui::val>("insertBefore", elem->element_, (*where)->element_);
             return *children_.insert(where, std::move(elem));
         }
 
@@ -167,7 +171,7 @@ namespace Nui::Dom
             unsetup_ = {};
 
             auto replacement = createElement(element).val();
-            element_.call<emscripten::val>("replaceWith", replacement);
+            element_.call<Nui::val>("replaceWith", replacement);
             element_ = std::move(replacement);
             setup(element);
         }
@@ -177,3 +181,5 @@ namespace Nui::Dom
         std::function<void()> unsetup_;
     };
 }
+
+#include <nui/frontend/elements/impl/html_element.tpp>

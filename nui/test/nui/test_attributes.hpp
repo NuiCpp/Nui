@@ -25,7 +25,7 @@ namespace Nui::Tests
 
         render(div{class_ = "asdf"}());
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
     }
 
     TEST_F(TestAttributes, MultipleAttributesAreSet)
@@ -36,9 +36,9 @@ namespace Nui::Tests
 
         render(div{class_ = "asdf", id = "qwer"}());
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"].as<Object const&>().size(), 2);
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "qwer");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"].as<Object const&>().size(), 2);
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "qwer");
     }
 
     TEST_F(TestAttributes, AttributeIsSetOnElementWithChildren)
@@ -48,8 +48,8 @@ namespace Nui::Tests
 
         render(div{class_ = "asdf"}(div{}()));
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"].as<Object const&>().size(), 1);
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"].as<Object const&>().size(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
     }
 
     TEST_F(TestAttributes, AttributeIsSetOnChild)
@@ -59,12 +59,9 @@ namespace Nui::Tests
 
         render(div{}(div{class_ = "asdf"}()));
 
-        EXPECT_FALSE(emscripten::val::global("document")["body"].hasOwnProperty("attributes"));
-        EXPECT_EQ(
-            emscripten::val::global("document")["body"]["children"][0]["attributes"].as<Object const&>().size(), 1);
-        EXPECT_EQ(
-            emscripten::val::global("document")["body"]["children"][0]["attributes"]["class"].as<std::string>(),
-            "asdf");
+        EXPECT_FALSE(Nui::val::global("document")["body"].hasOwnProperty("attributes"));
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["attributes"].as<Object const&>().size(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["attributes"]["class"].as<std::string>(), "asdf");
     }
 
     TEST_F(TestAttributes, MultipleAttributesAreSetOnChild)
@@ -75,14 +72,10 @@ namespace Nui::Tests
 
         render(div{}(div{class_ = "asdf", id = "qwer"}()));
 
-        EXPECT_FALSE(emscripten::val::global("document")["body"].hasOwnProperty("attributes"));
-        EXPECT_EQ(
-            emscripten::val::global("document")["body"]["children"][0]["attributes"].as<Object const&>().size(), 2);
-        EXPECT_EQ(
-            emscripten::val::global("document")["body"]["children"][0]["attributes"]["class"].as<std::string>(),
-            "asdf");
-        EXPECT_EQ(
-            emscripten::val::global("document")["body"]["children"][0]["attributes"]["id"].as<std::string>(), "qwer");
+        EXPECT_FALSE(Nui::val::global("document")["body"].hasOwnProperty("attributes"));
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["attributes"].as<Object const&>().size(), 2);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["attributes"]["class"].as<std::string>(), "asdf");
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["attributes"]["id"].as<std::string>(), "qwer");
     }
 
     TEST_F(TestAttributes, CanSetObservedAttribute)
@@ -94,7 +87,7 @@ namespace Nui::Tests
 
         render(div{class_ = observedClass}());
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
     }
 
     TEST_F(TestAttributes, CanSetObservedAttributeOnChild)
@@ -106,9 +99,8 @@ namespace Nui::Tests
 
         render(div{}(div{class_ = observedClass}()));
 
-        EXPECT_FALSE(emscripten::val::global("document")["body"].hasOwnProperty("attributes"));
-        EXPECT_EQ(
-            emscripten::val::global("document")["body"]["children"][0]["attributes"].as<Object const&>().size(), 1);
+        EXPECT_FALSE(Nui::val::global("document")["body"].hasOwnProperty("attributes"));
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["attributes"].as<Object const&>().size(), 1);
     }
 
     TEST_F(TestAttributes, ChangingObservedValueChangesTheDomWhenEventsAreProcessed)
@@ -120,12 +112,12 @@ namespace Nui::Tests
 
         render(div{class_ = observedClass}());
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
 
         observedClass = "qwer";
         globalEventContext.executeActiveEventsImmediately();
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "qwer");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "qwer");
     }
 
     TEST_F(TestAttributes, ChangingObservedValuesDoesNotChangeTheDomWhenEventsAreNotProcessed)
@@ -137,9 +129,9 @@ namespace Nui::Tests
 
         render(div{class_ = observedClass}());
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
         observedClass = "qwer";
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
     }
 
     TEST_F(TestAttributes, CanSetMixedAttributes)
@@ -152,8 +144,8 @@ namespace Nui::Tests
 
         render(div{class_ = observedClass, id = "qwer"}());
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "qwer");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "qwer");
     }
 
     TEST_F(TestAttributes, ChangeInObservedValueOnlyChangesRelatedAttribute)
@@ -167,12 +159,12 @@ namespace Nui::Tests
 
         render(div{class_ = observedClass, id = observedId}());
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "qwer");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "qwer");
         observedClass = "zxcv";
         globalEventContext.executeActiveEventsImmediately();
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "zxcv");
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "qwer");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "zxcv");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "qwer");
     }
 
     TEST_F(TestAttributes, ChangeInObservedValueOnlyChangesRelatedAttributeInHierarchy)
@@ -185,13 +177,11 @@ namespace Nui::Tests
 
         render(div{class_ = observedClass}(div{class_ = observedClassNested}()));
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
-        EXPECT_EQ(
-            emscripten::val::global("document")["body"]["children"][0]["attributes"]["class"].as<std::string>(),
-            "qwer");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "asdf");
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["attributes"]["class"].as<std::string>(), "qwer");
         observedClass = "zxcv";
         globalEventContext.executeActiveEventsImmediately();
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "zxcv");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "zxcv");
     }
 
     TEST_F(TestAttributes, AttributeGeneratorUpdatesDomOnObservedValueChange)
@@ -205,10 +195,10 @@ namespace Nui::Tests
             return "C"s + std::to_string(observedClass.value());
         })}());
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "C0");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "C0");
         observedClass = 1;
         globalEventContext.executeActiveEventsImmediately();
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "C1");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "C1");
     }
 
     TEST_F(TestAttributes, GeneratorCanUpdateOnMultipleObservedValues)
@@ -216,7 +206,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using namespace Nui::Attributes;
 
-        emscripten::val ref;
+        Nui::val ref;
         Observed<int> number{0};
         Observed<std::string> text{"asdf"};
 
@@ -242,7 +232,7 @@ namespace Nui::Tests
 
         render(div{style = "color: red"}());
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["style"].as<std::string>(), "color: red");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(), "color: red");
     }
 
     TEST_F(TestAttributes, StyleAttributeCanBeObservedString)
@@ -253,7 +243,7 @@ namespace Nui::Tests
         Observed<std::string> observedStyle{"color: red"};
         render(div{style = observedStyle}());
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["style"].as<std::string>(), "color: red");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(), "color: red");
     }
 
     TEST_F(TestAttributes, StyleAttributeCanBeObservedStringAndChangesWhenObservedValueChanges)
@@ -264,10 +254,10 @@ namespace Nui::Tests
         Observed<std::string> observedStyle{"color: red"};
         render(div{style = observedStyle}());
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["style"].as<std::string>(), "color: red");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(), "color: red");
         observedStyle = "color: blue";
         globalEventContext.executeActiveEventsImmediately();
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["style"].as<std::string>(), "color: blue");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(), "color: blue");
     }
 
     TEST_F(TestAttributes, StyleAttributeCanUseGenerator)
@@ -280,10 +270,10 @@ namespace Nui::Tests
             return "color: "s + divColor.value();
         })}());
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["style"].as<std::string>(), "color: red");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(), "color: red");
         divColor = "blue";
         globalEventContext.executeActiveEventsImmediately();
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["style"].as<std::string>(), "color: blue");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(), "color: blue");
     }
 
     TEST_F(TestAttributes, StyleAttributeCanUseUtilityClassWithStaticValues)
@@ -300,7 +290,7 @@ namespace Nui::Tests
                 }}());
 
         EXPECT_EQ(
-            emscripten::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
+            Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
             "color:red;background-color:blue");
     }
 
@@ -320,17 +310,17 @@ namespace Nui::Tests
                 }}());
 
         EXPECT_EQ(
-            emscripten::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
+            Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
             "color:red;background-color:blue");
         color = "green";
         globalEventContext.executeActiveEventsImmediately();
         EXPECT_EQ(
-            emscripten::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
+            Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
             "color:green;background-color:blue");
         backgroundColor = "yellow";
         globalEventContext.executeActiveEventsImmediately();
         EXPECT_EQ(
-            emscripten::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
+            Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
             "color:green;background-color:yellow");
     }
 
@@ -354,17 +344,17 @@ namespace Nui::Tests
                 }}());
 
         EXPECT_EQ(
-            emscripten::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
+            Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
             "color:red;background-color:blue");
         color = "green";
         globalEventContext.executeActiveEventsImmediately();
         EXPECT_EQ(
-            emscripten::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
+            Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
             "color:green;background-color:blue");
         backgroundColor = "yellow";
         globalEventContext.executeActiveEventsImmediately();
         EXPECT_EQ(
-            emscripten::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
+            Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
             "color:green;background-color:yellow");
     }
 
@@ -378,7 +368,7 @@ namespace Nui::Tests
             clicked = true;
         }}());
 
-        emscripten::val::global("document")["body"]["onclick"](emscripten::val{});
+        Nui::val::global("document")["body"]["onclick"](Nui::val{});
         EXPECT_TRUE(clicked);
     }
 
@@ -388,13 +378,13 @@ namespace Nui::Tests
         using Nui::Attributes::onClick;
 
         std::optional<long long> prop = 0;
-        render(div{onClick = [&prop](const emscripten::val& event) {
+        render(div{onClick = [&prop](const Nui::val& event) {
             prop = event["prop"].as<long long>();
         }}());
 
         Object event;
         event["prop"] = 2;
-        emscripten::val::global("document")["body"]["onclick"](emscripten::val{createValue(event)});
+        Nui::val::global("document")["body"]["onclick"](Nui::val{createValue(event)});
         EXPECT_EQ(prop, 2);
     }
 
@@ -414,10 +404,10 @@ namespace Nui::Tests
                     return clicked.value() ? "clicked" : "not clicked";
                 })}());
 
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "not clicked");
-        emscripten::val::global("document")["body"]["onclick"](emscripten::val{});
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "not clicked");
+        Nui::val::global("document")["body"]["onclick"](Nui::val{});
         EXPECT_TRUE(clicked.value());
-        EXPECT_EQ(emscripten::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "clicked");
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "clicked");
     }
 
     TEST_F(TestAttributes, CanGetReferenceToElement)
@@ -465,5 +455,23 @@ namespace Nui::Tests
 
         ASSERT_FALSE(ref.expired());
         EXPECT_EQ(ref.lock()->val()["attributes"]["id"].as<std::string>(), "A");
+    }
+
+    TEST_F(TestAttributes, ModificationProxyCausesUpdates)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        Observed<std::string> idValue{"A"};
+
+        render(div{id = idValue}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "A");
+        {
+            auto proxy = idValue.modify();
+            *proxy = "B";
+        }
+        globalEventContext.executeActiveEventsImmediately();
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "B");
     }
 }
