@@ -258,4 +258,37 @@ namespace Nui::Tests
         globalEventContext.executeActiveEventsImmediately();
         verifyParity();
     }
+
+    TEST_F(TestRender, CanRenderReactively)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::span;
+
+        Nui::Observed<std::string> str{"test"};
+        Nui::Observed<int> number{0};
+
+        const auto ui = div{}(
+            observe(str, number),
+            // This function is recalled and regenerates its respective elements,
+            // when 'str' or 'number' changes.
+            [&str, &number]() {
+                const auto result = *str + std::to_string(*number);
+                return span{}(result);
+            });
+
+        render(ui);
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["textContent"].as<std::string>(), "test0");
+
+        str = "changed";
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["textContent"].as<std::string>(), "changed0");
+
+        number = 1;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["textContent"].as<std::string>(), "changed1");
+    }
 }
