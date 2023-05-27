@@ -291,4 +291,13 @@ namespace Nui::Tests
 
         EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["textContent"].as<std::string>(), "changed1");
     }
+
+    TEST_F(TestRender, CanNestElementsDeep)
+    {
+        using Nui::Elements::div;
+
+        render(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(
+            div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(
+                div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}())))))))))))))))))))))))))))))))))))))))))));
+    }
 }
