@@ -20,18 +20,42 @@ namespace Nui::Components
     template <template <typename...> typename ContainerT, typename ElementT, typename... OtherArgs>
     struct TableArguments
     {
+        /// Contains the data to be displayed in the table.
         Nui::Observed<ContainerT<ElementT, OtherArgs...>>& tableModel;
+
+        /// The caption of the table. Can be static, observed or off.
         std::variant<std::monostate, std::string, Nui::Observed<std::string> const*> caption = std::monostate{};
+
+        /// The renderer for the header. Can be empty.
         std::function<Nui::ElementRenderer()> headerRenderer = {};
+
+        /// The renderer for each row.
         std::function<Nui::ElementRenderer(long long i, ElementT const&)> rowRenderer = {};
+
+        /// The renderer for the footer. Can be empty.
         std::function<Nui::ElementRenderer()> footerRenderer = {};
+
+        /// Attributes to be forwarded to the table element.
         std::vector<Attribute> tableAttributes = {};
+
+        /// Attributes to be forwarded to the caption element.
         std::vector<Attribute> captionAttributes = {};
+
+        /// Attributes to be forwarded to the header element.
         std::vector<Attribute> headerAttributes = {};
+
+        /// Attributes to be forwarded to the body element.
         std::vector<Attribute> bodyAttributes = {};
+
+        /// Attributes to be forwarded to the footer element.
         std::vector<Attribute> footerAttributes = {};
     };
 
+    /**
+     * @brief A wrapper around the html table elements
+     *
+     * @tparam ModelT
+     */
     template <typename ModelT>
     class Table : public Table<std::vector<ModelT>>
     {

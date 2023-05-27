@@ -20,12 +20,20 @@ namespace Nui::Components
     template <template <typename...> typename ContainerT, typename ValueT>
     struct SelectArgs
     {
+        /// A list of all the options:
         Observed<ContainerT<SelectOptions<ValueT>>>& model;
+
+        /// For pre selecting an element.
         int preSelectedIndex = -1;
+
+        /// Called when an option is selected.
         std::function<void(long long, SelectOptions<ValueT> const&)> onSelect = {};
+
+        /// Attributes to be forwarded to the select element.
         std::vector<Attribute> selectAttributes = {};
     };
 
+    /// Creates a <select><option></option>...</select> element.
     template <typename ValueT, template <typename...> typename ContainerT = std::vector>
     constexpr auto Select(SelectArgs<ContainerT, ValueT>&& args)
     {
