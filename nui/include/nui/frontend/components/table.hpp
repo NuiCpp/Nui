@@ -23,9 +23,10 @@ namespace Nui::Components
         Nui::Observed<ContainerT<ElementT, OtherArgs...>>& tableModel;
         std::variant<std::monostate, std::string, Nui::Observed<std::string> const*> caption = std::monostate{};
         std::function<Nui::ElementRenderer()> headerRenderer = {};
-        std::function<Nui::ElementRenderer()> footerRenderer = {};
         std::function<Nui::ElementRenderer(long long i, ElementT const&)> rowRenderer = {};
+        std::function<Nui::ElementRenderer()> footerRenderer = {};
         std::vector<Attribute> tableAttributes = {};
+        std::vector<Attribute> captionAttributes = {};
         std::vector<Attribute> headerAttributes = {};
         std::vector<Attribute> bodyAttributes = {};
         std::vector<Attribute> footerAttributes = {};
@@ -51,16 +52,16 @@ namespace Nui::Components
             // clang-format off
             return table{tableParams_.tableAttributes}(
                 // caption
-                [cap = std::move(tableParams_.caption)]() -> Nui::ElementRenderer {
+                [cap = std::move(tableParams_.caption), capAttributes = std::move(tableParams_.captionAttributes)]() -> Nui::ElementRenderer {
                     return visitOverloaded(cap,
                         [](std::monostate) -> Nui::ElementRenderer{
                             return nil();
                         },
-                        [](std::string const& content) -> Nui::ElementRenderer{
-                            return caption{}(content);
+                        [&capAttributes](std::string const& content) -> Nui::ElementRenderer{
+                            return caption{capAttributes}(content);
                         },
-                        [](Observed<std::string> const* model) -> Nui::ElementRenderer{
-                            return caption{}(*model);
+                        [&capAttributes](Observed<std::string> const* model) -> Nui::ElementRenderer{
+                            return caption{capAttributes}(*model);
                         }
                     );
                 }(),
@@ -80,7 +81,7 @@ namespace Nui::Components
                         if (renderer)
                             return renderer(i, row);
                         else
-                            return tr{}(td{}("NUI_MISSING_TABLE_RENDERER_"s + std::to_string(i)));
+                            return nil();
                     }
                 ),
                 // footer

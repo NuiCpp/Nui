@@ -422,6 +422,16 @@ namespace Nui
                 return materialized;
             };
         }
+        template <typename T>
+        requires Fundamental<T>
+        constexpr auto operator()(T fundamental) &&
+        {
+            return [self = this->clone(), fundamental](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(std::to_string(fundamental));
+                return materialized;
+            };
+        }
 
         // Generator functions:
         template <typename GeneratorT>
