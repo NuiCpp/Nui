@@ -16,7 +16,7 @@ namespace Nui::Dom
         ChildlessElement(HtmlElement const& elem)
             : BasicElement{ChildlessElement::createElement(elem).val()}
         {}
-        ChildlessElement(emscripten::val val)
+        ChildlessElement(Nui::val val)
             : BasicElement{std::move(val)}
         {}
 
@@ -25,39 +25,37 @@ namespace Nui::Dom
         {
             // FIXME: performance, keys are turned to std::string
             if (value.empty())
-                element_.call<emscripten::val>("removeAttribute", emscripten::val{std::string{key}});
+                element_.call<Nui::val>("removeAttribute", Nui::val{std::string{key}});
             else
-                element_.call<emscripten::val>(
-                    "setAttribute", emscripten::val{std::string{key}}, emscripten::val{value});
+                element_.call<Nui::val>("setAttribute", Nui::val{std::string{key}}, Nui::val{value});
         }
-        void setAttribute(std::string_view key, std::invocable<emscripten::val> auto&& value)
+        void setAttribute(std::string_view key, std::invocable<Nui::val> auto&& value)
         {
-            element_.set(emscripten::val{std::string{key}}, Nui::bind(value, std::placeholders::_1));
+            element_.set(Nui::val{std::string{key}}, Nui::bind(value, std::placeholders::_1));
         }
         void setAttribute(std::string_view key, char const* value)
         {
             if (value[0] == '\0')
-                element_.call<emscripten::val>("removeAttribute", emscripten::val{std::string{key}});
+                element_.call<Nui::val>("removeAttribute", Nui::val{std::string{key}});
             else
-                element_.call<emscripten::val>(
-                    "setAttribute", emscripten::val{std::string{key}}, emscripten::val{std::string{value}});
+                element_.call<Nui::val>("setAttribute", Nui::val{std::string{key}}, Nui::val{std::string{value}});
         }
         void setAttribute(std::string_view key, bool value)
         {
             if (value)
-                element_.call<emscripten::val>("setAttribute", emscripten::val{std::string{key}}, emscripten::val{""});
+                element_.call<Nui::val>("setAttribute", Nui::val{std::string{key}}, Nui::val{""});
         }
         void setAttribute(std::string_view key, int value)
         {
-            element_.call<emscripten::val>("setAttribute", emscripten::val{std::string{key}}, emscripten::val{value});
+            element_.call<Nui::val>("setAttribute", Nui::val{std::string{key}}, Nui::val{value});
         }
         void setAttribute(std::string_view key, double value)
         {
-            element_.call<emscripten::val>("setAttribute", emscripten::val{std::string{key}}, emscripten::val{value});
+            element_.call<Nui::val>("setAttribute", Nui::val{std::string{key}}, Nui::val{value});
         }
-        void setAttribute(std::string_view key, emscripten::val value)
+        void setAttribute(std::string_view key, Nui::val value)
         {
-            element_.call<emscripten::val>("setAttribute", emscripten::val{std::string{key}}, value);
+            element_.call<Nui::val>("setAttribute", Nui::val{std::string{key}}, value);
         }
         template <typename T>
         void setAttribute(std::string_view key, std::optional<T> const& value)
@@ -69,8 +67,7 @@ namespace Nui::Dom
       protected:
         static ChildlessElement createElement(HtmlElement const& element)
         {
-            return {emscripten::val::global("document")
-                        .call<emscripten::val>("createElement", emscripten::val{element.name()})};
+            return {Nui::val::global("document").call<Nui::val>("createElement", Nui::val{element.name()})};
         }
     };
 };

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <emscripten/val.h>
+#include <nui/frontend/val.hpp>
 
 #include <memory>
 
@@ -9,27 +9,27 @@ namespace Nui::Dom
     class BasicElement : public std::enable_shared_from_this<BasicElement>
     {
       public:
-        BasicElement(emscripten::val val)
+        BasicElement(Nui::val val)
             : element_{std::move(val)}
         {}
 
-        emscripten::val const& val() const
+        Nui::val const& val() const
         {
             return element_;
         }
-        emscripten::val& val()
+        Nui::val& val()
         {
             return element_;
         }
-        operator emscripten::val const&() const
+        operator Nui::val const&() const
         {
             return element_;
         }
-        operator emscripten::val&()
+        operator Nui::val&()
         {
             return element_;
         }
-        operator emscripten::val&&() &&
+        operator Nui::val&&() &&
         {
             return std::move(element_);
         }
@@ -46,6 +46,6 @@ namespace Nui::Dom
         }
 
       protected:
-        emscripten::val element_;
+        Nui::val element_;
     };
 }

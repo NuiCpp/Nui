@@ -7,7 +7,7 @@
 #include <nui/frontend/event_system/observed_value_combinator.hpp>
 #include <nui/utility/fixed_string.hpp>
 
-#include <emscripten/val.h>
+#include <nui/frontend/val.hpp>
 
 namespace Nui::Attributes
 {
@@ -53,7 +53,7 @@ namespace Nui::Attributes
         };
 
         template <typename U>
-        requires(!IsObserved<std::decay_t<U>> && !std::invocable<U, emscripten::val> && !std::invocable<U>)
+        requires(!IsObserved<std::decay_t<U>> && !std::invocable<U, Nui::val> && !std::invocable<U>)
         Attribute operator=(U val) const
         {
             return Attribute{[name = name(), val = std::move(val)](Dom::ChildlessElement& element) {
@@ -91,10 +91,10 @@ namespace Nui::Attributes
                 }};
         }
 
-        Attribute operator=(std::function<void(emscripten::val)> func) const
+        Attribute operator=(std::function<void(Nui::val)> func) const
         {
             return Attribute{[name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                element.setAttribute(name, [func](emscripten::val val) {
+                element.setAttribute(name, [func](Nui::val val) {
                     func(val);
                     globalEventContext.executeActiveEventsImmediately();
                 });
@@ -104,7 +104,7 @@ namespace Nui::Attributes
         Attribute operator=(std::function<void()> func) const
         {
             return Attribute{[name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                element.setAttribute(name, [func](emscripten::val) {
+                element.setAttribute(name, [func](Nui::val) {
                     func();
                     globalEventContext.executeActiveEventsImmediately();
                 });

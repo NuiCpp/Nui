@@ -10,7 +10,7 @@
 #include <nui/concepts.hpp>
 #include <nui/utility/scope_exit.hpp>
 
-#include <emscripten/val.h>
+#include <nui/frontend/val.hpp>
 
 #include <vector>
 #include <utility>
@@ -38,6 +38,8 @@ namespace Nui
         }
     }
 
+    class HtmlElement;
+
     // TODO: refactor, not anymore needed as classes:
     template <typename DerivedT>
     class RendererOptions
@@ -62,7 +64,7 @@ namespace Nui
         auto materialize(auto& element, auto const& htmlElement) const
         {
             auto elem = element.makeElement(htmlElement);
-            element.val().template call<emscripten::val>("appendChild", elem->val());
+            element.val().template call<Nui::val>("appendChild", elem->val());
             return elem;
         }
     };
@@ -125,6 +127,35 @@ namespace Nui
                 return InplaceRendererOptions{}.materialize(element, htmlElement);
         }
     };
+
+    //----------------------------------------------------------------------------------------------
+    // Workaround Helper Classes for Linkage Bug in Clang 16.
+    //----------------------------------------------------------------------------------------------
+    template <typename HtmlElem>
+    struct ChildrenRenderer
+    {
+      public:
+        ChildrenRenderer(
+            HtmlElem htmlElement,
+            std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>> children);
+
+        std::shared_ptr<Dom::Element> operator()(Dom::Element& parentElement, Renderer const& gen) const;
+
+      private:
+        HtmlElem htmlElement_;
+        std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>> children_;
+    };
+    template <typename HtmlElem>
+    struct TrivialRenderer
+    {
+      public:
+        TrivialRenderer(HtmlElem htmlElement);
+        std::shared_ptr<Dom::Element> operator()(Dom::Element& parentElement, Renderer const& gen) const;
+
+      private:
+        HtmlElem htmlElement_;
+    };
+    //----------------------------------------------------------------------------------------------
 
     class HtmlElement
     {
@@ -328,39 +359,48 @@ namespace Nui
       public:
         // Children functions:
         template <typename... ElementT>
-        requires(!IsObserved<ElementT> && ...)
+        requires requires(ElementT&&... elements) {
+            std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
+                std::forward<ElementT>(elements)...};
+        }
         constexpr auto operator()(ElementT&&... elements) &&
         {
-            return
-                [self = this->clone(),
-                 children = std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
-                     std::forward<ElementT>(elements)...}](auto& parentElement, Renderer const& gen) {
-                    auto materialized = renderElement(gen, parentElement, self);
-                    materialized->appendElements(children);
-                    return materialized;
-                };
+            return std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>{
+                ChildrenRenderer<HtmlElement>{
+                    this->clone(),
+                    std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
+                        std::forward<ElementT>(elements)...}}};
+
+            // Unknown Linkage BUG in clang 16 :(
+            // return
+            //     [self = this->clone(),
+            //      children = std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer
+            //      const&)>>{
+            //          std::forward<ElementT>(elements)...}](auto& parentElement, Renderer const& gen) {
+            //         auto materialized = renderElement(gen, parentElement, self);
+            //         materialized->appendElements(children);
+            //         return materialized;
+            //     };
         }
 
         // Trivial case:
-        constexpr auto operator()() &&
+        auto operator()() &&
         {
-            return [self = this->clone()](auto& parentElement, Renderer const& gen) {
-                return renderElement(gen, parentElement, self);
-            };
+            return std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>{
+                TrivialRenderer<HtmlElement>{this->clone()}};
+
+            // Unknown Linkage BUG in clang 16 :(
+            // return [self = this->clone()](auto& parentElement, Renderer const& gen) {
+            //     return renderElement(gen, parentElement, self);
+            // };
         }
 
         // Text content functions:
-        constexpr auto operator()(char const* text) &&
+        template <typename T>
+        requires std::same_as<std::decay_t<T>, std::string>
+        auto operator()(T&& text) &&
         {
-            return [self = this->clone(), text](auto& parentElement, Renderer const& gen) {
-                auto materialized = renderElement(gen, parentElement, self);
-                materialized->setTextContent(text);
-                return materialized;
-            };
-        }
-        auto operator()(std::string text) &&
-        {
-            return [self = this->clone(), text = std::move(text)](auto& parentElement, Renderer const& gen) {
+            return [self = this->clone(), text = std::forward<T>(text)](auto& parentElement, Renderer const& gen) {
                 auto materialized = renderElement(gen, parentElement, self);
                 materialized->setTextContent(text);
                 return materialized;
@@ -371,6 +411,24 @@ namespace Nui
             return [self = this->clone(), view](auto& parentElement, Renderer const& gen) {
                 auto materialized = renderElement(gen, parentElement, self);
                 materialized->setTextContent(view);
+                return materialized;
+            };
+        }
+        constexpr auto operator()(char const* text) &&
+        {
+            return [self = this->clone(), text](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(text);
+                return materialized;
+            };
+        }
+        template <typename T>
+        requires Fundamental<T>
+        constexpr auto operator()(T fundamental) &&
+        {
+            return [self = this->clone(), fundamental](auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(std::to_string(fundamental));
                 return materialized;
             };
         }
@@ -431,7 +489,7 @@ namespace Nui
         }
 
         // Observed text and number content functions:
-        auto operator()(Observed<std::string> const& observedString) &&
+        inline auto operator()(Observed<std::string> const& observedString) &&
         {
             return std::move(*this).operator()(observe(observedString), [&observedString]() -> std::string {
                 return observedString.value();
@@ -446,12 +504,12 @@ namespace Nui
             });
         }
 
-        std::vector<Attribute> const& attributes() const
+        inline std::vector<Attribute> const& attributes() const
         {
             return attributes_;
         }
 
-        char const* name() const
+        inline char const* name() const
         {
             return name_;
         }

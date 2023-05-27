@@ -136,6 +136,14 @@ namespace Nui
             {
                 return &observed_.contained_;
             }
+            auto& operator*()
+            {
+                return observed_.contained_;
+            }
+            operator ContainedT&()
+            {
+                return observed_.contained_;
+            }
 
           private:
             ModifiableObserved& observed_;

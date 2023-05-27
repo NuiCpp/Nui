@@ -99,7 +99,10 @@ namespace Nui::Tests::Engine
             }
             case Nui::Tests::Engine::Value::Type::Number:
             {
-                std::cout << as<long double>();
+                if (isInteger_)
+                    std::cout << as<long long>();
+                else
+                    std::cout << as<long double>();
                 break;
             }
             case Nui::Tests::Engine::Value::Type::String:
@@ -121,6 +124,10 @@ namespace Nui::Tests::Engine
             {
                 as<Function const&>().print(indent);
                 break;
+            }
+            default:
+            {
+                throw std::runtime_error{"print: invalid value type"};
             }
         }
     }

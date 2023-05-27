@@ -13,46 +13,53 @@ namespace Nui::Tests::Engine
     namespace
     {
         // inefficient but simple
-        void cleanUndefinedDom(emscripten::val v)
+        void cleanUndefinedDom(Nui::val v)
         {
             if (!v.isNull() && !v.isUndefined() && v.hasOwnProperty("children"))
             {
                 auto& children = v["children"].template as<Array&>();
                 children.clearUndefinedAndNull();
                 for (auto& child : children)
-                    cleanUndefinedDom(emscripten::val{child});
+                    cleanUndefinedDom(Nui::val{child});
             }
         }
 
-        emscripten::val createElement(emscripten::val tag)
+        Nui::val createElement(Nui::val tag)
         {
-            auto elem = emscripten::val::object();
+            auto elem = Nui::val::object();
             elem.set("tagName", tag.template as<std::string>());
-            elem.set("children", emscripten::val::array());
-            elem.set("appendChild", Function{[self = elem](emscripten::val value) -> emscripten::val {
+            elem.set("children", Nui::val::array());
+            elem.set("appendChild", Function{[self = elem](Nui::val value) -> Nui::val {
                          return self["children"].template as<Array&>().push_back(value.handle());
                      }});
-            elem.set("replaceWith", Function{[self = elem](emscripten::val value) mutable -> emscripten::val {
+            elem.set("replaceWith", Function{[self = elem](Nui::val value) mutable -> Nui::val {
                          *self.handle() = *value.handle();
                          return self;
                      }});
-            elem.set("remove", Function{[self = elem]() -> emscripten::val {
+            elem.set("remove", Function{[self = elem]() -> Nui::val {
                          allValues[*self.handle()] = nullptr;
                          if (!globalObject.has("document"))
-                             return emscripten::val::undefined();
-                         if (emscripten::val::global("document").hasOwnProperty("body"))
-                             cleanUndefinedDom(emscripten::val::global("document")["body"]);
-                         return emscripten::val::undefined();
+                             return Nui::val::undefined();
+                         if (Nui::val::global("document").hasOwnProperty("body"))
+                             cleanUndefinedDom(Nui::val::global("document")["body"]);
+                         return Nui::val::undefined();
                      }});
-            elem.set(
-                "setAttribute", Function{[self = elem](emscripten::val name, emscripten::val value) -> emscripten::val {
-                    if (!self.template as<Object&>().has("attributes"))
-                        self.set("attributes", createValue(Object{}));
+            elem.set("setAttribute", Function{[self = elem](Nui::val name, Nui::val value) -> Nui::val {
+                         if (!self.template as<Object&>().has("attributes"))
+                             self.set("attributes", createValue(Object{}));
 
-                    self["attributes"].set(name.template as<std::string>(), *value.handle());
+                         self["attributes"].set(name.template as<std::string>(), *value.handle());
 
-                    return emscripten::val::undefined();
-                }});
+                         return Nui::val::undefined();
+                     }});
+            elem.set("removeAttribute", Function{[self = elem](Nui::val name) -> Nui::val {
+                         if (!self.template as<Object&>().has("attributes"))
+                             return Nui::val::undefined();
+
+                         self["attributes"].delete_(name.template as<std::string>());
+
+                         return Nui::val::undefined();
+                     }});
             return elem;
         }
     }
@@ -60,12 +67,12 @@ namespace Nui::Tests::Engine
     Document::Document()
     {
         globalObject.emplace("document", Object{});
-        emscripten::val::global("document").set("createElement", createElement);
-        emscripten::val::global("document").set("body", createElement("body"));
+        Nui::val::global("document").set("createElement", createElement);
+        Nui::val::global("document").set("body", createElement("body"));
     }
 
-    emscripten::val Document::document()
+    Nui::val Document::document()
     {
-        return emscripten::val::global("document");
+        return Nui::val::global("document");
     }
 }

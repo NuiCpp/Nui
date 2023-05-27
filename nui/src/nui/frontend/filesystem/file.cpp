@@ -68,20 +68,19 @@ namespace Nui
         std::ios_base::openmode mode,
         std::function<void(std::optional<AsyncFile>&&)> onOpen)
     {
-        RpcClient::getRemoteCallableWithBackChannel(
-            "Nui::openFile", [onOpen = std::move(onOpen)](emscripten::val response) {
-                bool success{false};
-                convertFromVal(response["success"], success);
-                if (!success)
-                {
-                    onOpen(std::nullopt);
-                    return;
-                }
+        RpcClient::getRemoteCallableWithBackChannel("Nui::openFile", [onOpen = std::move(onOpen)](Nui::val response) {
+            bool success{false};
+            convertFromVal(response["success"], success);
+            if (!success)
+            {
+                onOpen(std::nullopt);
+                return;
+            }
 
-                int32_t id;
-                convertFromVal(response["id"], id);
-                onOpen(AsyncFile{id});
-            })(filename, static_cast<int32_t>(mode));
+            int32_t id;
+            convertFromVal(response["id"], id);
+            onOpen(AsyncFile{id});
+        })(filename, static_cast<int32_t>(mode));
     }
     //---------------------------------------------------------------------------------------------------------------------
     void openFile(

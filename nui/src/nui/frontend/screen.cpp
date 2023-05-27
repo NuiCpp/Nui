@@ -2,7 +2,7 @@
 
 #include <nui/frontend/rpc_client.hpp>
 
-#include <emscripten/val.h>
+#include <nui/frontend/val.hpp>
 
 #include <vector>
 #include <functional>
@@ -13,7 +13,7 @@ namespace Nui
     void Screen::getDisplays(std::function<void(std::vector<Display>&&)> callback)
     {
         RpcClient::getRemoteCallableWithBackChannel(
-            "Nui::Screen::getDisplays", [callback = std::move(callback)](emscripten::val response) {
+            "Nui::Screen::getDisplays", [callback = std::move(callback)](Nui::val response) {
                 std::vector<Display> result;
                 const auto length = response["length"].as<int32_t>();
                 for (int32_t i = 0; i < length; ++i)
@@ -32,7 +32,7 @@ namespace Nui
     void Screen::getPrimaryDisplay(std::function<void(Display&&)> callback)
     {
         RpcClient::getRemoteCallableWithBackChannel(
-            "Nui::Screen::getPrimaryDisplay", [callback = std::move(callback)](emscripten::val response) {
+            "Nui::Screen::getPrimaryDisplay", [callback = std::move(callback)](Nui::val response) {
                 callback(Display{
                     response["x"].as<int32_t>(),
                     response["y"].as<int32_t>(),

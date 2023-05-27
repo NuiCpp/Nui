@@ -1,6 +1,6 @@
 #pragma once
 
-#include <emscripten/val.h>
+#include <nui/frontend/val.hpp>
 
 namespace Nui::Tests::Engine
 {
@@ -9,6 +9,6 @@ namespace Nui::Tests::Engine
       public:
         Document();
 
-        emscripten::val document();
+        Nui::val document();
     };
 }

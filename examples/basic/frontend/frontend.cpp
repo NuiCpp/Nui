@@ -3,7 +3,7 @@
 #include <nui/frontend/elements.hpp>
 #include <nui/frontend/attributes.hpp>
 
-#include <emscripten/val.h>
+#include <nui/frontend/val.hpp>
 
 void frontendMain()
 {
