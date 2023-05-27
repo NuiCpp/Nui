@@ -32,12 +32,12 @@ namespace Nui::Components
 
         struct ConstructionArgs
         {
-            Observed<std::optional<std::string>> className;
-            Observed<std::string> title;
-            Observed<std::string> body;
-            Observed<std::string> buttonClassName;
-            Observed<ButtonConfiguration> buttonConfiguration;
-            std::function<void(Button)> onButtonClicked;
+            Observed<std::optional<std::string>> className = std::nullopt;
+            Observed<std::string> title = "";
+            Observed<std::string> body = "";
+            Observed<std::string> buttonClassName = "";
+            Observed<ButtonConfiguration> buttonConfiguration = ButtonConfiguration::Ok;
+            std::function<void(Button)> onButtonClicked = [](Button) {};
         };
 
         DialogController(ConstructionArgs&& args);

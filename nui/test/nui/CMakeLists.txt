@@ -35,9 +35,9 @@ gtest_discover_tests(nui-tests)
 
 # If msys2, copy dynamic libraries to executable directory, visual studio does this automatically.
 # And there is no need on linux.
-# if (DEFINED ENV{MSYSTEM})
-#     add_custom_command(TARGET nui-tests POST_BUILD
-#         COMMAND bash -c "ldd $<TARGET_FILE:nui-tests>" | "grep" "clang" | awk "NF == 4 { system(\"${CMAKE_COMMAND} -E copy \" \$3 \" $<TARGET_FILE_DIR:nui-tests>\") }"
-#         VERBATIM
-#     )
-# endif()
+if (DEFINED ENV{MSYSTEM})
+    add_custom_command(TARGET nui-tests POST_BUILD
+        COMMAND bash -c "ldd $<TARGET_FILE:nui-tests>" | "grep" "clang" | awk "NF == 4 { system(\"${CMAKE_COMMAND} -E copy \" \$3 \" $<TARGET_FILE_DIR:nui-tests>\") }"
+        VERBATIM
+    )
+endif()

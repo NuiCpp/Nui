@@ -2,9 +2,7 @@
 
 #include <gtest/gtest.h>
 
-#include "common_test_fixture.hpp"
-#include "engine/global_object.hpp"
-#include "engine/document.hpp"
+#include "../common_test_fixture.hpp"
 
 #include <nui/frontend/elements.hpp>
 #include <nui/frontend/attributes.hpp>

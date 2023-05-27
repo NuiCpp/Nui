@@ -52,6 +52,14 @@ namespace Nui::Tests::Engine
 
                          return Nui::val::undefined();
                      }});
+            elem.set("removeAttribute", Function{[self = elem](Nui::val name) -> Nui::val {
+                         if (!self.template as<Object&>().has("attributes"))
+                             return Nui::val::undefined();
+
+                         self["attributes"].delete_(name.template as<std::string>());
+
+                         return Nui::val::undefined();
+                     }});
             return elem;
         }
     }
