@@ -16,7 +16,12 @@ namespace Nui
         ThrottledFunction(ThrottledFunction&& other);
         ThrottledFunction& operator=(ThrottledFunction const&) = delete;
         ThrottledFunction& operator=(ThrottledFunction&& other);
+
+        /// Calls the function if it is valid.
         void operator()();
+
+        /// Returns true if this object contains a valid function.
+        bool valid() const;
 
       private:
         int32_t id_{-1};
