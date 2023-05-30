@@ -2,6 +2,8 @@
 
 #include <nui/frontend/val.hpp>
 
+#include <algorithm>
+#include <cctype>
 #include <memory>
 
 namespace Nui::Dom
