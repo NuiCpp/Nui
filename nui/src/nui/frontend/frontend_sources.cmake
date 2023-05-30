@@ -1,4 +1,8 @@
 set(NUI_FRONTEND_SOURCES_RELATIVE
+    api/fetch.cpp
+    api/throttle.cpp
+    api/timer.cpp
+    attributes/impl/attribute.cpp
     components/dialog.cpp
     dom/dom.cpp
     event_system/event_context.cpp
@@ -6,11 +10,8 @@ set(NUI_FRONTEND_SOURCES_RELATIVE
     filesystem/file.cpp
     utility/fragment_listener.cpp
     utility/functions.cpp
+    utility/stabilize.cpp
     window.cpp
-    api/fetch.cpp
-    api/throttle.cpp
-    api/timer.cpp
-    attributes/impl/attribute.cpp
     screen.cpp
     environment_variables.cpp
 )

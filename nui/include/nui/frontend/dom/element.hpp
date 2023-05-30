@@ -15,12 +15,36 @@
 
 namespace Nui::Dom
 {
+    namespace Detail
+    {
+        static void destroyByRemove(Nui::val& val)
+        {
+            val.call<void>("remove");
+        }
+        static void destroyByParentChildRemoval(Nui::val& val)
+        {
+            if (val.hasOwnProperty("parentNode"))
+            {
+                auto parent = val["parentNode"];
+                if (!parent.isUndefined() && !parent.isNull())
+                    parent.call<void>("removeChild", val);
+                else
+                    val.call<void>("remove");
+            }
+            else
+                val.call<void>("remove");
+        }
+        static void doNotDestroy(Nui::val&)
+        {}
+    }
+
     class Element : public ChildlessElement
     {
       public:
         using collection_type = std::vector<std::shared_ptr<Element>>;
         using iterator = collection_type::iterator;
         using const_iterator = collection_type::const_iterator;
+        using value_type = collection_type::value_type;
 
         Element(HtmlElement const& elem)
             : ChildlessElement{elem}
@@ -34,9 +58,15 @@ namespace Nui::Dom
             , unsetup_{}
         {}
 
-        virtual ~Element()
+        Element(Element const&) = delete;
+        Element(Element&&) = delete;
+        Element& operator=(Element const&) = delete;
+        Element& operator=(Element&&) = delete;
+
+        ~Element()
         {
-            element_.call<void>("remove");
+            clearChildren();
+            destroy_(element_);
         }
 
         template <typename... Attributes>
@@ -73,6 +103,18 @@ namespace Nui::Dom
             auto elem = makeElement(element);
             element_.call<Nui::val>("appendChild", elem->element_);
             return children_.emplace_back(std::move(elem));
+        }
+        auto slotFor(value_type const& value)
+        {
+            clearChildren();
+            if (unsetup_)
+                unsetup_();
+            unsetup_ = {};
+
+            element_.call<Nui::val>("replaceWith", value->val());
+            element_ = value->val();
+            destroy_ = Detail::doNotDestroy;
+            return shared_from_base<Element>();
         }
         void replaceElement(std::invocable<Element&, Renderer const&> auto&& fn)
         {
@@ -162,6 +204,16 @@ namespace Nui::Dom
             children_.clear();
         }
 
+        bool hasChildren() const
+        {
+            return !children_.empty();
+        }
+
+        std::size_t childCount() const
+        {
+            return children_.size();
+        }
+
       private:
         void replaceElementImpl(HtmlElement const& element)
         {
@@ -177,6 +229,8 @@ namespace Nui::Dom
         }
 
       private:
+        using destroy_fn = void (*)(Nui::val&);
+        destroy_fn destroy_ = Detail::destroyByRemove;
         collection_type children_;
         std::function<void()> unsetup_;
     };

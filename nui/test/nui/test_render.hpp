@@ -9,6 +9,7 @@
 #include <nui/frontend/elements.hpp>
 #include <nui/frontend/attributes.hpp>
 #include <nui/frontend/dom/reference.hpp>
+#include <nui/frontend/utility/stabilize.hpp>
 
 #include <vector>
 #include <string>
@@ -299,5 +300,162 @@ namespace Nui::Tests
         render(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(
             div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(
                 div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}())))))))))))))))))))))))))))))))))))))))))));
+    }
+
+    TEST_F(TestRender, StableElementIsNotRerendered)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::span;
+        using Nui::Elements::button;
+        using namespace Nui::Attributes;
+
+        Nui::Observed<bool> toggle = true;
+        StableElement stable;
+
+        // clang-format off
+        render(div{}(
+            observe(toggle),
+            [&toggle, &stable]() -> Nui::ElementRenderer{
+                if (!*toggle)
+                    return nil();
+                else
+                {
+                    static std::string once = "once";
+                    static std::string onceClass = "onceClass";
+                    return stabilize(
+                        stable, 
+                        span{id = once}(button{class_ = onceClass}())
+                    );
+                    once = "X";
+                    onceClass = "Y";
+                }
+            }
+        ));
+        // clang-format on
+
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["tagName"].as<std::string>(), "span");
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["attributes"]["id"].as<std::string>(), "once");
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["children"][0]["children"][0]["tagName"].as<std::string>(), "button");
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["children"][0]["children"][0]["attributes"]["class"].as<std::string>(),
+            "onceClass");
+
+        toggle = false;
+        globalEventContext.executeActiveEventsImmediately();
+
+        toggle = true;
+        globalEventContext.executeActiveEventsImmediately();
+
+        // once, not X
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["tagName"].as<std::string>(), "span");
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["attributes"]["id"].as<std::string>(), "once");
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["children"][0]["children"][0]["attributes"]["class"].as<std::string>(),
+            "onceClass");
+    }
+
+    TEST_F(TestRender, StableElementCanHaveObservedAttributes)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::span;
+        using namespace Nui::Attributes;
+
+        Nui::Observed<bool> toggle = true;
+        StableElement stable;
+        Nui::Observed<std::string> spanId = "dynamic";
+
+        // clang-format off
+        render(div{}(
+            observe(toggle),
+            [&toggle, &stable, &spanId]() -> Nui::ElementRenderer{
+                if (!*toggle)
+                    return nil();
+                else
+                {
+                    return stabilize(
+                        stable, 
+                        span{id = spanId}()
+                    );
+                }
+            }
+        ));
+        // clang-format on
+
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["tagName"].as<std::string>(), "span");
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["attributes"]["id"].as<std::string>(), "dynamic");
+
+        spanId = "changed";
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["attributes"]["id"].as<std::string>(), "changed");
+
+        toggle = false;
+        globalEventContext.executeActiveEventsImmediately();
+
+        spanId = "changed again";
+        globalEventContext.executeActiveEventsImmediately();
+
+        toggle = true;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["children"][0]["attributes"]["id"].as<std::string>(), "changed again");
+    }
+
+    TEST_F(TestRender, StableFragmentCreatesPhantomDiv)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::a;
+        using Nui::Elements::span;
+        using Nui::Elements::fragment;
+        using namespace Nui::Attributes;
+
+        Nui::Observed<bool> toggle = true;
+        StableElement stable;
+
+        // clang-format off
+        render(div{}(
+            observe(toggle),
+            [&toggle, &stable]() -> Nui::ElementRenderer{
+                if (!*toggle)
+                    return nil();
+                else
+                {
+                    return stabilize(
+                        stable, 
+                        // fragment is ignored and forms a div, because StableElements can only be one element
+                        fragment(a{}(), span{}())
+                    );
+                }
+            }
+        ));
+        // clang-format on
+
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["tagName"].as<std::string>(), "div");
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["children"][0]["tagName"].as<std::string>(), "a");
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["children"][0]["children"][1]["tagName"].as<std::string>(), "span");
+    }
+
+    TEST_F(TestRender, StableNilBecomesDiv)
+    {
+        using Nui::Elements::div;
+        using Nui::nil;
+        using namespace Nui::Attributes;
+
+        Nui::Observed<bool> toggle = true;
+        StableElement stable;
+
+        // Does not make much sense, but is not causing any issues:
+        // Becomes a div, because its not possible to have a stable nil.
+        render(div{}(stabilize(stable, nil())));
+
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["tagName"].as<std::string>(), "div");
     }
 }
