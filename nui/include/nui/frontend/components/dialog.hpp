@@ -1,6 +1,6 @@
 #pragma once
 
-#include <nui/frontend/generator_typedefs.hpp>
+#include <nui/frontend/element_renderer.hpp>
 #include <nui/frontend/event_system/observed_value.hpp>
 #include <nui/frontend/event_system/observed_value.hpp>
 #include <nui/frontend/dom/element.hpp>

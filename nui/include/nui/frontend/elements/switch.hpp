@@ -1,7 +1,7 @@
 #pragma once
 
 #include <nui/frontend/elements/fragment.hpp>
-#include <nui/frontend/generator_typedefs.hpp>
+#include <nui/frontend/element_renderer.hpp>
 #include <nui/utility/overloaded.hpp>
 #include <nui/frontend/api/console.hpp>
 

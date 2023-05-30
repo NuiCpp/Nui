@@ -7,7 +7,7 @@
 #include <nui/frontend/elements/table.hpp>
 #include <nui/frontend/elements/nil.hpp>
 #include <nui/frontend/attributes/impl/attribute.hpp>
-#include <nui/frontend/generator_typedefs.hpp>
+#include <nui/frontend/element_renderer.hpp>
 
 #include <string>
 #include <optional>

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <nui/frontend/event_system/observed_value.hpp>
-#include <nui/frontend/generator_typedefs.hpp>
+#include <nui/frontend/element_renderer.hpp>
 
 // elements
 #include <nui/frontend/elements/input.hpp>
