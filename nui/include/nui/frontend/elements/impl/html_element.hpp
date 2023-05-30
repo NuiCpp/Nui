@@ -40,64 +40,38 @@ namespace Nui
 
     class HtmlElement;
 
-    // TODO: refactor, not anymore needed as classes:
-    template <typename DerivedT>
-    class RendererOptions
+    namespace Materializers
     {
-      public:
-        auto materialize(auto& element, auto const& htmlElement) const
+        /// Creates new actual element and makes it a child of the given parent.
+        inline auto appendMaterialize(auto& parent, auto const& htmlElement)
         {
-            return static_cast<DerivedT const*>(this)->materialize(element, htmlElement);
+            return parent.appendElement(htmlElement);
         }
-    };
-    class AppendRendererOptions : public RendererOptions<AppendRendererOptions>
-    {
-      public:
-        auto materialize(auto& element, auto const& htmlElement) const
+        /// Similar to appendMaterialize, but the new element is not added to the children list.
+        /// Works together with inplaceMaterialize.
+        inline auto fragmentMaterialize(auto& parent, auto const& htmlElement)
         {
-            return element.appendElement(htmlElement);
-        }
-    };
-    class FragmentRendererOptions : public RendererOptions<FragmentRendererOptions>
-    {
-      public:
-        auto materialize(auto& element, auto const& htmlElement) const
-        {
-            auto elem = element.makeElement(htmlElement);
-            element.val().template call<Nui::val>("appendChild", elem->val());
+            auto elem = parent.makeElement(htmlElement);
+            parent.val().template call<Nui::val>("appendChild", elem->val());
             return elem;
         }
-    };
-    class InsertRendererOptions : public RendererOptions<InsertRendererOptions>
-    {
-      public:
-        InsertRendererOptions(std::size_t where)
-            : where_{where}
-        {}
-        auto materialize(auto& element, auto const& htmlElement) const
+        /// Inserts new element at the given position of the given parent.
+        inline auto insertMaterialize(std::size_t where, auto& parent, auto const& htmlElement)
         {
-            return element.insert(where_, htmlElement);
+            return parent.insert(where, htmlElement);
         }
-
-      private:
-        std::size_t where_;
-    };
-    class ReplaceRendererOptions : public RendererOptions<ReplaceRendererOptions>
-    {
-      public:
-        auto materialize(auto& element, auto const& htmlElement) const
+        /// Replaces the given element with the new one.
+        inline auto replaceMaterialize(auto& element, auto const& htmlElement)
         {
             return element.replaceElement(htmlElement);
         }
-    };
-    class InplaceRendererOptions : public RendererOptions<InplaceRendererOptions>
-    {
-      public:
-        auto materialize(auto& element, auto const&) const
+        /// Used for elements that dont have a direct parent.
+        inline auto inplaceMaterialize(auto& element, auto const& htmlElement)
         {
             return element.template shared_from_base<std::decay_t<decltype(element)>>();
         }
-    };
+    }
+
     enum class RendererType
     {
         Append,
@@ -116,15 +90,15 @@ namespace Nui
         switch (gen.type)
         {
             case RendererType::Append:
-                return AppendRendererOptions{}.materialize(element, htmlElement);
+                return Materializers::appendMaterialize(element, htmlElement);
             case RendererType::Fragment:
-                return FragmentRendererOptions{}.materialize(element, htmlElement);
+                return Materializers::fragmentMaterialize(element, htmlElement);
             case RendererType::Insert:
-                return InsertRendererOptions{gen.metadata}.materialize(element, htmlElement);
+                return Materializers::insertMaterialize(gen.metadata, element, htmlElement);
             case RendererType::Replace:
-                return ReplaceRendererOptions{}.materialize(element, htmlElement);
+                return Materializers::replaceMaterialize(element, htmlElement);
             case RendererType::Inplace:
-                return InplaceRendererOptions{}.materialize(element, htmlElement);
+                return Materializers::inplaceMaterialize(element, htmlElement);
         }
     };
 
