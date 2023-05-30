@@ -30,6 +30,7 @@ namespace Nui::Tests::Engine
             elem.set("tagName", tag.template as<std::string>());
             elem.set("children", Nui::val::array());
             elem.set("appendChild", Function{[self = elem](Nui::val value) -> Nui::val {
+                         value.set("parentNode", self);
                          return self["children"].template as<Array&>().push_back(value.handle());
                      }});
             elem.set("replaceWith", Function{[self = elem](Nui::val value) mutable -> Nui::val {
@@ -58,6 +59,13 @@ namespace Nui::Tests::Engine
 
                          self["attributes"].delete_(name.template as<std::string>());
 
+                         return Nui::val::undefined();
+                     }});
+            elem.set("removeChild", Function{[self = elem](Nui::val value) -> Nui::val {
+                         auto& children = self["children"].template as<Array&>();
+                         auto it = std::find(children.begin(), children.end(), value.handle());
+                         if (it != children.end())
+                             children.erase(it);
                          return Nui::val::undefined();
                      }});
             return elem;
