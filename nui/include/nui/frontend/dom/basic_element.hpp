@@ -12,6 +12,7 @@ namespace Nui::Dom
         BasicElement(Nui::val val)
             : element_{std::move(val)}
         {}
+        virtual ~BasicElement() = default;
 
         Nui::val const& val() const
         {
@@ -43,6 +44,14 @@ namespace Nui::Dom
         std::weak_ptr<Derived> weak_from_base()
         {
             return std::weak_ptr<Derived>(shared_from_base<Derived>());
+        }
+        std::string tagName() const
+        {
+            auto tag = element_["tagName"].as<std::string>();
+            std::transform(tag.begin(), tag.end(), tag.begin(), [](unsigned char c) {
+                return std::tolower(c);
+            });
+            return tag;
         }
 
       protected:
