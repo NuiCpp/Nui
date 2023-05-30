@@ -206,7 +206,7 @@ namespace emscripten
 #endif
             using namespace std::string_literals;
 
-            return withValueDo([name, ... args = std::forward<List>(args)](auto& value) {
+            return withValueDo([this, name, ... args = std::forward<List>(args)](auto& value) {
                 if (value.type() == Nui::Tests::Engine::Value::Type::Object)
                 {
                     auto& mem = value.template as<Nui::Tests::Engine::Object&>()[name];
@@ -235,7 +235,8 @@ namespace emscripten
                         throw std::runtime_error{"val::call of "s + name + ": function has no member " + name};
                 }
                 else
-                    throw std::runtime_error{"val::call: value is not an object"};
+                    throw std::runtime_error{
+                        "val::call: value is not an object, value is '"s + typeOf().as<std::string>() + "'"};
             });
         }
 
@@ -243,8 +244,9 @@ namespace emscripten
         {
 #ifdef NUI_TEST_DEBUG_PRINT
             std::cout << "val::global(" << name << ")\n";
-            std::cout << Nui::Tests::Engine::globalObject.reference(name)->typeOf() << "\n";
-            Nui::Tests::Engine::globalObject.print(), std::cout << "\n";
+            std::cout << "type: "
+                      << Nui::Tests::Engine::allValues[*Nui::Tests::Engine::globalObject.reference(name)].typeOf()
+                      << "\n";
 #endif
             return Nui::Tests::Engine::globalObject.reference(name);
         }
@@ -313,11 +315,14 @@ namespace emscripten
 #ifdef NUI_TEST_DEBUG_PRINT
             std::cout << "val::hasOwnProperty(" << key << ")\n";
 #endif
-            return withValueDo([key](auto const& value) {
+            using namespace std::string_literals;
+
+            return withValueDo([this, key](auto const& value) {
                 if (value.type() == Nui::Tests::Engine::Value::Type::Object)
                     return value.template as<Nui::Tests::Engine::Object const&>().has(key);
                 else
-                    throw std::runtime_error{"val::hasOwnProperty: value is not an object"};
+                    throw std::runtime_error{
+                        "val::hasOwnProperty: value is not an object, value is '"s + typeOf().as<std::string>() + "'"};
             });
         }
 
@@ -444,6 +449,13 @@ namespace emscripten
         std::shared_ptr<Nui::Tests::Engine::ReferenceType> handle() const
         {
             return referenced_value_;
+        }
+
+        void print() const
+        {
+            withValueDo([](auto& value) {
+                value.print();
+            });
         }
 
       private:
