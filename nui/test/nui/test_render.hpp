@@ -322,12 +322,13 @@ namespace Nui::Tests
                 {
                     static std::string once = "once";
                     static std::string onceClass = "onceClass";
-                    return stabilize(
-                        stable, 
+                    const auto s = stabilize(
+                        stable,
                         span{id = once}(button{class_ = onceClass}())
                     );
                     once = "X";
                     onceClass = "Y";
+                    return s;
                 }
             }
         ));
@@ -376,7 +377,7 @@ namespace Nui::Tests
                 else
                 {
                     return stabilize(
-                        stable, 
+                        stable,
                         span{id = spanId}()
                     );
                 }
@@ -426,7 +427,7 @@ namespace Nui::Tests
                 else
                 {
                     return stabilize(
-                        stable, 
+                        stable,
                         // fragment is ignored and forms a div, because StableElements can only be one element
                         fragment(a{}(), span{}())
                     );
@@ -457,5 +458,63 @@ namespace Nui::Tests
 
         ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
         EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["tagName"].as<std::string>(), "div");
+    }
+
+    TEST_F(TestRender, CanResetStableElement)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::span;
+        using Nui::Elements::button;
+        using namespace Nui::Attributes;
+
+        Nui::Observed<bool> toggle = true;
+        StableElement stable;
+
+        std::string once = "once";
+        std::string onceClass = "onceClass";
+
+        // clang-format off
+        render(div{}(
+            observe(toggle),
+            [&toggle, &stable, &once, &onceClass]() -> Nui::ElementRenderer{
+                if (!*toggle)
+                    return nil();
+                else
+                {
+                    const auto s = stabilize(
+                        stable, 
+                        span{id = once}(button{class_ = onceClass}())
+                    );
+                    once = "X";
+                    onceClass = "Y";
+                    return s;
+                }
+            }
+        ));
+        // clang-format on
+
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["tagName"].as<std::string>(), "span");
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["attributes"]["id"].as<std::string>(), "once");
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["children"][0]["children"][0]["tagName"].as<std::string>(), "button");
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["children"][0]["children"][0]["attributes"]["class"].as<std::string>(),
+            "onceClass");
+
+        toggle = false;
+        globalEventContext.executeActiveEventsImmediately();
+
+        stable.reset();
+
+        toggle = true;
+        globalEventContext.executeActiveEventsImmediately();
+
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["tagName"].as<std::string>(), "span");
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["attributes"]["id"].as<std::string>(), "X");
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["children"][0]["children"][0]["attributes"]["class"].as<std::string>(),
+            "Y");
     }
 }

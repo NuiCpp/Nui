@@ -16,10 +16,7 @@ namespace Nui
         {}
 
         /// Resets the stable element, so that it is re-rendered on the next render.
-        void reset()
-        {
-            stableElement_ = {};
-        }
+        void reset();
 
         friend ElementRenderer stabilize(StableElement& stableElement, ElementRenderer const& encapsulatedRenderer);
 

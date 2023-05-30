@@ -5,6 +5,11 @@
 
 namespace Nui
 {
+    void StableElement::reset()
+    {
+        stableElement_ = {};
+    }
+
     ElementRenderer stabilize(StableElement& stableElement, ElementRenderer const& encapsulatedRenderer)
     {
         return [encapsulatedRenderer,
