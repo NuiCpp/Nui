@@ -22,6 +22,7 @@ namespace Nui
 
       private:
         std::shared_ptr<Dom::Element> stableElement_;
+        bool reset_;
     };
 
     /**

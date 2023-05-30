@@ -7,15 +7,16 @@ namespace Nui
 {
     void StableElement::reset()
     {
-        stableElement_ = {};
+        reset_ = true;
     }
 
     ElementRenderer stabilize(StableElement& stableElement, ElementRenderer const& encapsulatedRenderer)
     {
         return [encapsulatedRenderer,
                 &stableElement](Dom::Element& actualParent, Renderer const& gen) -> std::shared_ptr<Dom::Element> {
-            if (!stableElement.stableElement_)
+            if (stableElement.reset_ || !stableElement.stableElement_)
             {
+                stableElement.reset_ = false;
                 // Needs to be valid element for replace and fragments:
                 stableElement.stableElement_ = Dom::Element::makeElement(HtmlElement{"div"});
                 stableElement.stableElement_->replaceElement(encapsulatedRenderer);

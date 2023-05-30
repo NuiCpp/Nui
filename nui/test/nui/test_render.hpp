@@ -506,6 +506,8 @@ namespace Nui::Tests
         globalEventContext.executeActiveEventsImmediately();
 
         stable.reset();
+        // Is not deleted immediately!
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
 
         toggle = true;
         globalEventContext.executeActiveEventsImmediately();
