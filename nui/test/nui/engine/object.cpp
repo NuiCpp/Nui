@@ -63,7 +63,7 @@ namespace Nui::Tests::Engine
         members_.erase(key.data());
     }
 
-    void Object::print(int indent, ReferenceType instanceCounter_) const
+    void Object::print(int indent, std::vector<ReferenceType> referenceStack) const
     {
         if (members_.empty())
         {
@@ -75,17 +75,20 @@ namespace Nui::Tests::Engine
         auto begin = members_.begin();
         printIndent(indent + 1);
         std::cout << "\"" << begin->first << "\": ";
-        allValues[*begin->second].print(indent + 1);
+        allValues[*begin->second].print(indent + 1, referenceStack);
         for (auto it = ++begin; it != members_.end(); ++it)
         {
             std::cout << ",\n";
             printIndent(indent + 1);
             std::cout << "\"" << it->first << "\": ";
-            allValues[*it->second].print(indent + 1);
+            allValues[*it->second].print(indent + 1, referenceStack);
         }
         std::cout << ",\n";
         printIndent(indent + 1);
-        std::cout << "\"__instanceCounter\": " << static_cast<long long>(instanceCounter_) << "\n";
+        if (referenceStack.empty())
+            std::cout << "\"__instanceCounter\": ???\n";
+        else
+            std::cout << "\"__instanceCounter\": " << static_cast<long long>(referenceStack.back()) << "\n";
         printIndent(indent);
         std::cout << "}";
     }

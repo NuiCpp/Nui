@@ -1,6 +1,8 @@
 #include "array.hpp"
 #include "global_object.hpp"
 
+#include <stdexcept>
+
 namespace Nui::Tests::Engine
 {
     Array::Array()
@@ -35,6 +37,19 @@ namespace Nui::Tests::Engine
     boost::container::stable_vector<std::shared_ptr<ReferenceType>>::const_iterator Array::end() const
     {
         return values_.end();
+    }
+
+    void Array::erase(std::size_t index)
+    {
+        erase(values_.begin() + index);
+    }
+
+    void Array::erase(boost::container::stable_vector<std::shared_ptr<ReferenceType>>::const_iterator it)
+    {
+        if (it >= values_.end())
+            throw std::out_of_range{"Iterator out of range."};
+        values_.erase(it);
+        updateArrayObject();
     }
 
     std::size_t Array::size() const
@@ -73,7 +88,7 @@ namespace Nui::Tests::Engine
         return arrayObject_;
     }
 
-    void Array::print(int indent) const
+    void Array::print(int indent, std::vector<ReferenceType> referenceStack) const
     {
         if (values_.empty())
         {
@@ -83,12 +98,12 @@ namespace Nui::Tests::Engine
         std::cout << "[\n";
         auto begin = values_.begin();
         printIndent(indent + 1);
-        allValues[**begin].print(indent + 1);
+        allValues[**begin].print(indent + 1, referenceStack);
         for (auto it = ++begin; it != values_.end(); ++it)
         {
             std::cout << ",\n";
             printIndent(indent + 1);
-            allValues[**it].print(indent + 1);
+            allValues[**it].print(indent + 1, referenceStack);
         }
         printIndent(indent);
         std::cout << "\n]";

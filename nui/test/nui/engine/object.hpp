@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <string>
 #include <memory>
+#include <vector>
 
 namespace Nui::Tests::Engine
 {
@@ -35,7 +36,7 @@ namespace Nui::Tests::Engine
         std::size_t size() const;
         bool empty() const;
         void erase(std::string_view key);
-        void print(int indent = 0, ReferenceType instanceCounter_ = ReferenceType{-1}) const;
+        void print(int indent = 0, std::vector<ReferenceType> referenceStack = {}) const;
 
       private:
         std::unordered_map<std::string, std::shared_ptr<ReferenceType>> members_;

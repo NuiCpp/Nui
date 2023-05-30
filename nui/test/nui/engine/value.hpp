@@ -8,6 +8,7 @@
 #include <string_view>
 #include <memory>
 #include <iostream>
+#include <vector>
 
 namespace Nui::Tests::Engine
 {
@@ -184,7 +185,7 @@ namespace Nui::Tests::Engine
             }
         }
 
-        void print(int indent = 0);
+        void print(int indent = 0, std::vector<ReferenceType> referenceStack = {}) const;
 
         ReferenceType instanceCounter() const
         {

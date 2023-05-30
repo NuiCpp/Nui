@@ -9,6 +9,7 @@
 #include <list>
 #include <memory>
 #include <iostream>
+#include <vector>
 
 namespace Nui::Tests::Engine
 {
@@ -36,9 +37,12 @@ namespace Nui::Tests::Engine
 
         void clearUndefinedAndNull();
 
+        void erase(std::size_t index);
+        void erase(boost::container::stable_vector<std::shared_ptr<ReferenceType>>::const_iterator it);
+
         Object const& asObject() const;
 
-        void print(int indent = 0) const;
+        void print(int indent = 0, std::vector<ReferenceType> referenceStack = {}) const;
 
       private:
         void updateArrayObject();

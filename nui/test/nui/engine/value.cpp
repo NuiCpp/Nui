@@ -78,8 +78,24 @@ namespace Nui::Tests::Engine
         return as<Object&>().reference(key);
     }
 
-    void Value::print(int indent)
+    void Value::print(int indent, std::vector<ReferenceType> referenceStack) const
     {
+        // test stack for circular references
+        for (auto const& reference : referenceStack)
+        {
+            if (reference == instanceCounter_)
+            {
+                if (type() == Type::Object)
+                    std::cout << "{...recursive...}";
+                else if (type() == Type::Array)
+                    std::cout << "[...recursive...]";
+                else
+                    std::cout << "...";
+                return;
+            }
+        }
+        referenceStack.push_back(ReferenceType{instanceCounter_});
+
         switch (type())
         {
             case Nui::Tests::Engine::Value::Type::Null:
@@ -112,12 +128,12 @@ namespace Nui::Tests::Engine
             }
             case Nui::Tests::Engine::Value::Type::Object:
             {
-                as<Object const&>().print(indent, instanceCounter_);
+                as<Object const&>().print(indent, referenceStack);
                 break;
             }
             case Nui::Tests::Engine::Value::Type::Array:
             {
-                as<Array const&>().print(indent);
+                as<Array const&>().print(indent, referenceStack);
                 break;
             }
             case Nui::Tests::Engine::Value::Type::Function:

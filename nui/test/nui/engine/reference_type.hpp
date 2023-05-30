@@ -35,4 +35,9 @@ namespace Nui::Tests::Engine
       private:
         long long id_;
     };
+
+    inline ReferenceType invalidReference()
+    {
+        return ReferenceType{-1};
+    }
 }
