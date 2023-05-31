@@ -12,6 +12,13 @@ namespace Nui
 {
     void listenToFragmentChanges(Observed<std::string>& fragment)
     {
+        if (Nui::val::global("location").hasOwnProperty("hash"))
+            fragment = Nui::val::global("location")["hash"].as<std::string>();
+        else
+            fragment = "";
+        if (fragment.front() == '#')
+            fragment.erase(0, 1);
+
         Nui::val::global("window").call<void>(
             "addEventListener",
             "hashchange"s,
