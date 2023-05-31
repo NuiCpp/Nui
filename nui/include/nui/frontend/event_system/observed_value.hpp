@@ -909,7 +909,7 @@ namespace Nui
             ObservedBase::update(force);
         }
 
-      private:
+      protected:
         void insertRangeChecked(std::size_t low, std::size_t high, RangeStateType type)
         {
             std::function<void(int)> doInsert;
@@ -986,6 +986,14 @@ namespace Nui
         using ObservedContainer<std::basic_string<Parameters...>>::operator=;
         using ObservedContainer<std::basic_string<Parameters...>>::operator->;
         static constexpr auto isRandomAccess = true;
+
+        Observed<std::basic_string<Parameters...>>& erase(std::size_t index = 0, std::size_t count = std::string::npos)
+        {
+            const auto sizeBefore = this->contained_.size();
+            this->contained_.erase(index, count);
+            this->insertRangeChecked(index, sizeBefore, RangeStateType::Erase);
+            return *this;
+        }
     };
     template <typename... Parameters>
     class Observed<std::set<Parameters...>> : public ObservedContainer<std::set<Parameters...>>
