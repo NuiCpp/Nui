@@ -15,6 +15,16 @@ namespace Nui
         stableElement_.reset();
     }
 
+    Dom::Element& StableElement::stableElement()
+    {
+        return *stableElement_;
+    }
+
+    Dom::Element const& StableElement::stableElement() const
+    {
+        return *stableElement_;
+    }
+
     ElementRenderer stabilize(StableElement& stableElement, ElementRenderer const& encapsulatedRenderer)
     {
         return [encapsulatedRenderer,

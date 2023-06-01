@@ -23,6 +23,10 @@ namespace Nui
 
         friend ElementRenderer stabilize(StableElement& stableElement, ElementRenderer const& encapsulatedRenderer);
 
+        Dom::Element& stableElement();
+
+        Dom::Element const& stableElement() const;
+
       private:
         std::shared_ptr<Dom::Element> stableElement_;
         bool reset_;
