@@ -519,4 +519,22 @@ namespace Nui::Tests
             Nui::val::global("document")["body"]["children"][0]["children"][0]["attributes"]["class"].as<std::string>(),
             "Y");
     }
+
+    TEST_F(TestRender, FragmentPlacesItselfInParent)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::span;
+        using Nui::Elements::fragment;
+
+        const auto fragmentFunction = []() -> Nui::ElementRenderer {
+            return fragment(span{}(), div{}());
+        };
+
+        render(div{}(fragmentFunction));
+
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 2);
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["tagName"].as<std::string>(), "span");
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][1]["tagName"].as<std::string>(), "div");
+    }
 }
