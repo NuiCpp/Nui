@@ -18,6 +18,9 @@ namespace Nui
         /// Resets the stable element, so that it is re-rendered on the next render.
         void reset();
 
+        /// Destroys the stable element directly, which will make it also disappear from the page.
+        void destroy();
+
         friend ElementRenderer stabilize(StableElement& stableElement, ElementRenderer const& encapsulatedRenderer);
 
       private:

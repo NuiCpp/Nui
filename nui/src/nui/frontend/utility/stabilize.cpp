@@ -10,6 +10,11 @@ namespace Nui
         reset_ = true;
     }
 
+    void StableElement::destroy()
+    {
+        stableElement_.reset();
+    }
+
     ElementRenderer stabilize(StableElement& stableElement, ElementRenderer const& encapsulatedRenderer)
     {
         return [encapsulatedRenderer,
