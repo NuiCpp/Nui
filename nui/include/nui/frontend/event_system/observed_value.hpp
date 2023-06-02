@@ -926,7 +926,7 @@ namespace Nui
                         doInsert(retries + 1);
                     else
                     {
-                        rangeContext_.reset(contained_.size(), true);
+                        rangeContext_.reset(static_cast<long>(contained_.size()), true);
                         update();
                         globalEventContext.executeActiveEventsImmediately();
                         return;
