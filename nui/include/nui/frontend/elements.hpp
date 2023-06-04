@@ -36,6 +36,7 @@
 #include <nui/frontend/elements/form.hpp>
 #include <nui/frontend/elements/fragment.hpp>
 #include <nui/frontend/elements/head.hpp>
+#include <nui/frontend/elements/header.hpp>
 #include <nui/frontend/elements/heading.hpp>
 #include <nui/frontend/elements/hr.hpp>
 #include <nui/frontend/elements/i.hpp>
