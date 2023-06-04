@@ -2,7 +2,7 @@
 A C++ WebView UI Library.
 Nui enables you to build C++ user interfaces using a browser window tied to a main process.
 
-Website: http://nuicpp.org
+Website: https://nuicpp.org
 
 Documentation: https://nuicpp.github.io/nui-documentation/
 

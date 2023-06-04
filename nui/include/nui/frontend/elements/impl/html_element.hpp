@@ -66,7 +66,7 @@ namespace Nui
             return element.replaceElement(htmlElement);
         }
         /// Used for elements that dont have a direct parent.
-        inline auto inplaceMaterialize(auto& element, auto const& htmlElement)
+        inline auto inplaceMaterialize(auto& element, auto const&)
         {
             return element.template shared_from_base<std::decay_t<decltype(element)>>();
         }

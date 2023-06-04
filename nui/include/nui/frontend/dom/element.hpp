@@ -21,7 +21,7 @@ namespace Nui::Dom
         {
             val.call<void>("remove");
         }
-        static void destroyByParentChildRemoval(Nui::val& val)
+        [[maybe_unused]] static void destroyByParentChildRemoval(Nui::val& val)
         {
             if (val.hasOwnProperty("parentNode"))
             {

@@ -4,6 +4,7 @@ project(nui VERSION 0.1.0)
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/common.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/options.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/static_analyzers.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/boostpp.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/mplex.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/interval_tree.cmake)

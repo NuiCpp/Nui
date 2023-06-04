@@ -23,6 +23,10 @@ namespace Nui
 
         friend ElementRenderer stabilize(StableElement& stableElement, ElementRenderer const& encapsulatedRenderer);
 
+        Dom::Element& stableElement();
+
+        Dom::Element const& stableElement() const;
+
       private:
         std::shared_ptr<Dom::Element> stableElement_;
         bool reset_;
@@ -31,9 +35,9 @@ namespace Nui
     /**
      * @brief Stabilizes an element, so that it is not re-rendered on every render.
      *
-     * @param stableElement
-     * @param encapsulatedRenderer
-     * @return ElementRenderer
+     * @param stableElement A stable element handle held by the caller. Must not be destroyed before the associated ui.
+     * @param encapsulatedRenderer The renderer that should be rendered once and then stabilized.
+     * @return ElementRenderer A renderer that renders the encapsulated renderer once and then stabilizes it.
      */
     ElementRenderer stabilize(StableElement& stableElement, ElementRenderer const& encapsulatedRenderer);
 }
