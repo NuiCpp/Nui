@@ -101,6 +101,7 @@ function(nui_add_emscripten_target)
         COMMAND $<TARGET_FILE:bin2hpp> ${ENABLE_BIN2HPP} ${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html ${CMAKE_BINARY_DIR}/include/index.hpp index
         BINARY_DIR "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
         BUILD_ALWAYS 1
+        BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html"
         INSTALL_COMMAND ""
     )
     add_dependencies(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten)
@@ -109,6 +110,10 @@ function(nui_add_emscripten_target)
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-prejs ALL
         DEPENDS ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_PREJS}
     )
+    add_custom_target(
+        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel-dep 
+        DEPENDS "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html"
+    )
     add_dependencies(
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-prejs
@@ -116,6 +121,7 @@ function(nui_add_emscripten_target)
     )
     add_dependencies(
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}
+        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel-dep
         emscripten-setup
     )
 
