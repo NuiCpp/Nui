@@ -33,9 +33,10 @@ namespace Nui
             {
                 stableElement.reset_ = false;
                 // Needs to be valid element for replace and fragments:
-                stableElement.stableElement_ = Dom::Element::makeElement(HtmlElement{"div"});
+                stableElement.stableElement_ = Dom::Element::makeElement(HtmlElement{"div", &RegularHtmlElementBridge});
                 stableElement.stableElement_->replaceElement(encapsulatedRenderer);
-                return HtmlElement{"stablerror_slot"}()(actualParent, gen)->slotFor(stableElement.stableElement_);
+                return HtmlElement{"stablerror_slot", &RegularHtmlElementBridge}()(actualParent, gen)
+                    ->slotFor(stableElement.stableElement_);
             }
             return nil()(actualParent, gen);
         };

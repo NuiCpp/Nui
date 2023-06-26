@@ -6,6 +6,7 @@
 #include <nui/frontend/event_system/event_context.hpp>
 #include <nui/frontend/dom/element_fwd.hpp>
 #include <nui/frontend/elements/detail/fragment_context.hpp>
+#include <nui/frontend/elements/impl/html_element_bridge.hpp>
 #include <nui/frontend/attributes/impl/attribute.hpp>
 #include <nui/concepts.hpp>
 #include <nui/utility/scope_exit.hpp>
@@ -139,23 +140,29 @@ namespace Nui
         constexpr HtmlElement(HtmlElement const&) = default;
         constexpr HtmlElement(HtmlElement&&) = default;
         virtual ~HtmlElement() = default;
-        constexpr HtmlElement(char const* name, std::vector<Attribute> const& attributes)
+        constexpr HtmlElement(
+            char const* name,
+            HtmlElementBridge const* bridge,
+            std::vector<Attribute> const& attributes)
             : name_{name}
+            , bridge_{bridge}
             , attributes_{attributes}
         {}
-        constexpr HtmlElement(char const* name, std::vector<Attribute>&& attributes)
+        constexpr HtmlElement(char const* name, HtmlElementBridge const* bridge, std::vector<Attribute>&& attributes)
             : name_{name}
+            , bridge_{bridge}
             , attributes_{std::move(attributes)}
         {}
         template <typename... T>
-        constexpr HtmlElement(char const* name, T&&... attributes)
+        constexpr HtmlElement(char const* name, HtmlElementBridge const* bridge, T&&... attributes)
             : name_{name}
+            , bridge_{bridge}
             , attributes_{std::forward<T>(attributes)...}
         {}
 
         HtmlElement clone() const
         {
-            return {name_, attributes_};
+            return {name_, bridge_, attributes_};
         }
 
       private:
@@ -488,30 +495,14 @@ namespace Nui
             return name_;
         }
 
+        inline HtmlElementBridge const* bridge() const
+        {
+            return bridge_;
+        }
+
       private:
         char const* name_;
+        HtmlElementBridge const* bridge_;
         std::vector<Attribute> attributes_;
     };
 }
-
-#define NUI_DECLARE_HTML_ELEMENT_RENAME(NAME, HTML_ACTUAL) \
-    namespace Nui::Elements \
-    { \
-        struct NAME : HtmlElement \
-        { \
-            constexpr NAME(NAME const&) = default; \
-            constexpr NAME(NAME&&) = default; \
-            constexpr NAME(std::vector<Attribute> const& attributes) \
-                : HtmlElement{HTML_ACTUAL, attributes} \
-            {} \
-            constexpr NAME(std::vector<Attribute>&& attributes) \
-                : HtmlElement{HTML_ACTUAL, std::move(attributes)} \
-            {} \
-            template <typename... T> \
-            constexpr NAME(T&&... attributes) \
-                : HtmlElement{HTML_ACTUAL, std::forward<T>(attributes)...} \
-            {} \
-        }; \
-    }
-
-#define NUI_DECLARE_HTML_ELEMENT(NAME) NUI_DECLARE_HTML_ELEMENT_RENAME(NAME, #NAME)

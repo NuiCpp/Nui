@@ -1,6 +1,6 @@
 #pragma once
 
-#include <nui/frontend/elements/impl/html_element.hpp>
+#include <nui/frontend/elements/impl/html_element_incl.hpp>
 
 #include <tuple>
 
@@ -14,8 +14,8 @@ namespace Nui::Elements
     template <typename... ParametersT>
     constexpr auto fragment(ParametersT&&... params)
     {
-        return [generator = HtmlElement{"fragmenterror"}(std::forward<ParametersT>(params)...)](
-                   auto& parentElement, Renderer const&) {
+        return [generator = HtmlElement{"fragmenterror", &RegularHtmlElementBridge}(
+                    std::forward<ParametersT>(params)...)](auto& parentElement, Renderer const&) {
             return generator(parentElement, Renderer{.type = RendererType::Inplace});
         };
     }
