@@ -33,6 +33,7 @@ target_link_libraries(nui-tests PRIVATE
 )
 gtest_discover_tests(nui-tests)
 
+
 # If msys2, copy dynamic libraries to executable directory, visual studio does this automatically.
 # And there is no need on linux.
 if (DEFINED ENV{MSYSTEM})

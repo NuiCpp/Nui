@@ -83,7 +83,6 @@
 #include <nui/frontend/elements/sub.hpp>
 #include <nui/frontend/elements/summary.hpp>
 #include <nui/frontend/elements/sup.hpp>
-#include <nui/frontend/elements/svg.hpp>
 #include <nui/frontend/elements/switch.hpp>
 #include <nui/frontend/elements/table.hpp>
 #include <nui/frontend/elements/tbody.hpp>
