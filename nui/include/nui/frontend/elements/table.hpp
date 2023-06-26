@@ -1,6 +1,6 @@
 #pragma once
 
-#include <nui/frontend/elements/impl/html_element.hpp>
+#include <nui/frontend/elements/impl/html_element_incl.hpp>
 #include <nui/frontend/elements/caption.hpp>
 #include <nui/frontend/elements/col.hpp>
 #include <nui/frontend/elements/colgroup.hpp>

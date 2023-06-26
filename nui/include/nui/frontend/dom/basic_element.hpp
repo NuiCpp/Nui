@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cctype>
 #include <memory>
+#include <string>
+#include <optional>
 
 namespace Nui::Dom
 {
@@ -54,6 +56,12 @@ namespace Nui::Dom
                 return std::tolower(c);
             });
             return tag;
+        }
+        std::optional<std::string> namespaceUri() const
+        {
+            if (!element_.isUndefined() && element_.hasOwnProperty("namespaceURI"))
+                return element_["namespaceURI"].as<std::string>();
+            return std::nullopt;
         }
 
       protected:

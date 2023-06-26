@@ -67,7 +67,7 @@ namespace Nui::Dom
       protected:
         static ChildlessElement createElement(HtmlElement const& element)
         {
-            return {Nui::val::global("document").call<Nui::val>("createElement", Nui::val{element.name()})};
+            return element.bridge()->createElement(element);
         }
     };
 };

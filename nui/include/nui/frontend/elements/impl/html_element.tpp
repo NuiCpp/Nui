@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nui/frontend/elements/impl/html_element.hpp>
+#include <nui/frontend/elements/impl/html_element_bridges.hpp>
 #include <nui/frontend/dom/element.hpp>
 
 namespace Nui
@@ -34,3 +35,25 @@ namespace Nui
         return renderElement(gen, parentElement, htmlElement_);
     }
 }
+
+#define NUI_DECLARE_HTML_ELEMENT_RENAME(NAME, HTML_ACTUAL) \
+    namespace Nui::Elements \
+    { \
+        struct NAME : HtmlElement \
+        { \
+            constexpr NAME(NAME const&) = default; \
+            constexpr NAME(NAME&&) = default; \
+            constexpr NAME(std::vector<Attribute> const& attributes) \
+                : HtmlElement{HTML_ACTUAL, &RegularHtmlElementBridge, attributes} \
+            {} \
+            constexpr NAME(std::vector<Attribute>&& attributes) \
+                : HtmlElement{HTML_ACTUAL, &RegularHtmlElementBridge, std::move(attributes)} \
+            {} \
+            template <typename... T> \
+            constexpr NAME(T&&... attributes) \
+                : HtmlElement{HTML_ACTUAL, &RegularHtmlElementBridge, std::forward<T>(attributes)...} \
+            {} \
+        }; \
+    }
+
+#define NUI_DECLARE_HTML_ELEMENT(NAME) NUI_DECLARE_HTML_ELEMENT_RENAME(NAME, #NAME)
