@@ -2,6 +2,7 @@
 
 #include <nui/frontend/attributes.hpp>
 #include <nui/frontend/components.hpp>
+#include <nui/frontend/svg.hpp>
 #include <nui/frontend/dom.hpp>
 #include <nui/frontend/elements.hpp>
 #include <nui/frontend/element_renderer.hpp>
