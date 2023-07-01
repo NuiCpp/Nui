@@ -11,36 +11,35 @@ namespace Nui
     concept Fundamental = Numerical<T> || std::same_as<T, bool>;
 
     template <typename T>
-    concept Incrementable = requires(T t)
-    {
+    concept Incrementable = requires(T t) {
         ++t;
         t++;
     };
 
     template <typename T>
-    concept Decrementable = requires(T t)
-    {
+    concept Decrementable = requires(T t) {
         --t;
         t--;
     };
 
     template <typename T, typename U>
-    concept PlusAssignable = requires(T t, U u)
-    {
-        t += u;
-    };
+    concept PlusAssignable = requires(T t, U u) { t += u; };
 
     template <typename T, typename U>
-    concept MinusAssignable = requires(T t, U u)
-    {
-        t += u;
-    };
+    concept MinusAssignable = requires(T t, U u) { t += u; };
 
     template <typename T, typename U>
-    concept InvocableReturns = requires(T func)
-    {
+    concept InvocableReturns = requires(T func) {
         {
             func()
-            } -> std::same_as<U>;
+        } -> std::same_as<U>;
+    };
+
+    template <typename T>
+    concept Range = requires(T t) {
+        t.begin();
+        t.end();
+        t.cbegin();
+        t.cend();
     };
 }
