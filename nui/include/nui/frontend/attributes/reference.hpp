@@ -15,6 +15,15 @@ namespace Nui::Attributes
             }};
         }
 
+        template <typename T>
+        requires std::invocable<T, Nui::val&&>
+        Attribute onMaterialize(T&& func) const
+        {
+            return operator=([&func](std::weak_ptr<Dom::BasicElement>&& element) {
+                func(element.lock()->val());
+            });
+        }
+
         Attribute operator=(std::weak_ptr<Dom::BasicElement>& ref) const
         {
             return operator=([&ref](std::weak_ptr<Dom::BasicElement>&& element) {
