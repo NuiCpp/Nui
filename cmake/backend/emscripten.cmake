@@ -110,10 +110,6 @@ function(nui_add_emscripten_target)
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-prejs ALL
         DEPENDS ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_PREJS}
     )
-    add_custom_target(
-        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel-dep 
-        DEPENDS "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html"
-    )
     add_dependencies(
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-prejs
@@ -121,9 +117,9 @@ function(nui_add_emscripten_target)
     )
     add_dependencies(
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}
-        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel-dep
         emscripten-setup
     )
+    set_property(TARGET ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} PROPERTY OBJECT_DEPENDS "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html")
 
     if (${TARGET_TYPE} STREQUAL "INTERFACE_LIBRARY")
         target_include_directories(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} INTERFACE ${CMAKE_BINARY_DIR}/include)
