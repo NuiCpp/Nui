@@ -202,6 +202,10 @@ namespace Nui
             Accepted, // Accepted, update can be deferred.
             Retry // Must update immediately and reissue this.
         };
+        void performFullRangeUpdate()
+        {
+            fullRangeUpdate_ = true;
+        }
         InsertResult insertModificationRange(long elementCount, long low, long high, RangeStateType type)
         {
             if (disableOptimizations_)
