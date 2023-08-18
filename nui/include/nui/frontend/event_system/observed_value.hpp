@@ -711,6 +711,30 @@ namespace Nui
             rangeContext_.reset(0, true);
             update();
         }
+        template <typename U = ContainerT>
+        Detail::PickFirst_t<
+            std::pair<typename ContainerT::iterator, bool>,
+            decltype(std::declval<U>().insert(std::declval<const value_type&>()))>
+        insert(const value_type& value)
+        {
+            const auto result = contained_.insert(value);
+            rangeContext_.performFullRangeUpdate();
+            update();
+            globalEventContext.executeActiveEventsImmediately();
+            return result;
+        }
+        template <typename U = ContainerT>
+        Detail::PickFirst_t<
+            std::pair<typename ContainerT::iterator, bool>,
+            decltype(std::declval<U>().insert(std::declval<value_type&&>()))>
+        insert(value_type&& value)
+        {
+            const auto result = contained_.insert(std::move(value));
+            rangeContext_.performFullRangeUpdate();
+            update();
+            globalEventContext.executeActiveEventsImmediately();
+            return result;
+        }
         iterator insert(iterator pos, const value_type& value)
         {
             return insert(pos.getWrapped(), value);
@@ -805,12 +829,16 @@ namespace Nui
             insertRangeChecked(distance, distance + std::distance(first, last), RangeStateType::Erase);
             return iterator{this, it};
         }
-        void push_back(const value_type& value)
+        template <typename U = ContainerT>
+        Detail::PickFirst_t<void, decltype(std::declval<U>().push_back(std::declval<const value_type&>()))>
+        push_back(const value_type& value)
         {
             contained_.push_back(value);
             insertRangeChecked(size() - 1, size() - 1, RangeStateType::Insert);
         }
-        void push_back(value_type&& value)
+        template <typename U = ContainerT>
+        Detail::PickFirst_t<void, decltype(std::declval<U>().push_back(std::declval<value_type>()))>
+        push_back(value_type&& value)
         {
             contained_.push_back(std::move(value));
             insertRangeChecked(size() - 1, size() - 1, RangeStateType::Insert);
