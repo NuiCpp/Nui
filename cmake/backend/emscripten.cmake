@@ -89,8 +89,6 @@ function(nui_add_emscripten_target)
         # emscripten cmake with passed down Release/Debug build type
         CONFIGURE_COMMAND 
             ${EMCMAKE} cmake 
-                -DCMAKE_CXX_STANDARD=23 
-                -DCMAKE_EXPORT_COMPILE_COMMANDS=1 
                 ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS} 
                 "${SOURCE_DIR}"
         # copy over package.json and fill parcel options that do not exist on it
