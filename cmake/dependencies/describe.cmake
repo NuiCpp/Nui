@@ -1,5 +1,3 @@
-project(boost_describe-git NONE)
-
 include(FetchContent)
 FetchContent_Declare(
     boost_describe 

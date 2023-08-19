@@ -1,5 +1,3 @@
-project(mplex-git NONE)
-
 include(FetchContent)
 FetchContent_Declare(
     mplex

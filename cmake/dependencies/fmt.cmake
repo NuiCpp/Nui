@@ -1,5 +1,3 @@
-project(fmt-git NONE)
-
 include(FetchContent)
 FetchContent_Declare(
     fmt

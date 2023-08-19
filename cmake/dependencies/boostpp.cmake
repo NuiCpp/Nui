@@ -1,5 +1,3 @@
-project(boost_preprocessor-git NONE)
-
 include(FetchContent)
 FetchContent_Declare(
     boost_preprocessor

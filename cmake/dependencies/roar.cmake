@@ -1,5 +1,3 @@
-project(roar-git NONE)
-
 include(FetchContent)
 FetchContent_Declare(
 	roar

@@ -1,5 +1,3 @@
-project(portable_file_dialogs-git NONE)
-
 # TODO: fork not necessary i think
 include(FetchContent)
 FetchContent_Declare(
