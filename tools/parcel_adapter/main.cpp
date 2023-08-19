@@ -24,6 +24,11 @@ void disablePolyfillIfNotSet(nlohmann::json& alias, std::string_view aliasName)
         alias[aliasName] = false;
 }
 
+void addNuiAlias(nlohmann::json& alias)
+{
+    alias["nui"] = "./nui-js";
+}
+
 void createPackageJsonIfMissing(std::filesystem::path const& where, std::string const& targetName)
 {
     using nlohmann::json;
@@ -87,6 +92,8 @@ int main(int argc, char** argv)
 
     if (!package.contains("alias"))
         package["alias"] = json::object();
+
+    addNuiAlias(package["alias"]);
 
     disablePolyfillIfNotSet(package["alias"], "assert");
     disablePolyfillIfNotSet(package["alias"], "fs");

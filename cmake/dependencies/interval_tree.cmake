@@ -1,5 +1,3 @@
-project(interval-tree-git NONE)
-
 include(FetchContent)
 FetchContent_Declare(
     interval-tree

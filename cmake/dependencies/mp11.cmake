@@ -1,5 +1,3 @@
-project(boost_mp11-git NONE)
-
 include(FetchContent)
 FetchContent_Declare(
     boost_mp11

@@ -249,6 +249,13 @@ namespace Nui
         impl_->view.navigate(url);
     }
     //---------------------------------------------------------------------------------------------------------------------
+    void Window::navigate(const std::filesystem::path& file)
+    {
+        using namespace std::string_literals;
+        std::scoped_lock lock{impl_->viewGuard};
+        impl_->view.navigate("file://"s + file.string());
+    }
+    //---------------------------------------------------------------------------------------------------------------------
     void Window::run()
     {
 #ifdef _WIN32

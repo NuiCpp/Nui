@@ -9,7 +9,7 @@ function(nui_prepare_emscripten_target)
 
     if (NOT NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_STATIC)
         get_target_property(NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_SOURCE_DIR ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET} SOURCE_DIR)
-        set(NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_STATIC ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_SOURCE_DIR}/static)
+        set(NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_STATIC "${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_SOURCE_DIR}/static")
     endif()
 
     nui_set_target_output_directories(${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET})
@@ -22,11 +22,12 @@ function(nui_prepare_emscripten_target)
 
     add_custom_target(
         ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel 
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_STATIC} ${CMAKE_BINARY_DIR}/static
-        COMMAND ${CMAKE_BINARY_DIR}/node_modules/.bin/parcel build --dist-dir ${CMAKE_BINARY_DIR}/bin ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PARCEL_ARGS}
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        BYPRODUCTS ${CMAKE_BINARY_DIR}/bin/index.html
-        DEPENDS ${CMAKE_BINARY_DIR}/bin/index.js
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../../nui/js" "${CMAKE_BINARY_DIR}/nui-js"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_STATIC} "${CMAKE_BINARY_DIR}/static"
+        COMMAND "${CMAKE_BINARY_DIR}/node_modules/.bin/parcel" build --dist-dir "${CMAKE_BINARY_DIR}/bin" ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PARCEL_ARGS}
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+        BYPRODUCTS "${CMAKE_BINARY_DIR}/bin/index.html"
+        DEPENDS "${CMAKE_BINARY_DIR}/bin/index.js"
     )
 
     if (NOT NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_UNPACKED_MODE)
@@ -37,7 +38,7 @@ function(nui_prepare_emscripten_target)
         set(SINGLE_FILE_STRING "")
         add_custom_target(
             ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-copy-wasm
-            COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/bin/index.wasm ${CMAKE_BINARY_DIR}/../bin/index.wasm
+            COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/bin/index.wasm" "${CMAKE_BINARY_DIR}/../bin/index.wasm"
         )
         add_dependencies(${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-copy-wasm)
     else()

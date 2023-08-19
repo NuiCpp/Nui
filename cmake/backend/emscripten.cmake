@@ -31,7 +31,7 @@ else()
             "${CMAKE_BINARY_DIR}/_deps/emscripten-src/java/bin/java.exe"
             # not setting node, because global installed node might be preferred
             # "${CMAKE_BINARY_DIR}/_deps/emscripten-src/node/bin/node.exe"
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/_deps/emscripten-src
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/emscripten-src"
     )
 endif()
 add_custom_target(
@@ -92,13 +92,13 @@ function(nui_add_emscripten_target)
                 -DCMAKE_CXX_STANDARD=23 
                 -DCMAKE_EXPORT_COMPILE_COMMANDS=1 
                 ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS} 
-                ${SOURCE_DIR}
+                "${SOURCE_DIR}"
         # copy over package.json and fill parcel options that do not exist on it
-        BUILD_COMMAND $<TARGET_FILE:parcel-adapter> ${SOURCE_DIR}/package.json ${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/package.json "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
+        BUILD_COMMAND $<TARGET_FILE:parcel-adapter> "${SOURCE_DIR}/package.json" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/package.json" "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
         # emscripten make
         COMMAND cmake --build "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}" --target ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
         # convert result to header file containing the page
-        COMMAND $<TARGET_FILE:bin2hpp> ${ENABLE_BIN2HPP} ${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html ${CMAKE_BINARY_DIR}/include/index.hpp index
+        COMMAND $<TARGET_FILE:bin2hpp> ${ENABLE_BIN2HPP} "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html" "${CMAKE_BINARY_DIR}/include/index.hpp" index
         BINARY_DIR "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
         BUILD_ALWAYS 1
         BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html"
@@ -110,6 +110,10 @@ function(nui_add_emscripten_target)
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-prejs ALL
         DEPENDS ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_PREJS}
     )
+    add_custom_target(
+        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel-dep 
+        DEPENDS ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
+    )
     add_dependencies(
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-prejs
@@ -117,13 +121,13 @@ function(nui_add_emscripten_target)
     )
     add_dependencies(
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}
+        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel-dep
         emscripten-setup
     )
-    set_property(TARGET ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} PROPERTY OBJECT_DEPENDS "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html")
 
     if (${TARGET_TYPE} STREQUAL "INTERFACE_LIBRARY")
-        target_include_directories(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} INTERFACE ${CMAKE_BINARY_DIR}/include)
+        target_include_directories(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} INTERFACE "${CMAKE_BINARY_DIR}/include")
     else()
-        target_include_directories(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} PRIVATE ${CMAKE_BINARY_DIR}/include)
+        target_include_directories(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} PRIVATE "${CMAKE_BINARY_DIR}/include")
     endif()
 endfunction()

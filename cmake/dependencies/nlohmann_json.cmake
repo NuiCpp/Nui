@@ -1,5 +1,3 @@
-project(nlohmann_json-git NONE)
-
 include(FetchContent)
 FetchContent_Declare(
     nlohmann_json

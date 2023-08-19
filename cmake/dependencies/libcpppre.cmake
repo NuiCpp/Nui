@@ -1,5 +1,3 @@
-project(libcpppre-git NONE)
-
 include(FetchContent)
 FetchContent_Declare(
     libcpppre
