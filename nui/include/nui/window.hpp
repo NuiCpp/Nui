@@ -101,6 +101,15 @@ namespace Nui
          */
         void navigate(const std::string& url);
 
+#ifdef NUI_BACKEND
+        /**
+         * @brief Navigate to file.
+         *
+         * @param file path to an html file.
+         */
+        void navigate(const std::filesystem::path& file);
+#endif
+
         /**
          * @brief Close the window and exit run.
          */
