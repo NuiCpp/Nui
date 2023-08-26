@@ -61,7 +61,7 @@ namespace Nui
 #endif
 
         Implementation(bool debug)
-            : view{debug}
+            : view{debug, nullptr, nullptr}
             , cleanupFiles{}
             , callbacks{}
             , pool{4}
