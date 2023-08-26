@@ -7,6 +7,7 @@
 #endif
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <functional>
 #include <filesystem>
@@ -29,36 +30,61 @@ namespace Nui
         DenyCors
     };
 
+    struct WindowOptions
+    {
+        /// The title of the window.
+        std::optional<std::string> title = std::nullopt;
+
+        /// May open the dev tools?
+        bool debug = false;
+
+        /// WINDOWS ONLY
+        std::optional<std::string> browserArguments = std::nullopt;
+    };
+
     /**
      * @brief This class encapsulates the webview.
      */
     class Window
     {
       public:
+        /**
+         * @brief Construct a new Window object.
+         */
         Window();
 
         /**
          * @brief Construct a new Window object.
          *
-         * @param debug If true, the dev tools may be opened.
+         * @param options Additional options.
          */
-        explicit Window(bool debug);
+        explicit Window(WindowOptions const& options = {});
+
+        /**
+         * @brief Construct a new Window object.
+         *
+         * @param debug If true, the dev tools may be opened.
+         * @param options Additional options.
+         */
+        [[deprecated]] explicit Window(bool debug);
 
         /**
          * @brief Construct a new Window object.
          *
          * @param title The title of the window.
          * @param debug If true, the dev tools may be opened.
+         * @param options Additional options.
          */
-        explicit Window(std::string const& title, bool debug = false);
+        [[deprecated]] explicit Window(std::string const& title, bool debug = false);
 
         /**
          * @brief Construct a new Window object.
          *
          * @param title The title of the window.
          * @param debug If true, the dev tools may be opened.
+         * @param options Additional options.
          */
-        explicit Window(char const* title, bool debug = false);
+        [[deprecated]] explicit Window(char const* title, bool debug = false);
         ~Window();
         Window(const Window&) = delete;
         Window& operator=(const Window&) = delete;

@@ -14,9 +14,11 @@
 #include <boost/asio/thread_pool.hpp>
 #include <boost/asio/post.hpp>
 #include <roar/mime_type.hpp>
+#include <roar/utility/scope_exit.hpp>
 
 #if __linux__
 #    include <gtk/gtk.h>
+#elif defined(_WIN32)
 #endif
 
 #include <random>
@@ -60,8 +62,15 @@ namespace Nui
         std::vector<std::function<void()>> toProcessOnWindowThread;
 #endif
 
-        Implementation(bool debug)
-            : view{debug, nullptr, nullptr}
+        Implementation(WindowOptions const& options)
+            : view{[&options]() -> webview::webview {
+#if __linux__
+                return {options.debug, nullptr, nullptr};
+#elif defined(_WIN32)
+                // TODO: ICoreWebView2EnvironmentOptions
+                return {options.debug, nullptr, nullptr};
+#endif
+            }()}
             , cleanupFiles{}
             , callbacks{}
             , pool{4}
@@ -154,17 +163,24 @@ namespace Nui
 {
     // #####################################################################################################################
     Window::Window()
-        : Window{false}
+        : Window{WindowOptions{}}
     {}
     //---------------------------------------------------------------------------------------------------------------------
     Window::Window(std::string const& title, bool debug)
-        : Window{debug}
-    {
-        setTitle(title);
-    }
+        : Window{WindowOptions{
+              .title = title,
+              .debug = debug,
+          }}
+    {}
     //---------------------------------------------------------------------------------------------------------------------
     Window::Window(bool debug)
-        : impl_{std::make_unique<Implementation>(debug)}
+        : Window{WindowOptions{
+              .debug = debug,
+          }}
+    {}
+    //---------------------------------------------------------------------------------------------------------------------
+    Window::Window(WindowOptions const& options)
+        : impl_{std::make_unique<Implementation>(options)}
     {
         impl_->view.install_message_hook([this](std::string const& msg) {
             std::scoped_lock lock{impl_->viewGuard};
@@ -173,6 +189,9 @@ namespace Nui
             return false;
         });
         // TODO: SetCustomSchemeRegistrations
+
+        if (options.title)
+            setTitle(*options.title);
 
 #if __linux__
         auto nativeWebView = WEBKIT_WEB_VIEW(getNativeWebView());
@@ -184,7 +203,10 @@ namespace Nui
     }
     //---------------------------------------------------------------------------------------------------------------------
     Window::Window(char const* title, bool debug)
-        : Window{std::string{title}, debug}
+        : Window{WindowOptions{
+              .title = std::string{title},
+              .debug = debug,
+          }}
     {}
     //---------------------------------------------------------------------------------------------------------------------
     Window::~Window()
@@ -420,6 +442,9 @@ namespace Nui
 
         if (wv23 == nullptr)
             throw std::runtime_error("Could not get interface to set mapping.");
+        auto releaseInterface = Roar::ScopeExit{[wv23] {
+            wv23->Release();
+        }};
 
         COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND nativeAccessKind;
         switch (accessKind)
