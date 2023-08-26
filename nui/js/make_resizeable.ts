@@ -32,6 +32,8 @@ const makeResizeable = (element: HTMLElement, borderSize: number, edge?: "right"
     element.addEventListener("mousedown", (e: MouseEvent) => {
         if (!(e.target instanceof Element))
             return;
+        if (e.target !== element)
+            return;
 
         const w = parseInt(getComputedStyle(e.target as Element, '').width);
         const h = parseInt(getComputedStyle(e.target as Element, '').height);
