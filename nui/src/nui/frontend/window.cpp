@@ -7,24 +7,28 @@ namespace Nui
     // #####################################################################################################################
     struct Window::Implementation
     {
-        Implementation(bool)
+        Implementation()
         {}
     };
     // #####################################################################################################################
     Window::Window()
-        : Window{false}
+        : Window{WindowOptions{}}
     {}
     //---------------------------------------------------------------------------------------------------------------------
-    Window::Window(std::string const&, bool debug)
-        : Window{debug}
+    Window::Window(WindowOptions const&)
+        : impl_{std::make_unique<Implementation>()}
     {}
     //---------------------------------------------------------------------------------------------------------------------
-    Window::Window(bool debug)
-        : impl_{std::make_unique<Implementation>(debug)}
+    Window::Window(std::string const&, bool)
+        : Window{WindowOptions{}}
     {}
     //---------------------------------------------------------------------------------------------------------------------
-    Window::Window(char const*, bool debug)
-        : Window{debug}
+    Window::Window(bool)
+        : Window{WindowOptions{}}
+    {}
+    //---------------------------------------------------------------------------------------------------------------------
+    Window::Window(char const*, bool)
+        : Window{WindowOptions{}}
     {}
     //---------------------------------------------------------------------------------------------------------------------
     Window::~Window() = default;
