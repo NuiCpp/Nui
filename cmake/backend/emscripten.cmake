@@ -1,15 +1,7 @@
 project(emscripten-git NONE)
 
 include(ExternalProject)
-include(FetchContent)
-
-FetchContent_Declare(
-    emscripten
-    GIT_REPOSITORY https://github.com/emscripten-core/emsdk.git
-    GIT_TAG        17f6a2ef92f198f3c9ff30d07664e4090a0ecaf7
-)
-
-FetchContent_MakeAvailable(emscripten)
+include("${CMAKE_CURRENT_LIST_DIR}/../dependencies/emscripten.cmake")
 
 if(UNIX)
     add_custom_command(
