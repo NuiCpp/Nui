@@ -17,7 +17,7 @@ if (NUI_FETCH_WEBVIEW)
         GIT_REPOSITORY ${NUI_WEBVIEW_REPOSITORY}
         GIT_TAG        ${NUI_WEBVIEW_TAG}
     )
-    FetchContent_MakeAvailable(webview_raw)
+    FetchContent_Populate(webview_raw)
     add_library(webview INTERFACE)
 
     add_custom_target(
