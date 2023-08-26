@@ -58,7 +58,7 @@ namespace Nui
          *
          * @param options Additional options.
          */
-        explicit Window(WindowOptions const& options = {});
+        explicit Window(WindowOptions const& options);
 
         /**
          * @brief Construct a new Window object.
