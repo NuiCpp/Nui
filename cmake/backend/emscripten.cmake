@@ -1,7 +1,6 @@
 project(emscripten-git NONE)
 
 include(ExternalProject)
-include("${CMAKE_CURRENT_LIST_DIR}/../dependencies/emscripten.cmake")
 
 if(UNIX)
     add_custom_command(
