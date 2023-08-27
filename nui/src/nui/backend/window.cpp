@@ -66,6 +66,7 @@ namespace Nui
     // #####################################################################################################################
     struct Window::SchemeContext
     {
+#ifdef __linux__
         std::size_t id;
         Window::Implementation* impl;
 
@@ -79,6 +80,7 @@ namespace Nui
             g_object_unref(stream);
             soup_message_headers_free(headers);
         }
+#endif
     };
     // #####################################################################################################################
     struct Window::Implementation

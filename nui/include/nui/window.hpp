@@ -221,9 +221,9 @@ namespace Nui
          * @brief [LINUX ONLY] Enable/Disable console output from view in the console.
          */
         void setConsoleOutput(bool active);
-#endif
 
         struct SchemeContext;
+#endif
 
       private:
         struct Implementation;
