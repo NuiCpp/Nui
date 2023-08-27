@@ -4,13 +4,13 @@ set(NUI_BINARYEN_URL "https://github.com/WebAssembly/binaryen/releases/download/
 if (NUI_FETCH_BINARYEN)
     include(FetchContent)
     FetchContent_Declare(
-        binaryen
+        binaryen_release
         URL ${NUI_BINARYEN_URL}
         DOWNLOAD_EXTRACT_TIMESTAMP true
     )
-    FetchContent_GetProperties(binaryen)
-    if (binaryen_POPULATED)
+    FetchContent_GetProperties(binaryen_release)
+    if (binaryen_release_POPULATED)
     else()
-        FetchContent_Populate(binaryen)
+        FetchContent_Populate(binaryen_release)
     endif()
 endif()
