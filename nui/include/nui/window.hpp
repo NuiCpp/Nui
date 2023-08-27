@@ -4,13 +4,13 @@
 #ifdef NUI_BACKEND
 #    include <nlohmann/json.hpp>
 #    include <boost/asio/any_io_executor.hpp>
+#    include <filesystem>
 #endif
 
 #include <memory>
 #include <optional>
 #include <string>
 #include <functional>
-#include <filesystem>
 
 namespace Nui
 {
