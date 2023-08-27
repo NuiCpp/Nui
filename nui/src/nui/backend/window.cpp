@@ -5,6 +5,7 @@
 #include <nui/utility/scope_exit.hpp>
 #include <nui/utility/widen.hpp>
 #include <nui/utility/scope_exit.hpp>
+#include <nui/data_structures/selectables_registry.hpp>
 #include <nui/screen.hpp>
 
 #include <webview.h>
@@ -14,9 +15,12 @@
 #include <boost/asio/thread_pool.hpp>
 #include <boost/asio/post.hpp>
 #include <roar/mime_type.hpp>
+#include <roar/utility/scope_exit.hpp>
 
 #if __linux__
 #    include <gtk/gtk.h>
+#    include <libsoup/soup.h>
+#elif defined(_WIN32)
 #endif
 
 #include <random>
@@ -28,6 +32,7 @@
 #include <string>
 #include <mutex>
 #include <functional>
+#include <list>
 
 #if __linux__
 struct HostNameMappingInfo
@@ -43,6 +48,40 @@ constexpr static auto wakeUpMessage = WM_APP + 1;
 
 namespace Nui
 {
+    namespace
+    {
+        static std::string loadFile(std::filesystem::path const& file)
+        {
+            std::ifstream reader{file, std::ios::binary};
+            if (!reader)
+                throw std::runtime_error("Could not open file: " + file.string());
+            reader.seekg(0, std::ios::end);
+            std::string content(static_cast<std::size_t>(reader.tellg()), '\0');
+            reader.seekg(0, std::ios::beg);
+            reader.read(content.data(), static_cast<std::streamsize>(content.size()));
+            return content;
+        }
+    }
+
+    // #####################################################################################################################
+    struct Window::SchemeContext
+    {
+#ifdef __linux__
+        std::size_t id;
+        Window::Implementation* impl;
+
+        std::string mime;
+        GInputStream* stream;
+        SoupMessageHeaders* headers;
+        WebKitURISchemeResponse* response;
+
+        ~SchemeContext()
+        {
+            g_object_unref(stream);
+            soup_message_headers_free(headers);
+        }
+#endif
+    };
     // #####################################################################################################################
     struct Window::Implementation
     {
@@ -55,19 +94,34 @@ namespace Nui
         int height;
 #if __linux__
         HostNameMappingInfo hostNameMappingInfo;
+        std::recursive_mutex schemeResponseRegistryGuard;
+        SelectablesRegistry<std::unique_ptr<Window::SchemeContext>> schemeResponseRegistry;
+        std::list<std::string> schemes{};
 #elif defined(_WIN32)
         DWORD windowThreadId;
         std::vector<std::function<void()>> toProcessOnWindowThread;
 #endif
 
-        Implementation(bool debug)
-            : view{debug}
+        Implementation(WindowOptions const& options)
+            : view{[&options]() -> webview::webview {
+#if __linux__
+                return {options.debug, nullptr, nullptr};
+#elif defined(_WIN32)
+                // TODO: ICoreWebView2EnvironmentOptions
+                return {options.debug, nullptr, nullptr};
+#endif
+            }()}
             , cleanupFiles{}
             , callbacks{}
             , pool{4}
             , viewGuard{}
+            , width{0}
+            , height{0}
 #if __linux__
             , hostNameMappingInfo{}
+            , schemeResponseRegistryGuard{}
+            , schemeResponseRegistry{}
+            , schemes{}
 #elif defined(_WIN32)
             , windowThreadId{GetCurrentThreadId()}
             , toProcessOnWindowThread{}
@@ -92,17 +146,15 @@ std::size_t strlenLimited(char const* str, std::size_t limit)
 }
 
 extern "C" {
-    // TODO: This function can be improved.
     void uriSchemeRequestCallback(WebKitURISchemeRequest* request, gpointer userData)
     {
-        auto* hostNameMappingInfo = static_cast<HostNameMappingInfo*>(userData);
+        auto* schemeContext = static_cast<Nui::Window::SchemeContext*>(userData);
 
         const auto path = std::string_view{webkit_uri_scheme_request_get_path(request)};
         const auto uri = std::string_view{webkit_uri_scheme_request_get_uri(request)};
         const auto scheme = std::string_view{webkit_uri_scheme_request_get_scheme(request)};
 
         auto exitError = Nui::ScopeExit{[&] {
-            // FIXME: 0, 0: this should be correct error categories.
             auto* error =
                 g_error_new(WEBKIT_DOWNLOAD_ERROR_DESTINATION, 1, "Invalid custom scheme / Host name mapping.");
             auto freeError = Nui::ScopeExit{[error] {
@@ -112,8 +164,8 @@ extern "C" {
         }};
 
         auto hostName = std::string{uri.data() + scheme.size() + 3, uri.size() - scheme.size() - 3 - path.size()};
-        auto it = hostNameMappingInfo->hostNameToFolderMapping.find(hostName);
-        if (it == hostNameMappingInfo->hostNameToFolderMapping.end())
+        auto it = schemeContext->impl->hostNameMappingInfo.hostNameToFolderMapping.find(hostName);
+        if (it == schemeContext->impl->hostNameMappingInfo.hostNameToFolderMapping.end())
         {
             std::cerr << "Host name mapping not found: " << hostName << "\n";
             return;
@@ -135,18 +187,30 @@ extern "C" {
         }
 
         exitError.disarm();
-        GInputStream* stream =
+        schemeContext->stream =
             g_memory_input_stream_new_from_data(fileContent.c_str(), static_cast<gssize>(fileContent.size()), nullptr);
-        auto freeStream = Nui::ScopeExit{[stream] {
-            g_object_unref(stream);
-        }};
         const auto maybeMime = Roar::extensionToMime(filePath.extension().string());
-        std::string mime = maybeMime ? *maybeMime : "application/octet-stream";
-        webkit_uri_scheme_request_finish(request, stream, static_cast<gint64>(fileContent.size()), mime.c_str());
+        schemeContext->mime = maybeMime ? *maybeMime : "application/octet-stream";
+
+        schemeContext->response =
+            webkit_uri_scheme_response_new(schemeContext->stream, static_cast<gint64>(fileContent.size()));
+        webkit_uri_scheme_response_set_content_type(schemeContext->response, schemeContext->mime.c_str());
+        webkit_uri_scheme_response_set_status(schemeContext->response, fileContent.size() > 0 ? 200 : 204, nullptr);
+
+        schemeContext->headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
+        soup_message_headers_append(schemeContext->headers, "Access-Control-Allow-Origin", "*");
+
+        webkit_uri_scheme_response_set_http_headers(schemeContext->response, schemeContext->headers);
+        webkit_uri_scheme_request_finish_with_response(request, schemeContext->response);
     }
 
-    void uriSchemeDestroyNotify(void*)
-    {}
+    void uriSchemeDestroyNotify(void* data)
+    {
+        auto* schemeContext = static_cast<Nui::Window::SchemeContext*>(data);
+
+        std::lock_guard lock{schemeContext->impl->schemeResponseRegistryGuard};
+        schemeContext->impl->schemeResponseRegistry.erase(schemeContext->id);
+    }
 }
 #endif
 
@@ -154,17 +218,24 @@ namespace Nui
 {
     // #####################################################################################################################
     Window::Window()
-        : Window{false}
+        : Window{WindowOptions{}}
     {}
     //---------------------------------------------------------------------------------------------------------------------
     Window::Window(std::string const& title, bool debug)
-        : Window{debug}
-    {
-        setTitle(title);
-    }
+        : Window{WindowOptions{
+              .title = title,
+              .debug = debug,
+          }}
+    {}
     //---------------------------------------------------------------------------------------------------------------------
     Window::Window(bool debug)
-        : impl_{std::make_unique<Implementation>(debug)}
+        : Window{WindowOptions{
+              .debug = debug,
+          }}
+    {}
+    //---------------------------------------------------------------------------------------------------------------------
+    Window::Window(WindowOptions const& options)
+        : impl_{std::make_unique<Implementation>(options)}
     {
         impl_->view.install_message_hook([this](std::string const& msg) {
             std::scoped_lock lock{impl_->viewGuard};
@@ -174,17 +245,40 @@ namespace Nui
         });
         // TODO: SetCustomSchemeRegistrations
 
-#if __linux__
-        auto nativeWebView = WEBKIT_WEB_VIEW(getNativeWebView());
+        if (options.title)
+            setTitle(*options.title);
 
+#if __linux__
+        std::lock_guard schemeResponseRegistryLock{impl_->schemeResponseRegistryGuard};
+        const auto id = impl_->schemeResponseRegistry.emplace(std::make_unique<SchemeContext>());
+        auto& entry = impl_->schemeResponseRegistry[id];
+        entry.item.value()->id = id;
+        entry.item.value()->impl = impl_.get();
+
+        impl_->schemes.push_back(options.localScheme);
+
+        auto nativeWebView = WEBKIT_WEB_VIEW(getNativeWebView());
         auto* webContext = webkit_web_view_get_context(nativeWebView);
         webkit_web_context_register_uri_scheme(
-            webContext, "assets", &uriSchemeRequestCallback, &impl_->hostNameMappingInfo, &uriSchemeDestroyNotify);
+            webContext,
+            impl_->schemes.back().c_str(),
+            &uriSchemeRequestCallback,
+            entry.item->get(),
+            &uriSchemeDestroyNotify);
+
+        auto* dataManager = webkit_web_context_get_website_data_manager(webContext);
+        auto* settings = webkit_memory_pressure_settings_new();
+        webkit_memory_pressure_settings_set_memory_limit(settings, 8192);
+        webkit_website_data_manager_set_memory_pressure_settings(settings);
+        webkit_memory_pressure_settings_free(settings);
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------
     Window::Window(char const* title, bool debug)
-        : Window{std::string{title}, debug}
+        : Window{WindowOptions{
+              .title = std::string{title},
+              .debug = debug,
+          }}
     {}
     //---------------------------------------------------------------------------------------------------------------------
     Window::~Window()
@@ -211,36 +305,39 @@ namespace Nui
         impl_->view.set_size(width, height, static_cast<int>(hint));
     }
     //---------------------------------------------------------------------------------------------------------------------
-    void Window::setHtml(std::string_view html)
+    void Window::setHtml(std::string_view html, bool fromFilesystem)
     {
         std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
         // https://github.com/MicrosoftEdge/WebView2Feedback/issues/1355
         // :((((
-
-        using namespace std::string_literals;
-        constexpr static auto fileNameSize = 25;
-        std::string_view alphanum =
-            "0123456789"
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            "abcdefghijklmnopqrstuvwxyz";
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<std::size_t> dis(0, alphanum.size() - 1);
-        std::string fileName(fileNameSize, '\0');
-        for (std::size_t i = 0; i < fileNameSize; ++i)
-            fileName[i] = alphanum[dis(gen)];
-        const auto tempFile = resolvePath("%temp%/"s + fileName + ".html");
-        {
-            std::ofstream temporary{tempFile, std::ios_base::binary};
-            temporary.write(html.data(), static_cast<std::streamsize>(html.size()));
-        }
-
-        impl_->view.navigate("file://"s + tempFile.string());
-        impl_->cleanupFiles.push_back(tempFile);
-#else
-        impl_->view.set_html(std::string{html});
+        fromFilesystem = true;
 #endif
+        if (fromFilesystem)
+        {
+            using namespace std::string_literals;
+            constexpr static auto fileNameSize = 25;
+            std::string_view alphanum =
+                "0123456789"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                "abcdefghijklmnopqrstuvwxyz";
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_int_distribution<std::size_t> dis(0, alphanum.size() - 1);
+            std::string fileName(fileNameSize, '\0');
+            for (std::size_t i = 0; i < fileNameSize; ++i)
+                fileName[i] = alphanum[dis(gen)];
+            const auto tempFile = resolvePath("%temp%/"s + fileName + ".html");
+            {
+                std::ofstream temporary{tempFile, std::ios_base::binary};
+                temporary.write(html.data(), static_cast<std::streamsize>(html.size()));
+            }
+
+            impl_->view.navigate("file://"s + tempFile.string());
+            impl_->cleanupFiles.push_back(tempFile);
+        }
+        else
+            impl_->view.set_html(std::string{html});
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::navigate(const std::string& url)
@@ -364,13 +461,33 @@ namespace Nui
         bindImpl();
 #endif
     }
+    //--------------------------------------------------------------------------------------------------------------------
+    void Window::eval(std::filesystem::path const& file)
+    {
+        std::scoped_lock lock{impl_->viewGuard};
+        impl_->view.eval(loadFile(file));
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void Window::init(std::string const& js)
+    {
+        std::scoped_lock lock{impl_->viewGuard};
+        impl_->view.init(js);
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void Window::init(std::filesystem::path const& file)
+    {
+        std::scoped_lock lock{impl_->viewGuard};
+        impl_->view.init(loadFile(file));
+    }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::eval(std::string const& js)
     {
         std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
         if (GetCurrentThreadId() == impl_->windowThreadId)
+        {
             impl_->view.eval(js);
+        }
         else
         {
             impl_->toProcessOnWindowThread.push_back([this, js]() {
@@ -420,6 +537,9 @@ namespace Nui
 
         if (wv23 == nullptr)
             throw std::runtime_error("Could not get interface to set mapping.");
+        auto releaseInterface = Roar::ScopeExit{[wv23] {
+            wv23->Release();
+        }};
 
         COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND nativeAccessKind;
         switch (accessKind)

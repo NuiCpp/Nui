@@ -4,12 +4,13 @@
 #ifdef NUI_BACKEND
 #    include <nlohmann/json.hpp>
 #    include <boost/asio/any_io_executor.hpp>
+#    include <filesystem>
 #endif
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <functional>
-#include <filesystem>
 
 namespace Nui
 {
@@ -29,36 +30,64 @@ namespace Nui
         DenyCors
     };
 
+    struct WindowOptions
+    {
+        /// The title of the window.
+        std::optional<std::string> title = std::nullopt;
+
+        /// May open the dev tools?
+        bool debug = false;
+
+        /// WINDOWS ONLY
+        // currently unimplemented: std::optional<std::string> browserArguments = std::nullopt;
+
+        /// WEBKIT ONLY
+        std::string localScheme = "assets";
+    };
+
     /**
      * @brief This class encapsulates the webview.
      */
     class Window
     {
       public:
+        /**
+         * @brief Construct a new Window object.
+         */
         Window();
 
         /**
          * @brief Construct a new Window object.
          *
-         * @param debug If true, the dev tools may be opened.
+         * @param options Additional options.
          */
-        explicit Window(bool debug);
+        explicit Window(WindowOptions const& options);
+
+        /**
+         * @brief Construct a new Window object.
+         *
+         * @param debug If true, the dev tools may be opened.
+         * @param options Additional options.
+         */
+        [[deprecated]] explicit Window(bool debug);
 
         /**
          * @brief Construct a new Window object.
          *
          * @param title The title of the window.
          * @param debug If true, the dev tools may be opened.
+         * @param options Additional options.
          */
-        explicit Window(std::string const& title, bool debug = false);
+        [[deprecated]] explicit Window(std::string const& title, bool debug = false);
 
         /**
          * @brief Construct a new Window object.
          *
          * @param title The title of the window.
          * @param debug If true, the dev tools may be opened.
+         * @param options Additional options.
          */
-        explicit Window(char const* title, bool debug = false);
+        [[deprecated]] explicit Window(char const* title, bool debug = false);
         ~Window();
         Window(const Window&) = delete;
         Window& operator=(const Window&) = delete;
@@ -151,8 +180,9 @@ namespace Nui
          * @brief Set page html from a string.
          *
          * @param html Page html.
+         * @param fromFilesystem If true, the html is loaded from the filesystem instead of from memory.
          */
-        void setHtml(std::string_view html);
+        void setHtml(std::string_view html, bool fromFilesystem = false);
 
         /**
          * @brief Run javascript in the window.
@@ -160,6 +190,25 @@ namespace Nui
          * @param js
          */
         void eval(std::string const& js);
+
+        /**
+         * @brief Run javascript in the window.
+         * @param file path to a javascript file.
+         */
+        void eval(std::filesystem::path const& file);
+
+        /**
+         * @brief Place javascript in the window.
+         *
+         * @param js
+         */
+        void init(std::string const& js);
+
+        /**
+         * @brief Place javascript in the window.
+         * @param file path to a javascript file.
+         */
+        void init(std::filesystem::path const& file);
 
         /**
          * @brief Get a pointer to the underlying webview (ICoreWebView2* on windows and WEBKIT_WEB_VIEW on linux.
@@ -172,6 +221,8 @@ namespace Nui
          * @brief [LINUX ONLY] Enable/Disable console output from view in the console.
          */
         void setConsoleOutput(bool active);
+
+        struct SchemeContext;
 #endif
 
       private:
