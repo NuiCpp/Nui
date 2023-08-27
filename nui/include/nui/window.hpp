@@ -40,6 +40,9 @@ namespace Nui
 
         /// WINDOWS ONLY
         std::optional<std::string> browserArguments = std::nullopt;
+
+        /// WEBKIT ONLY
+        std::string localScheme = "assets";
     };
 
     /**
@@ -177,8 +180,9 @@ namespace Nui
          * @brief Set page html from a string.
          *
          * @param html Page html.
+         * @param fromFilesystem If true, the html is loaded from the filesystem instead of from memory.
          */
-        void setHtml(std::string_view html);
+        void setHtml(std::string_view html, bool fromFilesystem = false);
 
         /**
          * @brief Run javascript in the window.
@@ -186,6 +190,25 @@ namespace Nui
          * @param js
          */
         void eval(std::string const& js);
+
+        /**
+         * @brief Run javascript in the window.
+         * @param file path to a javascript file.
+         */
+        void eval(std::filesystem::path const& file);
+
+        /**
+         * @brief Place javascript in the window.
+         *
+         * @param js
+         */
+        void init(std::string const& js);
+
+        /**
+         * @brief Place javascript in the window.
+         * @param file path to a javascript file.
+         */
+        void init(std::filesystem::path const& file);
 
         /**
          * @brief Get a pointer to the underlying webview (ICoreWebView2* on windows and WEBKIT_WEB_VIEW on linux.

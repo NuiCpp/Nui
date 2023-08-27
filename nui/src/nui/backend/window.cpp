@@ -45,6 +45,21 @@ constexpr static auto wakeUpMessage = WM_APP + 1;
 
 namespace Nui
 {
+    namespace
+    {
+        static std::string loadFile(std::filesystem::path const& file)
+        {
+            std::ifstream reader{file, std::ios::binary};
+            if (!reader)
+                throw std::runtime_error("Could not open file: " + file.string());
+            reader.seekg(0, std::ios::end);
+            std::string content(static_cast<std::size_t>(reader.tellg()), '\0');
+            reader.seekg(0, std::ios::beg);
+            reader.read(content.data(), static_cast<std::streamsize>(content.size()));
+            return content;
+        }
+    }
+
     // #####################################################################################################################
     struct Window::Implementation
     {
@@ -198,7 +213,11 @@ namespace Nui
 
         auto* webContext = webkit_web_view_get_context(nativeWebView);
         webkit_web_context_register_uri_scheme(
-            webContext, "assets", &uriSchemeRequestCallback, &impl_->hostNameMappingInfo, &uriSchemeDestroyNotify);
+            webContext,
+            options.localScheme.c_str(),
+            &uriSchemeRequestCallback,
+            &impl_->hostNameMappingInfo,
+            &uriSchemeDestroyNotify);
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------
@@ -233,36 +252,39 @@ namespace Nui
         impl_->view.set_size(width, height, static_cast<int>(hint));
     }
     //---------------------------------------------------------------------------------------------------------------------
-    void Window::setHtml(std::string_view html)
+    void Window::setHtml(std::string_view html, bool fromFilesystem)
     {
         std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
         // https://github.com/MicrosoftEdge/WebView2Feedback/issues/1355
         // :((((
-
-        using namespace std::string_literals;
-        constexpr static auto fileNameSize = 25;
-        std::string_view alphanum =
-            "0123456789"
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            "abcdefghijklmnopqrstuvwxyz";
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<std::size_t> dis(0, alphanum.size() - 1);
-        std::string fileName(fileNameSize, '\0');
-        for (std::size_t i = 0; i < fileNameSize; ++i)
-            fileName[i] = alphanum[dis(gen)];
-        const auto tempFile = resolvePath("%temp%/"s + fileName + ".html");
-        {
-            std::ofstream temporary{tempFile, std::ios_base::binary};
-            temporary.write(html.data(), static_cast<std::streamsize>(html.size()));
-        }
-
-        impl_->view.navigate("file://"s + tempFile.string());
-        impl_->cleanupFiles.push_back(tempFile);
-#else
-        impl_->view.set_html(std::string{html});
+        fromFilesystem = true;
 #endif
+        if (fromFilesystem)
+        {
+            using namespace std::string_literals;
+            constexpr static auto fileNameSize = 25;
+            std::string_view alphanum =
+                "0123456789"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                "abcdefghijklmnopqrstuvwxyz";
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_int_distribution<std::size_t> dis(0, alphanum.size() - 1);
+            std::string fileName(fileNameSize, '\0');
+            for (std::size_t i = 0; i < fileNameSize; ++i)
+                fileName[i] = alphanum[dis(gen)];
+            const auto tempFile = resolvePath("%temp%/"s + fileName + ".html");
+            {
+                std::ofstream temporary{tempFile, std::ios_base::binary};
+                temporary.write(html.data(), static_cast<std::streamsize>(html.size()));
+            }
+
+            impl_->view.navigate("file://"s + tempFile.string());
+            impl_->cleanupFiles.push_back(tempFile);
+        }
+        else
+            impl_->view.set_html(std::string{html});
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::navigate(const std::string& url)
@@ -386,13 +408,33 @@ namespace Nui
         bindImpl();
 #endif
     }
+    //--------------------------------------------------------------------------------------------------------------------
+    void Window::eval(std::filesystem::path const& file)
+    {
+        std::scoped_lock lock{impl_->viewGuard};
+        impl_->view.eval(loadFile(file));
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void Window::init(std::string const& js)
+    {
+        std::scoped_lock lock{impl_->viewGuard};
+        impl_->view.init(js);
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void Window::init(std::filesystem::path const& file)
+    {
+        std::scoped_lock lock{impl_->viewGuard};
+        impl_->view.init(loadFile(file));
+    }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::eval(std::string const& js)
     {
         std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
         if (GetCurrentThreadId() == impl_->windowThreadId)
+        {
             impl_->view.eval(js);
+        }
         else
         {
             impl_->toProcessOnWindowThread.push_back([this, js]() {
