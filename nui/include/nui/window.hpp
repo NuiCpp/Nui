@@ -39,7 +39,7 @@ namespace Nui
         bool debug = false;
 
         /// WINDOWS ONLY
-        std::optional<std::string> browserArguments = std::nullopt;
+        // currently unimplemented: std::optional<std::string> browserArguments = std::nullopt;
 
         /// WEBKIT ONLY
         std::string localScheme = "assets";
@@ -222,6 +222,8 @@ namespace Nui
          */
         void setConsoleOutput(bool active);
 #endif
+
+        struct SchemeContext;
 
       private:
         struct Implementation;
