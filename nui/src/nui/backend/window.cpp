@@ -68,7 +68,7 @@ namespace Nui
     {
 #ifdef __linux__
         std::size_t id;
-        Window::Implementation* impl;
+        std::weak_ptr<Window::Implementation> impl;
 
         std::string mime;
         GInputStream* stream;
@@ -157,9 +157,13 @@ extern "C" {
             webkit_uri_scheme_request_finish_error(request, error);
         }};
 
+        auto impl = schemeContext->impl.lock();
+        if (!impl)
+            return;
+
         auto hostName = std::string{uri.data() + scheme.size() + 3, uri.size() - scheme.size() - 3 - path.size()};
-        auto it = schemeContext->impl->hostNameMappingInfo.hostNameToFolderMapping.find(hostName);
-        if (it == schemeContext->impl->hostNameMappingInfo.hostNameToFolderMapping.end())
+        auto it = impl->hostNameMappingInfo.hostNameToFolderMapping.find(hostName);
+        if (it == impl->hostNameMappingInfo.hostNameToFolderMapping.end())
         {
             std::cerr << "Host name mapping not found: " << hostName << "\n";
             return;
@@ -206,9 +210,12 @@ extern "C" {
     void uriSchemeDestroyNotify(void* data)
     {
         auto* schemeContext = static_cast<Nui::Window::SchemeContext*>(data);
+        auto impl = schemeContext->impl.lock();
+        if (!impl)
+            return;
 
-        std::lock_guard lock{schemeContext->impl->schemeResponseRegistryGuard};
-        schemeContext->impl->schemeResponseRegistry.erase(schemeContext->id);
+        std::lock_guard lock{impl->schemeResponseRegistryGuard};
+        impl->schemeResponseRegistry.erase(schemeContext->id);
     }
 }
 #endif
@@ -234,7 +241,7 @@ namespace Nui
     {}
     //---------------------------------------------------------------------------------------------------------------------
     Window::Window(WindowOptions const& options)
-        : impl_{std::make_unique<Implementation>(options)}
+        : impl_{std::make_shared<Implementation>(options)}
     {
         impl_->view.install_message_hook([this](std::string const& msg) {
             std::scoped_lock lock{impl_->viewGuard};
@@ -252,7 +259,7 @@ namespace Nui
         const auto id = impl_->schemeResponseRegistry.emplace(std::make_unique<SchemeContext>());
         auto& entry = impl_->schemeResponseRegistry[id];
         entry.item.value()->id = id;
-        entry.item.value()->impl = impl_.get();
+        entry.item.value()->impl = impl_;
 
         impl_->schemes.push_back(options.localScheme);
 
@@ -264,12 +271,6 @@ namespace Nui
             &uriSchemeRequestCallback,
             entry.item->get(),
             &uriSchemeDestroyNotify);
-
-        auto* dataManager = webkit_web_context_get_website_data_manager(webContext);
-        auto* settings = webkit_memory_pressure_settings_new();
-        webkit_memory_pressure_settings_set_memory_limit(settings, 8192);
-        webkit_website_data_manager_set_memory_pressure_settings(settings);
-        webkit_memory_pressure_settings_free(settings);
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------
