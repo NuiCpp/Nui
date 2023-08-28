@@ -227,6 +227,6 @@ namespace Nui
 
       private:
         struct Implementation;
-        std::unique_ptr<Implementation> impl_;
+        std::shared_ptr<Implementation> impl_;
     };
 }
