@@ -1,7 +1,5 @@
 project(emscripten-git NONE)
 
-include(ExternalProject)
-
 if(UNIX)
     add_custom_command(
         OUTPUT "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten"
@@ -74,6 +72,7 @@ function(nui_add_emscripten_target)
         set(ENABLE_BIN2HPP "yes")
     endif()
 
+    include(ExternalProject)
     ExternalProject_Add(
         "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten"
         SOURCE_DIR "${SOURCE_DIR}"
