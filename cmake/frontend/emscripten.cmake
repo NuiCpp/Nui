@@ -1,3 +1,5 @@
+set(NUI_EMSCRIPTEN_THIS_LIST_DIR ${CMAKE_CURRENT_LIST_DIR})
+
 function(nui_prepare_emscripten_target)
     cmake_parse_arguments(
         NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS
@@ -22,7 +24,7 @@ function(nui_prepare_emscripten_target)
 
     add_custom_target(
         ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel 
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../../nui/js" "${CMAKE_BINARY_DIR}/nui-js"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${NUI_EMSCRIPTEN_THIS_LIST_DIR}/../../nui/js" "${CMAKE_BINARY_DIR}/nui-js"
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_STATIC} "${CMAKE_BINARY_DIR}/static"
         COMMAND "${CMAKE_BINARY_DIR}/node_modules/.bin/parcel" build --dist-dir "${CMAKE_BINARY_DIR}/bin" ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PARCEL_ARGS}
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
