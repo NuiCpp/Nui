@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 
 project(nui VERSION 0.1.0)
 
+set(NUI_SOURCE_DIRECTORY ${CMAKE_CURRENT_LIST_DIR} CACHE INTERNAL "NUI source directory")
+
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/common.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/options.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/static_analyzers.cmake)
