@@ -74,12 +74,6 @@ namespace Nui
         GInputStream* stream;
         SoupMessageHeaders* headers;
         WebKitURISchemeResponse* response;
-
-        ~SchemeContext()
-        {
-            g_object_unref(stream);
-            soup_message_headers_free(headers);
-        }
 #endif
     };
     // #####################################################################################################################
@@ -187,8 +181,13 @@ extern "C" {
         }
 
         exitError.disarm();
+
         schemeContext->stream =
             g_memory_input_stream_new_from_data(fileContent.c_str(), static_cast<gssize>(fileContent.size()), nullptr);
+        auto deleteStream = Roar::ScopeExit{[schemeContext] {
+            g_object_unref(schemeContext->stream);
+        }};
+
         const auto maybeMime = Roar::extensionToMime(filePath.extension().string());
         schemeContext->mime = maybeMime ? *maybeMime : "application/octet-stream";
 
