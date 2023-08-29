@@ -220,13 +220,11 @@ namespace Nui
       private:
         void callRemoteImpl(std::string const& name, nlohmann::json const& json) const
         {
-            using namespace std::string_literals;
             // window is threadsafe.
             window_->eval(fmt::format(remoteCallScript, name, json.dump()));
         }
         void callRemoteImpl(std::string const& name) const
         {
-            using namespace std::string_literals;
             // window is threadsafe.
             window_->eval(fmt::format(remoteCallScript0Args, name));
         }
