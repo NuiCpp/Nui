@@ -99,9 +99,13 @@ namespace Nui
         template <typename T>
         void registerFunction(std::string const& name, T&& func) const
         {
-            using namespace std::string_literals;
             // window is threadsafe
             window_->bind(name, Detail::FunctionWrapper<T>::wrapFunction(std::forward<T>(func)));
+        }
+        void unregisterFunction(std::string const& name) const
+        {
+            // window is threadsafe
+            window_->unbind(name);
         }
 
         /**

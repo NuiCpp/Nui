@@ -24,6 +24,7 @@
 #endif
 
 #include <random>
+#include <unordered_map>
 #include <fstream>
 #include <filesystem>
 #include <iostream>
@@ -81,7 +82,7 @@ namespace Nui
     {
         webview::webview view;
         std::vector<std::filesystem::path> cleanupFiles;
-        std::vector<std::function<void(nlohmann::json const&)>> callbacks;
+        std::unordered_map<std::string, std::function<void(nlohmann::json const&)>> callbacks;
         boost::asio::thread_pool pool;
         std::recursive_mutex viewGuard;
         int width;
@@ -246,7 +247,7 @@ namespace Nui
         impl_->view.install_message_hook([this](std::string const& msg) {
             std::scoped_lock lock{impl_->viewGuard};
             const auto obj = nlohmann::json::parse(msg);
-            impl_->callbacks[obj["id"].get<std::size_t>()](obj["args"]);
+            impl_->callbacks[obj["id"].get<std::string>()](obj["args"]);
             return false;
         });
         // TODO: SetCustomSchemeRegistrations
@@ -421,14 +422,14 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::bind(std::string const& name, std::function<void(nlohmann::json const&)> const& callback)
     {
-        auto bindImpl = [this, name, callback]() {
+        runInJavascriptThread([this, name, callback]() {
             std::scoped_lock lock{impl_->viewGuard};
-            impl_->callbacks.push_back(callback);
+            impl_->callbacks[name] = callback;
             auto script = fmt::format(
                 R"(
                     (() => {{
                         const name = "{}";
-                        const id = {};
+                        const id = "{}";
                         globalThis.nui_rpc = (globalThis.nui_rpc || {{
                             frontend: {{}}, backend: {{}}, tempId: 0
                         }});
@@ -442,23 +443,45 @@ namespace Nui
                     }})();
                 )",
                 name,
-                impl_->callbacks.size() - 1);
+                name);
 
             impl_->view.init(script);
             impl_->view.eval(script);
-        };
+        });
+    }
+    //--------------------------------------------------------------------------------------------------------------------
+    void Window::unbind(std::string const& name)
+    {
+        runInJavascriptThread([this, &name]() {
+            std::scoped_lock lock{impl_->viewGuard};
+            auto script = fmt::format(
+                R"(
+                    (() => {{
+                        const name = "{}";
+                        delete globalThis.nui_rpc.backend[name];
+                    }})();
+                )",
+                name);
 
+            impl_->callbacks.erase(name);
+            impl_->view.init(script);
+            impl_->view.eval(script);
+        });
+    }
+    //--------------------------------------------------------------------------------------------------------------------
+    void Window::runInJavascriptThread(std::function<void()>&& func)
+    {
         std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
         if (GetCurrentThreadId() == impl_->windowThreadId)
-            bindImpl();
+            func();
         else
         {
-            impl_->toProcessOnWindowThread.push_back(bindImpl);
+            impl_->toProcessOnWindowThread.push_back(std::move(func));
             PostThreadMessage(impl_->windowThreadId, wakeUpMessage, 0, 0);
         }
 #else
-        bindImpl();
+        func();
 #endif
     }
     //--------------------------------------------------------------------------------------------------------------------

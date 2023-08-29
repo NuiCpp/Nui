@@ -157,6 +157,13 @@ namespace Nui
          */
         void bind(std::string const& name, std::function<void(nlohmann::json const&)> const& callback);
 
+        /**
+         * @brief Unbind a function from the web context.
+         *
+         * @param name The name of the function.
+         */
+        void unbind(std::string const& name);
+
         boost::asio::any_io_executor getExecutor() const;
 
         /**
@@ -224,6 +231,9 @@ namespace Nui
 
         struct SchemeContext;
 #endif
+
+      private:
+        void runInJavascriptThread(std::function<void()>&& func);
 
       private:
         struct Implementation;
