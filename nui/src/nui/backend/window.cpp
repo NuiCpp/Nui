@@ -210,13 +210,7 @@ extern "C" {
 
     void uriSchemeDestroyNotify(void* data)
     {
-        auto* schemeContext = static_cast<Nui::Window::SchemeContext*>(data);
-        auto impl = schemeContext->impl.lock();
-        if (!impl)
-            return;
-
-        std::lock_guard lock{impl->schemeResponseRegistryGuard};
-        impl->schemeResponseRegistry.erase(schemeContext->id);
+        // Happens when everything else is already dead.
     }
 }
 #endif
