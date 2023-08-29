@@ -156,18 +156,10 @@ namespace Nui
         return result;
     }
 
-    template <
-        typename T,
-        class Bases = boost::describe::describe_bases<T, boost::describe::mod_any_access>,
-        class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>,
-        class Enable = std::enable_if_t<!std::is_union<T>::value>>
-    void convertFromVal(Nui::val const& val, T& obj)
+    template <typename T, class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>>
+    requires(!std::is_union_v<T>)
+    void convertFromValObjImpl(Nui::val const& val, T& obj)
     {
-        boost::mp11::mp_for_each<Bases>([&](auto&& base) {
-            using type = typename std::decay_t<decltype(base)>::type;
-            convertFromVal(val, static_cast<type&>(obj));
-        });
-
         boost::mp11::mp_for_each<Members>([&](auto&& memAccessor) {
             if (val.hasOwnProperty(memAccessor.name))
             {
@@ -185,6 +177,28 @@ namespace Nui
             }
         });
     }
+
+    template <typename T, class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>>
+    requires(!std::is_union_v<T> && !boost::describe::has_describe_bases<T>::value)
+    void convertFromVal(Nui::val const& val, T& obj)
+    {
+        convertFromValObjImpl(val, obj);
+    }
+
+    template <
+        typename T,
+        class Bases = boost::describe::describe_bases<T, boost::describe::mod_any_access>,
+        class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>>
+    requires(!std::is_union_v<T> && boost::describe::has_describe_bases<T>::value)
+    void convertFromVal(Nui::val const& val, T& obj)
+    {
+        boost::mp11::mp_for_each<Bases>([&](auto&& base) {
+            using type = typename std::decay_t<decltype(base)>::type;
+            convertFromVal(val, static_cast<type&>(obj));
+        });
+        convertFromValObjImpl(val, obj);
+    }
+
     template <typename T>
     requires Fundamental<T>
     void convertFromVal(Nui::val const& val, T& value)
