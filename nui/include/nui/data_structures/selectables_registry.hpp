@@ -257,11 +257,19 @@ namespace Nui
             return result;
         }
 
-        std::optional<T>* select(IdType id)
+        struct SelectionResult
+        {
+            std::optional<T>* item;
+            bool found;
+            bool alreadySelected;
+        };
+        SelectionResult select(IdType id)
         {
             const auto iter = findItem(id);
-            if (iter == std::end(items_) || !iter->item.has_value())
-                return nullptr;
+            if (iter == std::end(items_))
+                return {nullptr, false, false};
+            if (!iter->item.has_value())
+                return {nullptr, true, true};
 
             --itemCount_;
 
@@ -269,7 +277,11 @@ namespace Nui
             iter->item.reset();
             // having modifying access to the optional<T> does not mess with the set ordering. const casting is fine
             // here.
-            return &(const_cast<ItemWithId&>(*selectedIter).item);
+            return {
+                .item = &(const_cast<ItemWithId&>(*selectedIter).item),
+                .found = true,
+                .alreadySelected = false,
+            };
         }
 
         void deselectAll(std::invocable<ItemWithId const&> auto callback)

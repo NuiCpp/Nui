@@ -208,7 +208,7 @@ extern "C" {
         webkit_uri_scheme_request_finish_with_response(request, schemeContext->response);
     }
 
-    void uriSchemeDestroyNotify(void* data)
+    void uriSchemeDestroyNotify(void*)
     {
         // Happens when everything else is already dead.
     }
