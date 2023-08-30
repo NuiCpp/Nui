@@ -16,8 +16,6 @@
 #include <deque>
 #include <string>
 
-#include <iostream>
-
 namespace Nui
 {
     class ObservedBase
@@ -88,7 +86,8 @@ namespace Nui
         {
             for (auto& event : attachedEvents_)
             {
-                if (globalEventContext.activateEvent(event) == nullptr)
+                auto activationResult = globalEventContext.activateEvent(event);
+                if (activationResult.found == false)
                     event = EventRegistry::invalidEventId;
             }
             for (auto& event : attachedOneshotEvents_)
