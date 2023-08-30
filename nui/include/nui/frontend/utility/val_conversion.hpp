@@ -56,8 +56,18 @@ namespace Nui
         throw std::runtime_error("Cannot convert long long to val");
     }
 
-    template <typename T, class Bases, class Members, class Enable>
+    template <typename T, class Members>
+    requires(!std::is_union_v<T>)
+    void convertFromValObjImpl(Nui::val const& val, T& obj);
+
+    template <typename T, class Bases, class Members>
+    requires(!std::is_union_v<T>)
     void convertFromVal(Nui::val const& val, T& obj);
+
+    template <typename T, class Members>
+    requires(!std::is_union_v<T> && !boost::describe::has_describe_bases<T>::value)
+    void convertFromVal(Nui::val const& val, T& obj);
+
     template <typename T>
     requires Fundamental<T>
     void convertFromVal(Nui::val const& val, T& value);
@@ -157,6 +167,27 @@ namespace Nui
     }
 
     template <typename T, class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>>
+    requires(!std::is_union_v<T> && !boost::describe::has_describe_bases<T>::value)
+    void convertFromVal(Nui::val const& val, T& obj)
+    {
+        convertFromValObjImpl<T, Members>(val, obj);
+    }
+
+    template <
+        typename T,
+        class Bases = boost::describe::describe_bases<T, boost::describe::mod_any_access>,
+        class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>>
+    requires(!std::is_union_v<T> && boost::describe::has_describe_bases<T>::value)
+    void convertFromVal(Nui::val const& val, T& obj)
+    {
+        boost::mp11::mp_for_each<Bases>([&](auto&& base) {
+            using type = typename std::decay_t<decltype(base)>::type;
+            convertFromVal(val, static_cast<type&>(obj));
+        });
+        convertFromValObjImpl<T, Members>(val, obj);
+    }
+
+    template <typename T, class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>>
     requires(!std::is_union_v<T>)
     void convertFromValObjImpl(Nui::val const& val, T& obj)
     {
@@ -176,27 +207,6 @@ namespace Nui
                     convertFromVal(val[memAccessor.name], obj.*memAccessor.pointer);
             }
         });
-    }
-
-    template <typename T, class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>>
-    requires(!std::is_union_v<T> && !boost::describe::has_describe_bases<T>::value)
-    void convertFromVal(Nui::val const& val, T& obj)
-    {
-        convertFromValObjImpl(val, obj);
-    }
-
-    template <
-        typename T,
-        class Bases = boost::describe::describe_bases<T, boost::describe::mod_any_access>,
-        class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>>
-    requires(!std::is_union_v<T> && boost::describe::has_describe_bases<T>::value)
-    void convertFromVal(Nui::val const& val, T& obj)
-    {
-        boost::mp11::mp_for_each<Bases>([&](auto&& base) {
-            using type = typename std::decay_t<decltype(base)>::type;
-            convertFromVal(val, static_cast<type&>(obj));
-        });
-        convertFromValObjImpl(val, obj);
     }
 
     template <typename T>
