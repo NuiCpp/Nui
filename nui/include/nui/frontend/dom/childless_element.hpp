@@ -29,6 +29,10 @@ namespace Nui::Dom
             else
                 element_.call<Nui::val>("setAttribute", Nui::val{std::string{key}}, Nui::val{value});
         }
+        void setAttribute(std::string_view key, std::string_view value)
+        {
+            setAttribute(key, std::string{value});
+        }
         void setAttribute(std::string_view key, std::invocable<Nui::val> auto&& value)
         {
             element_.set(Nui::val{std::string{key}}, Nui::bind(value, std::placeholders::_1));

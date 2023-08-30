@@ -13,6 +13,7 @@ namespace Nui
     class EventRegistry
     {
       public:
+        using RegistryType = SelectablesRegistry<Event>;
         using EventIdType = SelectablesRegistry<Event>::IdType;
         constexpr static EventIdType invalidEventId = std::numeric_limits<EventIdType>::max();
 
@@ -36,7 +37,7 @@ namespace Nui
          * @param id
          * @return auto*
          */
-        auto* activateEvent(EventIdType id)
+        RegistryType::SelectionResult activateEvent(EventIdType id)
         {
             return registry_.select(id);
         }
@@ -70,7 +71,7 @@ namespace Nui
         }
 
       private:
-        SelectablesRegistry<Event> registry_;
-        SelectablesRegistry<Event> afterEffects_;
+        RegistryType registry_;
+        RegistryType afterEffects_;
     };
 }
