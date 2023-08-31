@@ -551,6 +551,7 @@ namespace Nui
         ~ObservedContainer() = default;
 
         constexpr auto map(auto&& function) const;
+        constexpr auto map(auto&& function);
 
         template <typename T = ContainerT>
         ObservedContainer& operator=(T&& t)
@@ -1045,6 +1046,14 @@ namespace Nui
     {
         return std::pair<ObservedRange<Observed<ContainerT>>, std::decay_t<decltype(function)>>{
             ObservedRange<Observed<ContainerT>>{static_cast<Observed<ContainerT> const&>(*this)},
+            std::forward<std::decay_t<decltype(function)>>(function),
+        };
+    }
+    template <typename ContainerT>
+    constexpr auto ObservedContainer<ContainerT>::map(auto&& function)
+    {
+        return std::pair<ObservedRange<Observed<ContainerT>>, std::decay_t<decltype(function)>>{
+            ObservedRange<Observed<ContainerT>>{static_cast<Observed<ContainerT>&>(*this)},
             std::forward<std::decay_t<decltype(function)>>(function),
         };
     }
