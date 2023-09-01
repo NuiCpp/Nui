@@ -269,7 +269,7 @@ namespace Nui
                         {
                             parent->clearChildren();
                             long counter = 0;
-                            for (auto const& element : observedValue.value())
+                            for (auto& element : observedValue.value())
                                 ElementRenderer(counter++, element)(*parent, Renderer{.type = RendererType::Append});
                             return;
                         }
@@ -341,9 +341,9 @@ namespace Nui
         // Children functions:
         template <typename... ElementT>
         requires requires(ElementT&&... elements) {
-            std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
-                std::forward<ElementT>(elements)...};
-        }
+                     std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
+                         std::forward<ElementT>(elements)...};
+                 }
         constexpr auto operator()(ElementT&&... elements) &&
         {
             return std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>{

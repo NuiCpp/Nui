@@ -17,6 +17,9 @@
 #include <filesystem>
 #include <utility>
 #include <unordered_map>
+#include <memory>
+#include <map>
+#include <variant>
 
 namespace Nui
 {
@@ -51,10 +54,22 @@ namespace Nui
     Nui::val convertToVal(Observed<T> const& observed);
     template <typename T>
     Nui::val convertToVal(std::unordered_map<std::string, T> const& map);
+    template <typename T>
+    Nui::val convertToVal(std::map<std::string, T> const& map);
+    template <typename T>
+    Nui::val convertToVal(std::unique_ptr<T> const& map);
+    template <typename T>
+    Nui::val convertToVal(std::shared_ptr<T> const& map);
     inline Nui::val convertToVal(long long)
     {
         throw std::runtime_error("Cannot convert long long to val");
     }
+    inline Nui::val convertToVal(std::monostate)
+    {
+        return Nui::val::undefined();
+    }
+    template <typename... Ts>
+    Nui::val convertToVal(std::variant<Ts...> const& variant);
 
     template <typename T, class Members>
     requires(!std::is_union_v<T>)
@@ -164,6 +179,39 @@ namespace Nui
         for (auto const& [key, value] : map)
             result.set(key, convertToVal(value));
         return result;
+    }
+    template <typename T>
+    Nui::val convertToVal(std::map<std::string, T> const& map)
+    {
+        Nui::val result = Nui::val::object();
+        for (auto const& [key, value] : map)
+            result.set(key, convertToVal(value));
+        return result;
+    }
+    template <typename T>
+    Nui::val convertToVal(std::unique_ptr<T> const& ptr)
+    {
+        if (ptr)
+            return convertToVal(*ptr);
+        else
+            return Nui::val::null();
+    }
+    template <typename T>
+    Nui::val convertToVal(std::shared_ptr<T> const& ptr)
+    {
+        if (ptr)
+            return convertToVal(*ptr);
+        else
+            return Nui::val::null();
+    }
+    template <typename... Ts>
+    Nui::val convertToVal(std::variant<Ts...> const& variant)
+    {
+        return std::visit(
+            [](auto&& value) {
+                return convertToVal(value);
+            },
+            variant);
     }
 
     template <typename T, class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>>

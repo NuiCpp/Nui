@@ -6,7 +6,7 @@ namespace Nui
     class ObservedRange
     {
       public:
-        constexpr ObservedRange(ObservedValue const& observedValues)
+        constexpr ObservedRange(ObservedValue& observedValues)
             : observedValue_{observedValues}
         {}
 
@@ -14,14 +14,25 @@ namespace Nui
         {
             return observedValue_;
         }
+        ObservedValue& observedValue()
+        requires(!std::is_const_v<ObservedValue>)
+        {
+            return observedValue_;
+        }
 
       private:
-        ObservedValue const& observedValue_;
+        ObservedValue& observedValue_;
     };
 
     template <typename ObservedValue>
-    ObservedRange<ObservedValue> range(ObservedValue const& observedValues)
+    ObservedRange<ObservedValue> range(ObservedValue& observedValues)
     {
         return ObservedRange<ObservedValue>{observedValues};
+    }
+
+    template <typename ObservedValue>
+    ObservedRange<const ObservedValue> range(ObservedValue const& observedValues)
+    {
+        return ObservedRange<const ObservedValue>{observedValues};
     }
 }
