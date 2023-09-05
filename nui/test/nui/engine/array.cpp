@@ -2,6 +2,8 @@
 #include "global_object.hpp"
 
 #include <stdexcept>
+#include <algorithm>
+#include <iostream>
 
 namespace Nui::Tests::Engine
 {
@@ -76,8 +78,8 @@ namespace Nui::Tests::Engine
                 values_.begin(),
                 values_.end(),
                 [](auto const& ref) {
-                    return allValues[*ref].type() == Value::Type::Undefined ||
-                        allValues[*ref].type() == Value::Type::Null;
+                    return allValues[ref->uid()].type() == Value::Type::Undefined ||
+                        allValues[ref->uid()].type() == Value::Type::Null;
                 }),
             values_.end());
         updateArrayObject();
@@ -98,12 +100,12 @@ namespace Nui::Tests::Engine
         std::cout << "[\n";
         auto begin = values_.begin();
         printIndent(indent + 1);
-        allValues[**begin].print(indent + 1, referenceStack);
+        allValues[(*begin)->uid()].print(indent + 1, referenceStack);
         for (auto it = ++begin; it != values_.end(); ++it)
         {
             std::cout << ",\n";
             printIndent(indent + 1);
-            allValues[**it].print(indent + 1, referenceStack);
+            allValues[(*it)->uid()].print(indent + 1, referenceStack);
         }
         printIndent(indent);
         std::cout << "\n]";

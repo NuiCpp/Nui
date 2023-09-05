@@ -41,16 +41,16 @@ namespace Nui
     { \
         struct NAME : HtmlElement \
         { \
-            constexpr NAME(NAME const&) = default; \
-            constexpr NAME(NAME&&) = default; \
-            constexpr NAME(std::vector<Attribute> const& attributes) \
+            HTML_ELEMENT_CONSTEXPR NAME(NAME const&) = default; \
+            HTML_ELEMENT_CONSTEXPR NAME(NAME&&) = default; \
+            HTML_ELEMENT_CONSTEXPR NAME(std::vector<Attribute> const& attributes) \
                 : HtmlElement{HTML_ACTUAL, &RegularHtmlElementBridge, attributes} \
             {} \
-            constexpr NAME(std::vector<Attribute>&& attributes) \
+            HTML_ELEMENT_CONSTEXPR NAME(std::vector<Attribute>&& attributes) \
                 : HtmlElement{HTML_ACTUAL, &RegularHtmlElementBridge, std::move(attributes)} \
             {} \
             template <typename... T> \
-            constexpr NAME(T&&... attributes) \
+            HTML_ELEMENT_CONSTEXPR NAME(T&&... attributes) \
                 : HtmlElement{HTML_ACTUAL, &RegularHtmlElementBridge, std::forward<T>(attributes)...} \
             {} \
         }; \

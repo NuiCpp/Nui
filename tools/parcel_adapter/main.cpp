@@ -73,7 +73,7 @@ int main(int argc, char** argv)
         return 1;
     }
     auto package = json::parse(readFile(ifs));
-    if (!package.contains("source"))
+    if (!package.contains("source") && !package.contains("targets"))
         package["source"] = "static/index.html";
 
     if (!package.contains("targets"))

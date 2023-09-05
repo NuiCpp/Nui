@@ -14,7 +14,7 @@ target_link_libraries(nui-frontend-mocked PUBLIC
     Boost::boost
 )
 target_compile_definitions(nui-frontend-mocked PRIVATE __EMSCRIPTEN__)
-target_compile_features(nui-frontend-mocked PUBLIC cxx_std_23)
+target_compile_features(nui-frontend-mocked PUBLIC cxx_std_20)
 set_target_properties(nui-frontend-mocked PROPERTIES CXX_STANDARD_REQUIRED ON)
 set_target_properties(nui-frontend-mocked PROPERTIES CXX_EXTENSIONS ON)
 
@@ -33,6 +33,10 @@ target_link_libraries(nui-tests PRIVATE
 )
 gtest_discover_tests(nui-tests)
 
+set_target_properties(nui-tests
+    PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests"
+)
 
 # If msys2, copy dynamic libraries to executable directory, visual studio does this automatically.
 # And there is no need on linux.
