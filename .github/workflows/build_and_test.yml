@@ -43,8 +43,8 @@ jobs:
         run: cmake --build ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}} --config ${{env.BUILD_TYPE}}
 
       - name: Test
-        working-directory: ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}}/nui
-        run: ctest
+        working-directory: ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}}
+        run: ./tests/nui-tests
 
   ubuntu20:
     runs-on: ubuntu-20.04
@@ -81,8 +81,8 @@ jobs:
         run: cmake --build ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}} --config ${{env.BUILD_TYPE}}
 
       - name: Test
-        working-directory: ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}}/nui
-        run: ctest
+        working-directory: ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}}
+        run: ./tests/nui-tests
 
   windows-msys2:
     runs-on: windows-2022
@@ -108,5 +108,5 @@ jobs:
         run: cmake --build ${{env.WSPACE}}/build/clang_${{env.BUILD_TYPE}} --config ${{env.BUILD_TYPE}}
 
       - name: Test
-        working-directory: ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}}/nui
-        run: ctest
+        working-directory: ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}}
+        run: ./tests/nui-tests.exe
