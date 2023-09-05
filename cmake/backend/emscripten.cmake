@@ -1,5 +1,3 @@
-project(emscripten-git NONE)
-
 if(UNIX)
     add_custom_command(
         OUTPUT "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten"
@@ -78,8 +76,8 @@ function(nui_add_emscripten_target)
         SOURCE_DIR "${SOURCE_DIR}"
         # emscripten cmake with passed down Release/Debug build type
         CONFIGURE_COMMAND 
-            ${EMCMAKE} cmake 
-                ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS} 
+            ${EMCMAKE} cmake
+                ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS}
                 "${SOURCE_DIR}"
         # copy over package.json and fill parcel options that do not exist on it
         BUILD_COMMAND $<TARGET_FILE:parcel-adapter> "${SOURCE_DIR}/package.json" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/package.json" "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
