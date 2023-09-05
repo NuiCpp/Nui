@@ -42,12 +42,9 @@ jobs:
       - name: Build
         run: cmake --build ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}} --config ${{env.BUILD_TYPE}}
 
-    # TODO:
-    #- name: Test
-    #  working-directory: ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}}
-    # Execute tests defined by the CMake configuration.
-    # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-    # run: ctest -C ${{env.BUILD_TYPE}}
+      - name: Test
+        working-directory: ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}}/tests
+        run: ctest -C ${{env.BUILD_TYPE}} --test-dir nui
 
   ubuntu20:
     runs-on: ubuntu-20.04
@@ -83,6 +80,10 @@ jobs:
       - name: Build
         run: cmake --build ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}} --config ${{env.BUILD_TYPE}}
 
+      - name: Test
+        working-directory: ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}}/tests
+        run: ctest -C ${{env.BUILD_TYPE}} --test-dir nui
+
   windows-msys2:
     runs-on: windows-2022
     defaults:
@@ -105,3 +106,7 @@ jobs:
 
       - name: Build
         run: cmake --build ${{env.WSPACE}}/build/clang_${{env.BUILD_TYPE}} --config ${{env.BUILD_TYPE}}
+
+      - name: Test
+        working-directory: ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}}/tests
+        run: ctest -C ${{env.BUILD_TYPE}} --test-dir nui

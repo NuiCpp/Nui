@@ -43,6 +43,7 @@ endif()
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/nui/src/nui)
 
 if (${NUI_ENABLE_TESTS})
+    enable_testing()
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/gtest.cmake)
     add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/nui/test/nui)
 endif()
