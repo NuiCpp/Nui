@@ -43,7 +43,7 @@ jobs:
         run: cmake --build ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}} --config ${{env.BUILD_TYPE}}
 
       - name: Test
-        working-directory: ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}}/tests
+        working-directory: ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}}
         run: ctest -C ${{env.BUILD_TYPE}} --test-dir nui
 
   ubuntu20:
@@ -81,7 +81,7 @@ jobs:
         run: cmake --build ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}} --config ${{env.BUILD_TYPE}}
 
       - name: Test
-        working-directory: ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}}/tests
+        working-directory: ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}}
         run: ctest -C ${{env.BUILD_TYPE}} --test-dir nui
 
   windows-msys2:
@@ -98,6 +98,10 @@ jobs:
           release: true
           install: mingw-w64-clang-x86_64-clang make unzip mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-boost mingw-w64-clang-x86_64-crypto++ libcurl mingw-w64-clang-x86_64-ninja mingw-w64-clang-x86_64-python
 
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
       - name: Workspace Path Fixup
         run: echo "WSPACE=$(cygpath '${{github.workspace}}')" >> $GITHUB_ENV
 
@@ -108,5 +112,5 @@ jobs:
         run: cmake --build ${{env.WSPACE}}/build/clang_${{env.BUILD_TYPE}} --config ${{env.BUILD_TYPE}}
 
       - name: Test
-        working-directory: ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}}/tests
+        working-directory: ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}}
         run: ctest -C ${{env.BUILD_TYPE}} --test-dir nui
