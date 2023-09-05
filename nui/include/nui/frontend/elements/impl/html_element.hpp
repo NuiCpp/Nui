@@ -132,43 +132,47 @@ namespace Nui
     };
     //----------------------------------------------------------------------------------------------
 
+#ifdef __cpp_lib_constexpr_vector
+#    define HTML_ELEMENT_CONSTEXPR constexpr
+#else
+#    define HTML_ELEMENT_CONSTEXPR
+#endif
+
     class HtmlElement
     {
       public:
         friend class DomElement;
 
-        constexpr HtmlElement(HtmlElement const&) = default;
-        constexpr HtmlElement(HtmlElement&&) = default;
+        HTML_ELEMENT_CONSTEXPR HtmlElement(HtmlElement const&) = default;
+        HTML_ELEMENT_CONSTEXPR HtmlElement(HtmlElement&&) = default;
         virtual ~HtmlElement() = default;
-        constexpr HtmlElement(
-            char const* name,
-            HtmlElementBridge const* bridge,
-            std::vector<Attribute> const& attributes)
+        HTML_ELEMENT_CONSTEXPR
+        HtmlElement(char const* name, HtmlElementBridge const* bridge, std::vector<Attribute> const& attributes)
             : name_{name}
             , bridge_{bridge}
             , attributes_{attributes}
         {}
-        constexpr HtmlElement(char const* name, HtmlElementBridge const* bridge, std::vector<Attribute>&& attributes)
+        HTML_ELEMENT_CONSTEXPR
+        HtmlElement(char const* name, HtmlElementBridge const* bridge, std::vector<Attribute>&& attributes)
             : name_{name}
             , bridge_{bridge}
             , attributes_{std::move(attributes)}
         {}
         template <typename... T>
-        constexpr HtmlElement(char const* name, HtmlElementBridge const* bridge, T&&... attributes)
+        HTML_ELEMENT_CONSTEXPR HtmlElement(char const* name, HtmlElementBridge const* bridge, T&&... attributes)
             : name_{name}
             , bridge_{bridge}
             , attributes_{std::forward<T>(attributes)...}
         {}
 
-        HtmlElement clone() const
+        HTML_ELEMENT_CONSTEXPR HtmlElement clone() const
         {
             return {name_, bridge_, attributes_};
         }
 
       private:
         template <typename... ObservedValues, std::invocable GeneratorT>
-        constexpr auto
-        reactiveRender(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& ElementRenderer) &&
+        auto reactiveRender(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& ElementRenderer) &&
         {
             return [self = this->clone(),
                     observedValues = std::move(observedValues),
@@ -238,7 +242,7 @@ namespace Nui
         }
 
         template <typename ObservedValue, typename GeneratorT>
-        constexpr auto rangeRender(ObservedRange<ObservedValue> observedRange, GeneratorT&& ElementRenderer) &&
+        auto rangeRender(ObservedRange<ObservedValue> observedRange, GeneratorT&& ElementRenderer) &&
         {
             return [self = this->clone(),
                     &observedValue = observedRange.observedValue(),
@@ -341,10 +345,10 @@ namespace Nui
         // Children functions:
         template <typename... ElementT>
         requires requires(ElementT&&... elements) {
-                     std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
-                         std::forward<ElementT>(elements)...};
-                 }
-        constexpr auto operator()(ElementT&&... elements) &&
+            std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
+                std::forward<ElementT>(elements)...};
+        }
+        auto operator()(ElementT&&... elements) &&
         {
             return std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>{
                 ChildrenRenderer<HtmlElement>{
@@ -387,7 +391,7 @@ namespace Nui
                 return materialized;
             };
         }
-        constexpr auto operator()(std::string_view view) &&
+        auto operator()(std::string_view view) &&
         {
             return [self = this->clone(), view](auto& parentElement, Renderer const& gen) {
                 auto materialized = renderElement(gen, parentElement, self);
@@ -395,7 +399,7 @@ namespace Nui
                 return materialized;
             };
         }
-        constexpr auto operator()(char const* text) &&
+        auto operator()(char const* text) &&
         {
             return [self = this->clone(), text](auto& parentElement, Renderer const& gen) {
                 auto materialized = renderElement(gen, parentElement, self);
@@ -405,7 +409,7 @@ namespace Nui
         }
         template <typename T>
         requires Fundamental<T>
-        constexpr auto operator()(T fundamental) &&
+        auto operator()(T fundamental) &&
         {
             return [self = this->clone(), fundamental](auto& parentElement, Renderer const& gen) {
                 auto materialized = renderElement(gen, parentElement, self);
@@ -417,7 +421,7 @@ namespace Nui
         // Generator functions:
         template <typename GeneratorT>
         requires InvocableReturns<GeneratorT, std::string>
-        constexpr auto operator()(GeneratorT&& textGenerator) &&
+        auto operator()(GeneratorT&& textGenerator) &&
         {
             return [self = this->clone(),
                     textGenerator = std::forward<GeneratorT>(textGenerator)](auto& parentElement, Renderer const& gen) {
@@ -428,7 +432,7 @@ namespace Nui
         }
         template <std::invocable GeneratorT>
         requires(!InvocableReturns<GeneratorT, std::string>)
-        constexpr auto operator()(GeneratorT&& ElementRenderer) &&
+        auto operator()(GeneratorT&& ElementRenderer) &&
         {
             return [self = this->clone(),
                     ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](auto& parentElement, Renderer const&) {
@@ -437,7 +441,7 @@ namespace Nui
         }
         template <typename T, std::invocable<T&, Renderer const&> GeneratorT>
         requires InvocableReturns<GeneratorT, std::string>
-        constexpr auto operator()(GeneratorT&& ElementRenderer) &&
+        auto operator()(GeneratorT&& ElementRenderer) &&
         {
             return [self = this->clone(),
                     ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](auto& parentElement, Renderer const&) {
@@ -447,24 +451,23 @@ namespace Nui
 
         // Reactive functions:
         template <typename... ObservedValues, std::invocable GeneratorT>
-        constexpr auto operator()(ObservedValueCombinatorWithGenerator<GeneratorT, ObservedValues...> combinator) &&
+        auto operator()(ObservedValueCombinatorWithGenerator<GeneratorT, ObservedValues...> combinator) &&
         {
             return std::move(*this).operator()(std::move(combinator).split(), std::move(combinator).generator());
         }
         template <typename... ObservedValues, std::invocable GeneratorT>
-        constexpr auto
-        operator()(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& ElementRenderer) &&
+        auto operator()(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& ElementRenderer) &&
         {
             return std::move(*this).reactiveRender(
                 std::move(observedValues), std::forward<GeneratorT>(ElementRenderer));
         }
         template <typename ObservedValue, typename GeneratorT>
-        constexpr auto operator()(ObservedRange<ObservedValue> observedRange, GeneratorT&& ElementRenderer) &&
+        auto operator()(ObservedRange<ObservedValue> observedRange, GeneratorT&& ElementRenderer) &&
         {
             return std::move(*this).rangeRender(std::move(observedRange), std::forward<GeneratorT>(ElementRenderer));
         }
         template <typename ObservedValue, typename GeneratorT>
-        constexpr auto operator()(std::pair<ObservedRange<ObservedValue>, GeneratorT>&& mapPair) &&
+        auto operator()(std::pair<ObservedRange<ObservedValue>, GeneratorT>&& mapPair) &&
         {
             return std::move(*this).rangeRender(std::move(mapPair.first), std::move(mapPair.second));
         }
