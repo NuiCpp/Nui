@@ -22,6 +22,14 @@ namespace Nui::Tests::Engine
         {
             return id_;
         }
+        long long id() const
+        {
+            return id_;
+        }
+        std::size_t uid() const
+        {
+            return static_cast<std::size_t>(id_);
+        }
 
         ReferenceType operator++()
         {
