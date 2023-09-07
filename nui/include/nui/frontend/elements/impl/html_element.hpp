@@ -133,7 +133,7 @@ namespace Nui
     //----------------------------------------------------------------------------------------------
 
 #ifdef __cpp_lib_constexpr_vector
-#    define HTML_ELEMENT_CONSTEXPR
+#    define HTML_ELEMENT_CONSTEXPR constexpr
 #else
 #    define HTML_ELEMENT_CONSTEXPR
 #endif
