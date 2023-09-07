@@ -345,9 +345,9 @@ namespace Nui
         // Children functions:
         template <typename... ElementT>
         requires requires(ElementT&&... elements) {
-            std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
-                std::forward<ElementT>(elements)...};
-        }
+                     std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
+                         std::forward<ElementT>(elements)...};
+                 }
         auto operator()(ElementT&&... elements) &&
         {
             return std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>{

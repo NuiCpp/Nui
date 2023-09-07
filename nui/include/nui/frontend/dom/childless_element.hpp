@@ -49,13 +49,17 @@ namespace Nui::Dom
             if (value)
                 element_.call<Nui::val>("setAttribute", Nui::val{std::string{key}}, Nui::val{""});
         }
-        void setAttribute(std::string_view key, int value)
+        template <typename T>
+        requires std::integral<T>
+        void setAttribute(std::string_view key, T value)
         {
-            element_.call<Nui::val>("setAttribute", Nui::val{std::string{key}}, Nui::val{value});
+            element_.call<Nui::val>("setAttribute", Nui::val{std::string{key}}, Nui::val{static_cast<int>(value)});
         }
-        void setAttribute(std::string_view key, double value)
+        template <typename T>
+        requires std::floating_point<T>
+        void setAttribute(std::string_view key, T value)
         {
-            element_.call<Nui::val>("setAttribute", Nui::val{std::string{key}}, Nui::val{value});
+            element_.call<Nui::val>("setAttribute", Nui::val{std::string{key}}, Nui::val{static_cast<double>(value)});
         }
         void setAttribute(std::string_view key, Nui::val value)
         {
