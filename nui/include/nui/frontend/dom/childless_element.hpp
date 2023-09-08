@@ -4,6 +4,10 @@
 #include <nui/frontend/elements/impl/html_element.hpp>
 #include <nui/frontend/utility/functions.hpp>
 
+#include <optional>
+#include <string>
+#include <string_view>
+
 namespace Nui::Dom
 {
     /**
