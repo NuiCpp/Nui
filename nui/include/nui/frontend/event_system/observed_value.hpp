@@ -316,9 +316,14 @@ namespace Nui
             {
                 return ref_;
             }
-            void operator=(T&& ref)
+            void operator=(T&& val)
             {
-                ref_ = std::forward<T>(ref);
+                ref_ = move(val);
+                owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
+            }
+            void operator=(T const& val)
+            {
+                ref_ = val;
                 owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
             }
 
