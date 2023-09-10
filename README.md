@@ -11,9 +11,9 @@ How to get going with nui is explained here in detail: [Installation](https://nu
 
 ## Platforms & Compilers
 Tested on:
-  - Ubuntu 20 (using clang15 and libstdc++10)
-  - Ubuntu 22 (using clang14 and libstdc++12)
-  - Windows (using clang16 and current msys libstdc++)
+  - Ubuntu 20 (using clang15 and libstdc++10) ![example workflow](https://github.com/NuiCpp/Nui/actions/workflows/ubuntu_20.yml/badge.svg)
+  - Ubuntu 22 (using clang14 and libstdc++12) ![example workflow](https://github.com/NuiCpp/Nui/actions/workflows/ubuntu_22.yml/badge.svg)
+  - Windows (using clang16 and current msys libstdc++) ![example workflow](https://github.com/NuiCpp/Nui/actions/workflows/windows.yml/badge.svg)
 
 Planed:
   - Mac OS
