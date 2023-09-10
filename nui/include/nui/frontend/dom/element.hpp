@@ -164,17 +164,30 @@ namespace Nui::Dom
             eventClearers.reserve(element.attributes().size());
             for (auto const& attribute : element.attributes())
             {
-                attribute.setOn(*this);
-                eventClearers.push_back(
-                    [clear = attribute.getEventClear(), id = attribute.createEvent(weak_from_base<Element>())]() {
-                        if (clear)
+                if (attribute.isRegular())
+                    attribute.setOn(*this);
+
+                auto clear = attribute.getEventClear();
+                if (clear)
+                {
+                    eventClearers.push_back(
+                        [clear = std::move(clear), id = attribute.createEvent(weak_from_base<Element>())]() {
                             clear(id);
-                    });
+                        });
+                }
             }
-            unsetup_ = [eventClearers = std::move(eventClearers)]() {
-                for (auto const& clear : eventClearers)
-                    clear();
-            };
+            if (!eventClearers.empty())
+            {
+                eventClearers.shrink_to_fit();
+                unsetup_ = [eventClearers = std::move(eventClearers)]() {
+                    for (auto const& clear : eventClearers)
+                        clear();
+                };
+            }
+            else
+            {
+                unsetup_ = []() {};
+            }
         }
 
         auto insert(std::size_t where, HtmlElement const& element)
@@ -222,7 +235,7 @@ namespace Nui::Dom
                 unsetup_();
             unsetup_ = {};
 
-            auto replacement = createElement(element).val();
+            auto replacement = createElement(element);
             element_.call<Nui::val>("replaceWith", replacement);
             element_ = std::move(replacement);
             setup(element);

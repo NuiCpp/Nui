@@ -7,16 +7,16 @@
     { \
         struct NAME : HtmlElement \
         { \
-            HTML_ELEMENT_CONSTEXPR NAME(NAME const&) = default; \
-            HTML_ELEMENT_CONSTEXPR NAME(NAME&&) = default; \
-            HTML_ELEMENT_CONSTEXPR NAME(std::vector<Attribute> const& attributes) \
+            NAME(NAME const&) = default; \
+            NAME(NAME&&) = default; \
+            NAME(std::vector<Attribute> const& attributes) \
                 : HtmlElement{HTML_ACTUAL, &SvgElementBridge, attributes} \
             {} \
-            HTML_ELEMENT_CONSTEXPR NAME(std::vector<Attribute>&& attributes) \
+            NAME(std::vector<Attribute>&& attributes) \
                 : HtmlElement{HTML_ACTUAL, &SvgElementBridge, std::move(attributes)} \
             {} \
             template <typename... T> \
-            HTML_ELEMENT_CONSTEXPR NAME(T&&... attributes) \
+            NAME(T&&... attributes) \
                 : HtmlElement{HTML_ACTUAL, &SvgElementBridge, std::forward<T>(attributes)...} \
             {} \
         }; \

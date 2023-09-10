@@ -131,41 +131,32 @@ namespace Nui
         HtmlElem htmlElement_;
     };
     //----------------------------------------------------------------------------------------------
-
-#ifdef __cpp_lib_constexpr_vector
-#    define HTML_ELEMENT_CONSTEXPR constexpr
-#else
-#    define HTML_ELEMENT_CONSTEXPR
-#endif
-
     class HtmlElement
     {
       public:
         friend class DomElement;
 
-        HTML_ELEMENT_CONSTEXPR HtmlElement(HtmlElement const&) = default;
-        HTML_ELEMENT_CONSTEXPR HtmlElement(HtmlElement&&) = default;
+        HtmlElement(HtmlElement const&) = default;
+        HtmlElement(HtmlElement&&) = default;
         virtual ~HtmlElement() = default;
-        HTML_ELEMENT_CONSTEXPR
         HtmlElement(char const* name, HtmlElementBridge const* bridge, std::vector<Attribute> const& attributes)
             : name_{name}
             , bridge_{bridge}
             , attributes_{attributes}
         {}
-        HTML_ELEMENT_CONSTEXPR
         HtmlElement(char const* name, HtmlElementBridge const* bridge, std::vector<Attribute>&& attributes)
             : name_{name}
             , bridge_{bridge}
             , attributes_{std::move(attributes)}
         {}
         template <typename... T>
-        HTML_ELEMENT_CONSTEXPR HtmlElement(char const* name, HtmlElementBridge const* bridge, T&&... attributes)
+        HtmlElement(char const* name, HtmlElementBridge const* bridge, T&&... attributes)
             : name_{name}
             , bridge_{bridge}
             , attributes_{std::forward<T>(attributes)...}
         {}
 
-        HTML_ELEMENT_CONSTEXPR HtmlElement clone() const
+        HtmlElement clone() const
         {
             return {name_, bridge_, attributes_};
         }
@@ -345,9 +336,9 @@ namespace Nui
         // Children functions:
         template <typename... ElementT>
         requires requires(ElementT&&... elements) {
-                     std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
-                         std::forward<ElementT>(elements)...};
-                 }
+            std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
+                std::forward<ElementT>(elements)...};
+        }
         auto operator()(ElementT&&... elements) &&
         {
             return std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>{
@@ -356,7 +347,7 @@ namespace Nui
                     std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
                         std::forward<ElementT>(elements)...}}};
 
-            // Unknown Linkage BUG in clang 16 :(
+            // Unknown Linkage BUG in wasm-ld :(
             // return
             //     [self = this->clone(),
             //      children = std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer
@@ -374,7 +365,7 @@ namespace Nui
             return std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>{
                 TrivialRenderer<HtmlElement>{this->clone()}};
 
-            // Unknown Linkage BUG in clang 16 :(
+            // Unknown Linkage BUG in wasm-ld :(
             // return [self = this->clone()](auto& parentElement, Renderer const& gen) {
             //     return renderElement(gen, parentElement, self);
             // };

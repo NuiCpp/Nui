@@ -14,7 +14,7 @@ namespace Nui::Dom
     {
       public:
         ChildlessElement(HtmlElement const& elem)
-            : BasicElement{ChildlessElement::createElement(elem).val()}
+            : BasicElement{ChildlessElement::createElement(elem)}
         {}
         ChildlessElement(Nui::val val)
             : BasicElement{std::move(val)}
@@ -71,9 +71,13 @@ namespace Nui::Dom
             if (value)
                 setAttribute(key, *value);
         }
+        void setNodeValue(std::string_view value)
+        {
+            element_.set("nodeValue", Nui::val{std::string{value}});
+        }
 
       protected:
-        static ChildlessElement createElement(HtmlElement const& element)
+        static Nui::val createElement(HtmlElement const& element)
         {
             return element.bridge()->createElement(element);
         }
