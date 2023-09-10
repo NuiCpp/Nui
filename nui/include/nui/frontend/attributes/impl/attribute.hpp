@@ -6,23 +6,44 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
+#include <variant>
 
 namespace Nui
 {
     class Attribute
     {
       public:
-        Attribute()
-            : setter_{}
-            , createEvent_{}
-        {}
+        struct RegularAttribute
+        {
+            std::function<void(Dom::ChildlessElement&)> setter;
+            std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent;
+            std::function<void(EventContext::EventIdType const&)> clearEvent;
+        };
+        struct StringDataAttribute
+        {
+            std::string data;
+        };
+
         Attribute(
             std::function<void(Dom::ChildlessElement&)> setter,
             std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent = {},
             std::function<void(EventContext::EventIdType const&)> clearEvent = {})
-            : setter_{std::move(setter)}
-            , createEvent_{std::move(createEvent)}
-            , clearEvent_{std::move(clearEvent)}
+            : attributeImpl_{RegularAttribute{
+                  .setter = std::move(setter),
+                  .createEvent = std::move(createEvent),
+                  .clearEvent = std::move(clearEvent),
+              }}
+        {}
+        Attribute(std::string data)
+            : attributeImpl_{StringDataAttribute{
+                  .data = std::move(data),
+              }}
+        {}
+        Attribute(std::string_view data)
+            : attributeImpl_{StringDataAttribute{
+                  .data = std::string{data},
+              }}
         {}
 
         Attribute(Attribute const&) = default;
@@ -34,9 +55,12 @@ namespace Nui
         EventContext::EventIdType createEvent(std::weak_ptr<Dom::ChildlessElement>&& element) const;
         std::function<void(EventContext::EventIdType const&)> getEventClear() const;
 
+        std::string const& stringData() const;
+
+        bool isRegular() const;
+        bool isStringData() const;
+
       private:
-        std::function<void(Dom::ChildlessElement&)> setter_;
-        std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent_;
-        std::function<void(EventContext::EventIdType const&)> clearEvent_;
+        std::variant<RegularAttribute, StringDataAttribute> attributeImpl_;
     };
 }
