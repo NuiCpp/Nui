@@ -33,8 +33,8 @@ namespace Nui
         {}
         Attribute(
             std::string data,
-            std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent = {},
-            std::function<void(EventContext::EventIdType const&)> clearEvent = {})
+            std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent,
+            std::function<void(EventContext::EventIdType const&)> clearEvent)
             : attributeImpl_{StringDataAttribute{
                   .data = std::move(data),
               }}
@@ -43,8 +43,8 @@ namespace Nui
         {}
         Attribute(
             std::string_view data,
-            std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent = {},
-            std::function<void(EventContext::EventIdType const&)> clearEvent = {})
+            std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent,
+            std::function<void(EventContext::EventIdType const&)> clearEvent)
             : attributeImpl_{StringDataAttribute{
                   .data = std::string{data},
               }}
