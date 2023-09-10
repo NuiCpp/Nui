@@ -17,7 +17,7 @@ namespace Nui::Attributes
         EventContext::EventIdType defaultSetEvent(std::weak_ptr<ElementT> element, T const& obs, char const* name)
         {
             const auto eventId = globalEventContext.registerEvent(Event{
-                [element, &obs, name](auto eventId) {
+                [element, obs, name](auto eventId) {
                     if (auto shared = element.lock(); shared)
                     {
                         shared->setAttribute(name, obs.value());
