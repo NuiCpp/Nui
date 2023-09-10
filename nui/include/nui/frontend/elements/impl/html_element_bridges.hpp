@@ -22,4 +22,12 @@ namespace Nui
                         Nui::val{element.name()});
             },
     };
+
+    constexpr auto TextElementBridge = HtmlElementBridge{
+        .createElement =
+            +[](HtmlElement const& element) {
+                return Nui::val::global("document")
+                    .call<Nui::val>("createTextNode", Nui::val{element.attributes()[0].stringData()});
+            },
+    };
 }

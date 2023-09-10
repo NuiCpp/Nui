@@ -345,9 +345,9 @@ namespace Nui
         // Children functions:
         template <typename... ElementT>
         requires requires(ElementT&&... elements) {
-                     std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
-                         std::forward<ElementT>(elements)...};
-                 }
+            std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
+                std::forward<ElementT>(elements)...};
+        }
         auto operator()(ElementT&&... elements) &&
         {
             return std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>{
@@ -356,7 +356,7 @@ namespace Nui
                     std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>>{
                         std::forward<ElementT>(elements)...}}};
 
-            // Unknown Linkage BUG in clang 16 :(
+            // Unknown Linkage BUG in wasm-ld :(
             // return
             //     [self = this->clone(),
             //      children = std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer
@@ -374,7 +374,7 @@ namespace Nui
             return std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>{
                 TrivialRenderer<HtmlElement>{this->clone()}};
 
-            // Unknown Linkage BUG in clang 16 :(
+            // Unknown Linkage BUG in wasm-ld :(
             // return [self = this->clone()](auto& parentElement, Renderer const& gen) {
             //     return renderElement(gen, parentElement, self);
             // };

@@ -88,6 +88,7 @@
 #include <nui/frontend/elements/tbody.hpp>
 #include <nui/frontend/elements/td.hpp>
 #include <nui/frontend/elements/template.hpp>
+#include <nui/frontend/elements/text.hpp>
 #include <nui/frontend/elements/textarea.hpp>
 #include <nui/frontend/elements/tfoot.hpp>
 #include <nui/frontend/elements/th.hpp>
