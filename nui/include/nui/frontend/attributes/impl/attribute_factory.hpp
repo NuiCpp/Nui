@@ -56,9 +56,11 @@ namespace Nui::Attributes
         requires(!IsObserved<std::decay_t<U>> && !std::invocable<U, Nui::val> && !std::invocable<U>)
         Attribute operator=(U val) const
         {
-            return Attribute{[name = name(), val = std::move(val)](Dom::ChildlessElement& element) {
-                element.setAttribute(name, val);
-            }};
+            return Attribute{
+                [name = name(), val = std::move(val)](Dom::ChildlessElement& element) {
+                    element.setAttribute(name, val);
+                },
+            };
         }
         template <typename U>
         requires(IsObserved<std::decay_t<U>>)
@@ -73,7 +75,8 @@ namespace Nui::Attributes
                 },
                 [&val](EventContext::EventIdType const& id) {
                     val.unattachEvent(id);
-                }};
+                },
+            };
         }
         template <typename RendererType, typename... ObservedValues>
         Attribute
@@ -88,27 +91,32 @@ namespace Nui::Attributes
                 },
                 [combinator](EventContext::EventIdType const& id) {
                     combinator.unattachEvent(id);
-                }};
+                },
+            };
         }
 
         Attribute operator=(std::function<void(Nui::val)> func) const
         {
-            return Attribute{[name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                element.setAttribute(name, [func](Nui::val val) {
-                    func(val);
-                    globalEventContext.executeActiveEventsImmediately();
-                });
-            }};
+            return Attribute{
+                [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
+                    element.setAttribute(name, [func](Nui::val val) {
+                        func(val);
+                        globalEventContext.executeActiveEventsImmediately();
+                    });
+                },
+            };
         }
 
         Attribute operator=(std::function<void()> func) const
         {
-            return Attribute{[name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                element.setAttribute(name, [func](Nui::val) {
-                    func();
-                    globalEventContext.executeActiveEventsImmediately();
-                });
-            }};
+            return Attribute{
+                [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
+                    element.setAttribute(name, [func](Nui::val) {
+                        func();
+                        globalEventContext.executeActiveEventsImmediately();
+                    });
+                },
+            };
         }
 
       private:
