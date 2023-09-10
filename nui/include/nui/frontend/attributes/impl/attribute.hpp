@@ -17,8 +17,6 @@ namespace Nui
         struct RegularAttribute
         {
             std::function<void(Dom::ChildlessElement&)> setter;
-            std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent;
-            std::function<void(EventContext::EventIdType const&)> clearEvent;
         };
         struct StringDataAttribute
         {
@@ -29,21 +27,29 @@ namespace Nui
             std::function<void(Dom::ChildlessElement&)> setter,
             std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent = {},
             std::function<void(EventContext::EventIdType const&)> clearEvent = {})
-            : attributeImpl_{RegularAttribute{
-                  .setter = std::move(setter),
-                  .createEvent = std::move(createEvent),
-                  .clearEvent = std::move(clearEvent),
-              }}
+            : attributeImpl_{RegularAttribute{.setter = std::move(setter)}}
+            , createEvent_{std::move(createEvent)}
+            , clearEvent_{std::move(clearEvent)}
         {}
-        Attribute(std::string data)
+        Attribute(
+            std::string data,
+            std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent = {},
+            std::function<void(EventContext::EventIdType const&)> clearEvent = {})
             : attributeImpl_{StringDataAttribute{
                   .data = std::move(data),
               }}
+            , createEvent_{std::move(createEvent)}
+            , clearEvent_{std::move(clearEvent)}
         {}
-        Attribute(std::string_view data)
+        Attribute(
+            std::string_view data,
+            std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent = {},
+            std::function<void(EventContext::EventIdType const&)> clearEvent = {})
             : attributeImpl_{StringDataAttribute{
                   .data = std::string{data},
               }}
+            , createEvent_{std::move(createEvent)}
+            , clearEvent_{std::move(clearEvent)}
         {}
 
         Attribute(Attribute const&) = default;
@@ -62,5 +68,7 @@ namespace Nui
 
       private:
         std::variant<RegularAttribute, StringDataAttribute> attributeImpl_;
+        std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent_;
+        std::function<void(EventContext::EventIdType const&)> clearEvent_;
     };
 }

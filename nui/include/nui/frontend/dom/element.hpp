@@ -164,10 +164,9 @@ namespace Nui::Dom
             eventClearers.reserve(element.attributes().size());
             for (auto const& attribute : element.attributes())
             {
-                if (!attribute.isRegular())
-                    continue;
+                if (attribute.isRegular())
+                    attribute.setOn(*this);
 
-                attribute.setOn(*this);
                 auto clear = attribute.getEventClear();
                 if (clear)
                 {

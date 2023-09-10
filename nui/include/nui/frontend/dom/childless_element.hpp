@@ -71,6 +71,10 @@ namespace Nui::Dom
             if (value)
                 setAttribute(key, *value);
         }
+        void setNodeValue(std::string_view value)
+        {
+            element_.set("nodeValue", Nui::val{std::string{value}});
+        }
 
       protected:
         static Nui::val createElement(HtmlElement const& element)

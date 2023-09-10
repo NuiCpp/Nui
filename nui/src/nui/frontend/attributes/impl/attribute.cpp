@@ -13,15 +13,14 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     EventContext::EventIdType Attribute::createEvent(std::weak_ptr<Dom::ChildlessElement>&& element) const
     {
-        auto& impl = std::get<RegularAttribute>(attributeImpl_);
-        if (impl.createEvent)
-            return impl.createEvent(std::move(element));
+        if (createEvent_)
+            return createEvent_(std::move(element));
         return EventContext::EventIdType{};
     }
     //---------------------------------------------------------------------------------------------------------------------
     std::function<void(EventContext::EventIdType const&)> Attribute::getEventClear() const
     {
-        return std::get<RegularAttribute>(attributeImpl_).clearEvent;
+        return clearEvent_;
     }
     //---------------------------------------------------------------------------------------------------------------------
     std::string const& Attribute::stringData() const
