@@ -131,41 +131,32 @@ namespace Nui
         HtmlElem htmlElement_;
     };
     //----------------------------------------------------------------------------------------------
-
-#ifdef __cpp_lib_constexpr_vector
-#    define HTML_ELEMENT_CONSTEXPR constexpr
-#else
-#    define HTML_ELEMENT_CONSTEXPR
-#endif
-
     class HtmlElement
     {
       public:
         friend class DomElement;
 
-        HTML_ELEMENT_CONSTEXPR HtmlElement(HtmlElement const&) = default;
-        HTML_ELEMENT_CONSTEXPR HtmlElement(HtmlElement&&) = default;
+        HtmlElement(HtmlElement const&) = default;
+        HtmlElement(HtmlElement&&) = default;
         virtual ~HtmlElement() = default;
-        HTML_ELEMENT_CONSTEXPR
         HtmlElement(char const* name, HtmlElementBridge const* bridge, std::vector<Attribute> const& attributes)
             : name_{name}
             , bridge_{bridge}
             , attributes_{attributes}
         {}
-        HTML_ELEMENT_CONSTEXPR
         HtmlElement(char const* name, HtmlElementBridge const* bridge, std::vector<Attribute>&& attributes)
             : name_{name}
             , bridge_{bridge}
             , attributes_{std::move(attributes)}
         {}
         template <typename... T>
-        HTML_ELEMENT_CONSTEXPR HtmlElement(char const* name, HtmlElementBridge const* bridge, T&&... attributes)
+        HtmlElement(char const* name, HtmlElementBridge const* bridge, T&&... attributes)
             : name_{name}
             , bridge_{bridge}
             , attributes_{std::forward<T>(attributes)...}
         {}
 
-        HTML_ELEMENT_CONSTEXPR HtmlElement clone() const
+        HtmlElement clone() const
         {
             return {name_, bridge_, attributes_};
         }

@@ -10,12 +10,12 @@ namespace Nui::Elements
 {
     struct text : HtmlElement
     {
-        HTML_ELEMENT_CONSTEXPR text(text const&) = default;
-        HTML_ELEMENT_CONSTEXPR text(text&&) = default;
-        HTML_ELEMENT_CONSTEXPR text(std::string_view content)
-            : HtmlElement{"", &TextElementBridge, Attribute{content}}
+        text(text const&) = default;
+        text(text&&) = default;
+        text(std::string_view content)
+            : HtmlElement{"", &TextElementBridge, Attribute{content, {}, {}}}
         {}
-        HTML_ELEMENT_CONSTEXPR text(Nui::Observed<std::string>& obs)
+        text(Nui::Observed<std::string>& obs)
             : HtmlElement{
                   "",
                   &TextElementBridge,
