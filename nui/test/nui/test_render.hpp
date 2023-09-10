@@ -8,6 +8,8 @@
 
 #include <nui/frontend/elements.hpp>
 #include <nui/frontend/attributes.hpp>
+#include <nui/frontend/svg_elements.hpp>
+#include <nui/frontend/svg_attributes.hpp>
 #include <nui/frontend/dom/reference.hpp>
 #include <nui/frontend/utility/stabilize.hpp>
 
@@ -676,5 +678,59 @@ namespace Nui::Tests
         globalEventContext.executeActiveEventsImmediately();
 
         EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][1]["nodeValue"].as<std::string>(), "Changed");
+    }
+
+    TEST_F(TestRender, CanRenderSvgElement)
+    {
+        using namespace Nui::Elements;
+        namespace se = Nui::Elements::Svg;
+        namespace sa = Nui::Attributes::Svg;
+
+        render(body{}(se::svg{}()));
+
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["tagName"].as<std::string>(), "svg");
+    }
+
+    TEST_F(TestRender, RenderedSvgNamespaceIsSetCorrectly)
+    {
+        using namespace Nui::Elements;
+        namespace se = Nui::Elements::Svg;
+        namespace sa = Nui::Attributes::Svg;
+
+        render(body{}(se::svg{}()));
+
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["children"][0].as<Nui::val>()["namespaceURI"].as<std::string>(),
+            "http://www.w3.org/2000/svg");
+    }
+
+    TEST_F(TestRender, SvgElementChildIsAppended)
+    {
+        using namespace Nui::Elements;
+        namespace se = Nui::Elements::Svg;
+        namespace sa = Nui::Attributes::Svg;
+
+        render(body{}(se::svg{}(se::circle{}())));
+
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"][0]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["children"][0]["children"][0]["tagName"].as<std::string>(), "circle");
+    }
+
+    TEST_F(TestRender, SvgElementAttributeIsSet)
+    {
+        using namespace Nui::Elements;
+        namespace se = Nui::Elements::Svg;
+        namespace sa = Nui::Attributes::Svg;
+
+        render(body{}(se::svg{}(se::circle{sa::cx = 10}())));
+
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        ASSERT_EQ(Nui::val::global("document")["body"]["children"][0]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["children"][0]["children"][0]["attributes"]["cx"].as<long long>(), 10);
     }
 }
