@@ -222,7 +222,7 @@ namespace Nui::Dom
                 unsetup_();
             unsetup_ = {};
 
-            auto replacement = createElement(element).val();
+            auto replacement = createElement(element);
             element_.call<Nui::val>("replaceWith", replacement);
             element_ = std::move(replacement);
             setup(element);

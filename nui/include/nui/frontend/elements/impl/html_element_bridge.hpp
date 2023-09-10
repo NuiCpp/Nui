@@ -1,5 +1,7 @@
 #pragma once
 
+#include <nui/frontend/val.hpp>
+
 namespace Nui
 {
     namespace Dom
@@ -10,6 +12,6 @@ namespace Nui
 
     struct HtmlElementBridge
     {
-        Dom::ChildlessElement (*createElement)(HtmlElement const& element);
+        Nui::val (*createElement)(HtmlElement const& element);
     };
 }

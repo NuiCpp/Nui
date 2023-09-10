@@ -6,18 +6,20 @@
 namespace Nui
 {
     constexpr auto RegularHtmlElementBridge = HtmlElementBridge{
-        .createElement = +[](HtmlElement const& element) -> Dom::ChildlessElement {
-            return {Nui::val::global("document").call<Nui::val>("createElement", Nui::val{element.name()})};
-        },
+        .createElement =
+            +[](HtmlElement const& element) {
+                return Nui::val::global("document").call<Nui::val>("createElement", Nui::val{element.name()});
+            },
     };
 
     constexpr auto SvgElementBridge = HtmlElementBridge{
-        .createElement = +[](HtmlElement const& element) -> Dom::ChildlessElement {
-            return {Nui::val::global("document")
-                        .call<Nui::val>(
-                            "createElementNS",
-                            Nui::val{std::string{"http://www.w3.org/2000/svg"}},
-                            Nui::val{element.name()})};
-        },
+        .createElement =
+            +[](HtmlElement const& element) {
+                return Nui::val::global("document")
+                    .call<Nui::val>(
+                        "createElementNS",
+                        Nui::val{std::string{"http://www.w3.org/2000/svg"}},
+                        Nui::val{element.name()});
+            },
     };
 }
