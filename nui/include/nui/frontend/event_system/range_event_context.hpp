@@ -182,7 +182,7 @@ namespace Nui
     class RangeEventContext
     {
       public:
-        RangeEventContext(long dataSize)
+        explicit RangeEventContext(long dataSize)
             : modificationRanges_{}
             , fullRangeUpdate_{true}
             , disableOptimizations_{false}

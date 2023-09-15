@@ -171,7 +171,7 @@ namespace Nui
         ~ModifiableObserved() = default;
 
         template <typename T = ContainedT>
-        ModifiableObserved(T&& t)
+        explicit ModifiableObserved(T&& t)
             : contained_{std::forward<T>(t)}
         {}
 
@@ -532,12 +532,12 @@ namespace Nui
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
-        ObservedContainer(T&& t)
+        explicit ObservedContainer(T&& t)
             : ModifiableObserved<ContainerT>{std::forward<T>(t)}
             , rangeContext_{static_cast<long>(contained_.size())}
             , afterEffectId_{registerAfterEffect()}
         {}
-        ObservedContainer(RangeEventContext&& rangeContext)
+        explicit ObservedContainer(RangeEventContext&& rangeContext)
             : ModifiableObserved<ContainerT>{}
             , rangeContext_{std::move(rangeContext)}
             , afterEffectId_{registerAfterEffect()}
@@ -1039,7 +1039,7 @@ namespace Nui
             : ObservedContainer<std::set<Parameters...>>{RangeEventContext{0, true}}
         {}
         template <typename T = std::set<Parameters...>>
-        Observed(T&& t)
+        explicit Observed(T&& t)
             : ObservedContainer<std::set<Parameters...>>{
                   std::forward<T>(t),
                   RangeEventContext{static_cast<long>(t.size()), true}}
@@ -1123,7 +1123,7 @@ namespace Nui
         struct CopiableObservedWrap // minimal wrapper to make Observed<T> copiable
         {
           public:
-            constexpr CopiableObservedWrap(Observed<T> const& observed)
+            explicit constexpr CopiableObservedWrap(Observed<T> const& observed)
                 : observed_{&observed}
             {}
 

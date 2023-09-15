@@ -12,10 +12,10 @@ namespace Nui
     class ObservedValueCombinatorBase
     {
       public:
-        constexpr ObservedValueCombinatorBase(ObservedValues const&... observedValues)
+        explicit constexpr ObservedValueCombinatorBase(ObservedValues const&... observedValues)
             : observedValues_{observedValues...}
         {}
-        constexpr ObservedValueCombinatorBase(std::tuple<ObservedValues const&...> observedValues)
+        explicit constexpr ObservedValueCombinatorBase(std::tuple<ObservedValues const&...> observedValues)
             : observedValues_{std::move(observedValues)}
         {}
 

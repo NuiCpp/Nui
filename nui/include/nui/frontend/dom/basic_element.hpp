@@ -13,7 +13,7 @@ namespace Nui::Dom
     class BasicElement : public std::enable_shared_from_this<BasicElement>
     {
       public:
-        BasicElement(Nui::val val)
+        explicit BasicElement(Nui::val val)
             : element_{std::move(val)}
         {}
         virtual ~BasicElement() = default;

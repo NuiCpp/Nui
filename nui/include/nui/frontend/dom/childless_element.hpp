@@ -17,10 +17,10 @@ namespace Nui::Dom
     class ChildlessElement : public BasicElement
     {
       public:
-        ChildlessElement(HtmlElement const& elem)
+        explicit ChildlessElement(HtmlElement const& elem)
             : BasicElement{ChildlessElement::createElement(elem)}
         {}
-        ChildlessElement(Nui::val val)
+        explicit ChildlessElement(Nui::val val)
             : BasicElement{std::move(val)}
         {}
 
