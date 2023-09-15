@@ -330,7 +330,7 @@ namespace Nui
             }
             void operator=(T&& val)
             {
-                ref_ = move(val);
+                ref_ = std::move(val);
                 owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
             }
             void operator=(T const& val)
