@@ -168,6 +168,18 @@ namespace Nui
             }
             return *this;
         };
+        ModifiableObserved& operator=(ContainedT const& contained)
+        {
+            contained_ = contained;
+            update();
+            return *this;
+        }
+        ModifiableObserved& operator=(ContainedT&& contained)
+        {
+            contained_ = std::move(contained);
+            update();
+            return *this;
+        }
         ~ModifiableObserved() = default;
 
         template <typename T = ContainedT>
@@ -992,6 +1004,17 @@ namespace Nui
         using ModifiableObserved<T>::ModifiableObserved;
         using ModifiableObserved<T>::operator=;
         using ModifiableObserved<T>::operator->;
+
+        Observed& operator=(T const& contained)
+        {
+            ModifiableObserved<T>::operator=(contained);
+            return *this;
+        }
+        Observed& operator=(T&& contained)
+        {
+            ModifiableObserved<T>::operator=(std::move(contained));
+            return *this;
+        }
     };
     template <typename... Parameters>
     class Observed<std::vector<Parameters...>> : public ObservedContainer<std::vector<Parameters...>>
@@ -1001,6 +1024,17 @@ namespace Nui
         using ObservedContainer<std::vector<Parameters...>>::operator=;
         using ObservedContainer<std::vector<Parameters...>>::operator->;
         static constexpr auto isRandomAccess = true;
+
+        Observed<std::vector<Parameters...>>& operator=(std::vector<Parameters...> const& contained)
+        {
+            ObservedContainer<std::vector<Parameters...>>::operator=(contained);
+            return *this;
+        }
+        Observed<std::vector<Parameters...>>& operator=(std::vector<Parameters...>&& contained)
+        {
+            ObservedContainer<std::vector<Parameters...>>::operator=(std::move(contained));
+            return *this;
+        }
     };
     template <typename... Parameters>
     class Observed<std::deque<Parameters...>> : public ObservedContainer<std::deque<Parameters...>>
@@ -1010,6 +1044,17 @@ namespace Nui
         using ObservedContainer<std::deque<Parameters...>>::operator=;
         using ObservedContainer<std::deque<Parameters...>>::operator->;
         static constexpr auto isRandomAccess = true;
+
+        Observed<std::deque<Parameters...>>& operator=(std::deque<Parameters...> const& contained)
+        {
+            ObservedContainer<std::deque<Parameters...>>::operator=(contained);
+            return *this;
+        }
+        Observed<std::deque<Parameters...>>& operator=(std::deque<Parameters...>&& contained)
+        {
+            ObservedContainer<std::deque<Parameters...>>::operator=(std::move(contained));
+            return *this;
+        }
     };
     template <typename... Parameters>
     class Observed<std::basic_string<Parameters...>> : public ObservedContainer<std::basic_string<Parameters...>>
@@ -1019,6 +1064,17 @@ namespace Nui
         using ObservedContainer<std::basic_string<Parameters...>>::operator=;
         using ObservedContainer<std::basic_string<Parameters...>>::operator->;
         static constexpr auto isRandomAccess = true;
+
+        Observed<std::basic_string<Parameters...>>& operator=(std::basic_string<Parameters...> const& contained)
+        {
+            ObservedContainer<std::basic_string<Parameters...>>::operator=(contained);
+            return *this;
+        }
+        Observed<std::basic_string<Parameters...>>& operator=(std::basic_string<Parameters...>&& contained)
+        {
+            ObservedContainer<std::basic_string<Parameters...>>::operator=(std::move(contained));
+            return *this;
+        }
 
         Observed<std::basic_string<Parameters...>>& erase(std::size_t index = 0, std::size_t count = std::string::npos)
         {
@@ -1032,6 +1088,9 @@ namespace Nui
     class Observed<std::set<Parameters...>> : public ObservedContainer<std::set<Parameters...>>
     {
       public:
+        using ObservedContainer<std::set<Parameters...>>::ObservedContainer;
+        using ObservedContainer<std::set<Parameters...>>::operator=;
+        using ObservedContainer<std::set<Parameters...>>::operator->;
         static constexpr auto isRandomAccess = false;
 
       public:
@@ -1044,6 +1103,17 @@ namespace Nui
                   std::forward<T>(t),
                   RangeEventContext{static_cast<long>(t.size()), true}}
         {}
+
+        Observed<std::set<Parameters...>>& operator=(std::set<Parameters...> const& contained)
+        {
+            ObservedContainer<std::set<Parameters...>>::operator=(contained);
+            return *this;
+        }
+        Observed<std::set<Parameters...>>& operator=(std::set<Parameters...>&& contained)
+        {
+            ObservedContainer<std::set<Parameters...>>::operator=(std::move(contained));
+            return *this;
+        }
     };
 
     template <typename ContainerT>
