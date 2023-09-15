@@ -4,6 +4,10 @@
 #include <nui/frontend/elements/impl/html_element.hpp>
 #include <nui/frontend/utility/functions.hpp>
 
+#include <optional>
+#include <string>
+#include <string_view>
+
 namespace Nui::Dom
 {
     /**
@@ -13,10 +17,10 @@ namespace Nui::Dom
     class ChildlessElement : public BasicElement
     {
       public:
-        ChildlessElement(HtmlElement const& elem)
+        explicit ChildlessElement(HtmlElement const& elem)
             : BasicElement{ChildlessElement::createElement(elem)}
         {}
-        ChildlessElement(Nui::val val)
+        explicit ChildlessElement(Nui::val val)
             : BasicElement{std::move(val)}
         {}
 

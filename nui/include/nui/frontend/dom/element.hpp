@@ -46,13 +46,13 @@ namespace Nui::Dom
         using const_iterator = collection_type::const_iterator;
         using value_type = collection_type::value_type;
 
-        Element(HtmlElement const& elem)
+        explicit Element(HtmlElement const& elem)
             : ChildlessElement{elem}
             , children_{}
             , unsetup_{}
         {}
 
-        Element(Nui::val val)
+        explicit Element(Nui::val val)
             : ChildlessElement{std::move(val)}
             , children_{}
             , unsetup_{}

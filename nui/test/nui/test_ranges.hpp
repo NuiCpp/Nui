@@ -52,7 +52,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, SubscriptOperatorAssignmentUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec, parent);
         textBodyParityTest(vec, parent);
@@ -65,7 +65,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, FullAssignmentUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec, parent);
         textBodyParityTest(vec, parent);
@@ -78,7 +78,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, PushBackUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec, parent);
         textBodyParityTest(vec, parent);
@@ -96,7 +96,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, PopBackUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec, parent);
         textBodyParityTest(vec, parent);
@@ -109,7 +109,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, InsertUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
         std::vector vec2 = {'1', '2', '3'};
 
         rangeTextBodyRender(vec, parent);
@@ -189,7 +189,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, ClearUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec, parent);
         textBodyParityTest(vec, parent);
@@ -202,7 +202,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, SwapUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<char>> vec1 = {{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>> vec1{{'A', 'B', 'C', 'D'}};
         std::vector<char> vec2 = {'X', 'Y', 'Z'};
 
         rangeTextBodyRender(vec1, parent);
@@ -216,7 +216,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, ResizeUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec, parent);
         textBodyParityTest(vec, parent);
@@ -229,7 +229,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, ResizeWithFillValueUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec, parent);
         textBodyParityTest(vec, parent);
@@ -242,7 +242,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, AssignWithFillValueUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<char>> vec1 = {{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>> vec1{{'A', 'B', 'C', 'D'}};
         std::vector<char> vec2 = {'X', 'Y', 'Z'};
 
         rangeTextBodyRender(vec1, parent);
@@ -264,7 +264,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, AssignWithRangeUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<char>> vec1 = {{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>> vec1{{'A', 'B', 'C', 'D'}};
         std::vector<char> vec2 = {'X', 'Y', 'Z'};
 
         rangeTextBodyRender(vec1, parent);
@@ -278,7 +278,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, AssignWithInitializerListUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<char>> vec1 = {{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>> vec1{{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec1, parent);
         textBodyParityTest(vec1, parent);
@@ -291,7 +291,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, EmplaceBackUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
+        Observed<std::vector<std::string>> vec{{"A", "B", "C", "D"}};
 
         rangeTextBodyRender(vec, parent);
         textBodyParityTest(vec, parent);
@@ -304,7 +304,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, EmplaceUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
+        Observed<std::vector<std::string>> vec{{"A", "B", "C", "D"}};
 
         rangeTextBodyRender(vec, parent);
         textBodyParityTest(vec, parent);
@@ -317,7 +317,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, ModificationThroughPointerUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
+        Observed<std::vector<std::string>> vec{{"A", "B", "C", "D"}};
 
         rangeTextBodyRender(vec, parent);
         textBodyParityTest(vec, parent);
@@ -330,7 +330,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, ModificationThroughReferenceUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
+        Observed<std::vector<std::string>> vec{{"A", "B", "C", "D"}};
 
         rangeTextBodyRender(vec, parent);
         textBodyParityTest(vec, parent);
@@ -343,7 +343,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, ModificationThroughIteratorUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
+        Observed<std::vector<std::string>> vec{{"A", "B", "C", "D"}};
 
         rangeTextBodyRender(vec, parent);
         textBodyParityTest(vec, parent);
@@ -356,7 +356,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, ChangeOfReferenceFromBackUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
+        Observed<std::vector<std::string>> vec{{"A", "B", "C", "D"}};
 
         rangeTextBodyRender(vec, parent);
         textBodyParityTest(vec, parent);
@@ -369,7 +369,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, ChangeOfReferenceFromAtUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
+        Observed<std::vector<std::string>> vec{{"A", "B", "C", "D"}};
 
         rangeTextBodyRender(vec, parent);
         textBodyParityTest(vec, parent);
@@ -382,7 +382,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, ChangeOfIteratorFromEndUpdateView)
     {
         Nui::val parent;
-        Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
+        Observed<std::vector<std::string>> vec{{"A", "B", "C", "D"}};
 
         rangeTextBodyRender(vec, parent);
         textBodyParityTest(vec, parent);
@@ -395,7 +395,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, ChangeOfIteratorFromRbeginUpdateView)
     {
         Nui::val parent;
-        Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
+        Observed<std::vector<std::string>> vec{{"A", "B", "C", "D"}};
         auto rbegin = vec.rbegin();
 
         rangeTextBodyRender(vec, parent);
@@ -409,7 +409,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, ChangeOfIteratorFromRendUpdateView)
     {
         Nui::val parent;
-        Observed<std::vector<std::string>> vec = {{"A", "B", "C", "D"}};
+        Observed<std::vector<std::string>> vec{{"A", "B", "C", "D"}};
         auto rend = vec.rend();
 
         rangeTextBodyRender(vec, parent);
@@ -423,7 +423,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, PushFrontUpdatesView)
     {
         Nui::val parent;
-        Observed<std::deque<char>> container = {{'A', 'B', 'C', 'D'}};
+        Observed<std::deque<char>> container{{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(container, parent);
         textBodyParityTest(container, parent);
@@ -441,7 +441,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, PopFrontUpdatesView)
     {
         Nui::val parent;
-        Observed<std::deque<char>> container = {{'A', 'B', 'C', 'D'}};
+        Observed<std::deque<char>> container{{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(container, parent);
         textBodyParityTest(container, parent);
@@ -454,7 +454,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, AggregatedInsertsUpdateCorrectly)
     {
         Nui::val parent;
-        Observed<std::deque<char>> container = {{'A', 'B', 'C', 'D'}};
+        Observed<std::deque<char>> container{{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(container, parent);
         textBodyParityTest(container, parent);
@@ -468,7 +468,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, AggregatedInsertsUpdateCorrectly2)
     {
         Nui::val parent;
-        Observed<std::deque<char>> container = {{'A', 'B', 'C', 'D'}};
+        Observed<std::deque<char>> container{{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(container, parent);
         textBodyParityTest(container, parent);
@@ -483,7 +483,7 @@ namespace Nui::Tests
     TEST_F(TestRanges, MixOfInsertionAndErasureUpdateCorrectly)
     {
         Nui::val parent;
-        Observed<std::deque<char>> container = {{'A', 'B', 'C', 'D'}};
+        Observed<std::deque<char>> container{{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(container, parent);
         textBodyParityTest(container, parent);

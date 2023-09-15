@@ -6,7 +6,7 @@ namespace Nui
     class ObservedRange
     {
       public:
-        constexpr ObservedRange(ObservedValue& observedValues)
+        explicit constexpr ObservedRange(ObservedValue& observedValues)
             : observedValue_{observedValues}
         {}
 

@@ -168,10 +168,22 @@ namespace Nui
             }
             return *this;
         };
+        ModifiableObserved& operator=(ContainedT const& contained)
+        {
+            contained_ = contained;
+            update();
+            return *this;
+        }
+        ModifiableObserved& operator=(ContainedT&& contained)
+        {
+            contained_ = std::move(contained);
+            update();
+            return *this;
+        }
         ~ModifiableObserved() = default;
 
         template <typename T = ContainedT>
-        ModifiableObserved(T&& t)
+        explicit ModifiableObserved(T&& t)
             : contained_{std::forward<T>(t)}
         {}
 
@@ -316,9 +328,14 @@ namespace Nui
             {
                 return ref_;
             }
-            void operator=(T&& ref)
+            void operator=(T&& val)
             {
-                ref_ = std::forward<T>(ref);
+                ref_ = std::move(val);
+                owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
+            }
+            void operator=(T const& val)
+            {
+                ref_ = val;
                 owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
             }
 
@@ -527,12 +544,12 @@ namespace Nui
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
-        ObservedContainer(T&& t)
+        explicit ObservedContainer(T&& t)
             : ModifiableObserved<ContainerT>{std::forward<T>(t)}
             , rangeContext_{static_cast<long>(contained_.size())}
             , afterEffectId_{registerAfterEffect()}
         {}
-        ObservedContainer(RangeEventContext&& rangeContext)
+        explicit ObservedContainer(RangeEventContext&& rangeContext)
             : ModifiableObserved<ContainerT>{}
             , rangeContext_{std::move(rangeContext)}
             , afterEffectId_{registerAfterEffect()}
@@ -987,6 +1004,17 @@ namespace Nui
         using ModifiableObserved<T>::ModifiableObserved;
         using ModifiableObserved<T>::operator=;
         using ModifiableObserved<T>::operator->;
+
+        Observed& operator=(T const& contained)
+        {
+            ModifiableObserved<T>::operator=(contained);
+            return *this;
+        }
+        Observed& operator=(T&& contained)
+        {
+            ModifiableObserved<T>::operator=(std::move(contained));
+            return *this;
+        }
     };
     template <typename... Parameters>
     class Observed<std::vector<Parameters...>> : public ObservedContainer<std::vector<Parameters...>>
@@ -996,6 +1024,17 @@ namespace Nui
         using ObservedContainer<std::vector<Parameters...>>::operator=;
         using ObservedContainer<std::vector<Parameters...>>::operator->;
         static constexpr auto isRandomAccess = true;
+
+        Observed<std::vector<Parameters...>>& operator=(std::vector<Parameters...> const& contained)
+        {
+            ObservedContainer<std::vector<Parameters...>>::operator=(contained);
+            return *this;
+        }
+        Observed<std::vector<Parameters...>>& operator=(std::vector<Parameters...>&& contained)
+        {
+            ObservedContainer<std::vector<Parameters...>>::operator=(std::move(contained));
+            return *this;
+        }
     };
     template <typename... Parameters>
     class Observed<std::deque<Parameters...>> : public ObservedContainer<std::deque<Parameters...>>
@@ -1005,6 +1044,17 @@ namespace Nui
         using ObservedContainer<std::deque<Parameters...>>::operator=;
         using ObservedContainer<std::deque<Parameters...>>::operator->;
         static constexpr auto isRandomAccess = true;
+
+        Observed<std::deque<Parameters...>>& operator=(std::deque<Parameters...> const& contained)
+        {
+            ObservedContainer<std::deque<Parameters...>>::operator=(contained);
+            return *this;
+        }
+        Observed<std::deque<Parameters...>>& operator=(std::deque<Parameters...>&& contained)
+        {
+            ObservedContainer<std::deque<Parameters...>>::operator=(std::move(contained));
+            return *this;
+        }
     };
     template <typename... Parameters>
     class Observed<std::basic_string<Parameters...>> : public ObservedContainer<std::basic_string<Parameters...>>
@@ -1014,6 +1064,17 @@ namespace Nui
         using ObservedContainer<std::basic_string<Parameters...>>::operator=;
         using ObservedContainer<std::basic_string<Parameters...>>::operator->;
         static constexpr auto isRandomAccess = true;
+
+        Observed<std::basic_string<Parameters...>>& operator=(std::basic_string<Parameters...> const& contained)
+        {
+            ObservedContainer<std::basic_string<Parameters...>>::operator=(contained);
+            return *this;
+        }
+        Observed<std::basic_string<Parameters...>>& operator=(std::basic_string<Parameters...>&& contained)
+        {
+            ObservedContainer<std::basic_string<Parameters...>>::operator=(std::move(contained));
+            return *this;
+        }
 
         Observed<std::basic_string<Parameters...>>& erase(std::size_t index = 0, std::size_t count = std::string::npos)
         {
@@ -1027,6 +1088,9 @@ namespace Nui
     class Observed<std::set<Parameters...>> : public ObservedContainer<std::set<Parameters...>>
     {
       public:
+        using ObservedContainer<std::set<Parameters...>>::ObservedContainer;
+        using ObservedContainer<std::set<Parameters...>>::operator=;
+        using ObservedContainer<std::set<Parameters...>>::operator->;
         static constexpr auto isRandomAccess = false;
 
       public:
@@ -1034,11 +1098,22 @@ namespace Nui
             : ObservedContainer<std::set<Parameters...>>{RangeEventContext{0, true}}
         {}
         template <typename T = std::set<Parameters...>>
-        Observed(T&& t)
+        explicit Observed(T&& t)
             : ObservedContainer<std::set<Parameters...>>{
                   std::forward<T>(t),
                   RangeEventContext{static_cast<long>(t.size()), true}}
         {}
+
+        Observed<std::set<Parameters...>>& operator=(std::set<Parameters...> const& contained)
+        {
+            ObservedContainer<std::set<Parameters...>>::operator=(contained);
+            return *this;
+        }
+        Observed<std::set<Parameters...>>& operator=(std::set<Parameters...>&& contained)
+        {
+            ObservedContainer<std::set<Parameters...>>::operator=(std::move(contained));
+            return *this;
+        }
     };
 
     template <typename ContainerT>
@@ -1118,7 +1193,7 @@ namespace Nui
         struct CopiableObservedWrap // minimal wrapper to make Observed<T> copiable
         {
           public:
-            constexpr CopiableObservedWrap(Observed<T> const& observed)
+            explicit constexpr CopiableObservedWrap(Observed<T> const& observed)
                 : observed_{&observed}
             {}
 

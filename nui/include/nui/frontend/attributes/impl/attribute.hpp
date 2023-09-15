@@ -23,6 +23,7 @@ namespace Nui
             std::string data;
         };
 
+        Attribute() = default;
         Attribute(
             std::function<void(Dom::ChildlessElement&)> setter,
             std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent = {},
@@ -67,8 +68,8 @@ namespace Nui
         bool isStringData() const;
 
       private:
-        std::variant<RegularAttribute, StringDataAttribute> attributeImpl_;
-        std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent_;
-        std::function<void(EventContext::EventIdType const&)> clearEvent_;
+        std::variant<std::monostate, RegularAttribute, StringDataAttribute> attributeImpl_{};
+        std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent_{};
+        std::function<void(EventContext::EventIdType const&)> clearEvent_{};
     };
 }

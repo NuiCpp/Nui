@@ -13,7 +13,7 @@ namespace Nui::Dom
     struct ReferencePasser
     {
       public:
-        ReferencePasser(T&& func)
+        explicit ReferencePasser(T&& func)
             : func_{std::move(func)}
         {}
         void operator()(std::weak_ptr<BasicElement>&& weakElement) const
