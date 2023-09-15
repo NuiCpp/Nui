@@ -32,11 +32,11 @@ namespace Nui::Components
 
         struct ConstructionArgs
         {
-            Observed<std::optional<std::string>> className{std::nullopt};
-            Observed<std::string> title{""};
-            Observed<std::string> body{""};
-            Observed<std::string> buttonClassName{""};
-            Observed<ButtonConfiguration> buttonConfiguration{ButtonConfiguration::Ok};
+            std::optional<std::string> className{std::nullopt};
+            std::string title{""};
+            std::string body{""};
+            std::string buttonClassName{""};
+            ButtonConfiguration buttonConfiguration{ButtonConfiguration::Ok};
             std::function<void(Button)> onButtonClicked = [](Button) {};
         };
 
@@ -107,6 +107,11 @@ namespace Nui::Components
       private:
         bool isOpen_;
         std::weak_ptr<Dom::Element> element_;
-        ConstructionArgs args_;
+        Observed<std::optional<std::string>> className_;
+        Observed<std::string> title_;
+        Observed<std::string> body_;
+        Observed<std::string> buttonClassName_;
+        Observed<ButtonConfiguration> buttonConfiguration_;
+        std::function<void(Button)> onButtonClicked_;
     };
 }
