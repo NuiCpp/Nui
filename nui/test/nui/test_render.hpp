@@ -78,7 +78,7 @@ namespace Nui::Tests
         using namespace Nui::Attributes;
 
         Nui::val elem;
-        Observed<std::string> textContent = "Hello World";
+        Observed<std::string> textContent{"Hello World"};
 
         render(div{}(span{reference = elem}(textContent)));
 
@@ -95,7 +95,7 @@ namespace Nui::Tests
         using namespace Nui::Attributes;
 
         Nui::val elem;
-        Observed<int> textContent = 13;
+        Observed<int> textContent{13};
 
         render(div{}(span{reference = elem}(textContent)));
 
@@ -112,7 +112,7 @@ namespace Nui::Tests
         using namespace Nui::Attributes;
 
         Nui::val elem;
-        Observed<double> textContent = 13.5;
+        Observed<double> textContent{13.5};
 
         render(div{}(span{reference = elem}(textContent)));
 
@@ -156,7 +156,7 @@ namespace Nui::Tests
         using namespace Nui::Attributes;
 
         Nui::val nested;
-        Observed<bool> toggle = true;
+        Observed<bool> toggle{true};
 
         render(body{}(observe(toggle), [&toggle, &nested]() {
             if (*toggle)
@@ -183,8 +183,8 @@ namespace Nui::Tests
         using namespace Nui::Attributes;
 
         Nui::val nested;
-        Observed<bool> toggle = true;
-        Observed<std::string> text = "Hello";
+        Observed<bool> toggle{true};
+        Observed<std::string> text{"Hello"};
 
         render(body{}(observe(toggle, text), [&toggle, &nested, &text]() -> ElementRenderer {
             if (*toggle)
@@ -215,7 +215,7 @@ namespace Nui::Tests
         using Nui::Elements::body;
         using namespace Nui::Attributes;
 
-        Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
 
         render(body{}(range(vec), [&vec](long long i, auto const& element) {
             return div{}(std::string{element} + ":" + std::to_string(i));
@@ -237,7 +237,7 @@ namespace Nui::Tests
         using Nui::Elements::body;
         using namespace Nui::Attributes;
 
-        Observed<std::vector<char>> vec = {{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
 
         auto verifyParity = [&vec]() {
             EXPECT_EQ(
@@ -311,7 +311,7 @@ namespace Nui::Tests
         using Nui::Elements::button;
         using namespace Nui::Attributes;
 
-        Nui::Observed<bool> toggle = true;
+        Nui::Observed<bool> toggle{true};
         StableElement stable;
 
         // clang-format off
@@ -366,9 +366,9 @@ namespace Nui::Tests
         using Nui::Elements::span;
         using namespace Nui::Attributes;
 
-        Nui::Observed<bool> toggle = true;
+        Nui::Observed<bool> toggle{true};
         StableElement stable;
-        Nui::Observed<std::string> spanId = "dynamic";
+        Nui::Observed<std::string> spanId{"dynamic"};
 
         // clang-format off
         render(div{}(
@@ -417,7 +417,7 @@ namespace Nui::Tests
         using Nui::Elements::fragment;
         using namespace Nui::Attributes;
 
-        Nui::Observed<bool> toggle = true;
+        Nui::Observed<bool> toggle{true};
         StableElement stable;
 
         // clang-format off
@@ -451,7 +451,7 @@ namespace Nui::Tests
         using Nui::nil;
         using namespace Nui::Attributes;
 
-        Nui::Observed<bool> toggle = true;
+        Nui::Observed<bool> toggle{true};
         StableElement stable;
 
         // Does not make much sense, but is not causing any issues:
@@ -469,7 +469,7 @@ namespace Nui::Tests
         using Nui::Elements::button;
         using namespace Nui::Attributes;
 
-        Nui::Observed<bool> toggle = true;
+        Nui::Observed<bool> toggle{true};
         StableElement stable;
 
         std::string once = "once";
@@ -554,7 +554,7 @@ namespace Nui::Tests
     {
         using namespace Nui::Elements;
 
-        Nui::Observed<std::string> textContent = "Hello World";
+        Nui::Observed<std::string> textContent{"Hello World"};
 
         render(div{}(text{textContent}()));
 
@@ -571,7 +571,7 @@ namespace Nui::Tests
     {
         using namespace Nui::Elements;
 
-        Nui::Observed<std::string> textContent = "Hello World";
+        Nui::Observed<std::string> textContent{"Hello World"};
 
         render(div{}(text{textContent}()));
 
@@ -599,7 +599,7 @@ namespace Nui::Tests
     {
         using namespace Nui::Elements;
 
-        Nui::Observed<std::string> textContent = "Hello World";
+        Nui::Observed<std::string> textContent{"Hello World"};
 
         render(div{}(span{}(), text{textContent}(), div{}()));
 
@@ -618,7 +618,7 @@ namespace Nui::Tests
     {
         using namespace Nui::Elements;
 
-        Nui::Observed<std::string> textContent = "Hello World";
+        Nui::Observed<std::string> textContent{"Hello World"};
         StableElement stable;
 
         render(div{}(span{}(), stabilize(stable, text{textContent}()), div{}()));
@@ -648,7 +648,7 @@ namespace Nui::Tests
     {
         using namespace Nui::Elements;
 
-        Nui::Observed<std::string> textContent = "Hello World";
+        Nui::Observed<std::string> textContent{"Hello World"};
 
         render(div{}(fragment(text{textContent}())));
 
@@ -665,7 +665,7 @@ namespace Nui::Tests
     {
         using namespace Nui::Elements;
 
-        Nui::Observed<std::string> textContent = "Hello World";
+        Nui::Observed<std::string> textContent{"Hello World"};
 
         render(div{}(fragment(span{}(), text{textContent}(), div{}())));
 
