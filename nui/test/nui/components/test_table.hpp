@@ -62,7 +62,7 @@ namespace Nui::Tests
     {
         using namespace Nui::Components;
 
-        Nui::Observed<std::string> caption = "Caption";
+        Nui::Observed<std::string> caption{"Caption"};
 
         auto const table = Table<TableEntry>{{
             .tableModel = tableModel_,
