@@ -369,6 +369,15 @@ namespace Nui
             return {items_.cend()};
         }
 
+        bool empty() const
+        {
+            return itemCount_ == 0;
+        }
+        std::size_t size() const
+        {
+            return itemCount_;
+        }
+
       private:
         typename std::vector<ItemWithId>::iterator findItem(IdType id)
         {
