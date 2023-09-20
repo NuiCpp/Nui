@@ -6,6 +6,7 @@
 #include <nui/frontend/utility/functions.hpp>
 #include <nui/utility/meta/function_traits.hpp>
 #include <nui/frontend/utility/val_conversion.hpp>
+#include <nui/shared/on_destroy.hpp>
 
 #include <string>
 #include <cstdint>
@@ -231,6 +232,11 @@ namespace Nui
                     std::placeholders::_1));
         }
 
+        /**
+         * @brief Unregister a function.
+         *
+         * @param name The name of the function.
+         */
         static void unregisterFunction(std::string const& name)
         {
             using namespace std::string_literals;
@@ -240,6 +246,22 @@ namespace Nui
                 return;
             }
             Nui::val::global("nui_rpc")["frontend"].delete_(name.c_str());
+        }
+
+        struct AutoUnregister : public OnDestroy
+        {
+            AutoUnregister(std::string name)
+                : OnDestroy{[name = std::move(name)]() {
+                    unregisterFunction(name);
+                }}
+            {}
+        };
+
+        template <typename FunctionT>
+        static AutoUnregister autoRegisterFunction(std::string const& name, FunctionT&& func)
+        {
+            registerFunction(name, std::forward<FunctionT>(func));
+            return AutoUnregister{name};
         }
     };
 }

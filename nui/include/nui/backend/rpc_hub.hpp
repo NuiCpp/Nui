@@ -4,6 +4,7 @@
 #include <nui/data_structures/selectables_registry.hpp>
 #include <nui/utility/meta/function_traits.hpp>
 #include <nui/utility/meta/pick_first.hpp>
+#include <nui/shared/on_destroy.hpp>
 #include <nlohmann/json.hpp>
 #include <fmt/format.h>
 
@@ -95,6 +96,22 @@ namespace Nui
                 globalThis.nui_rpc.frontend["{}"](undefined);
             }})();
         )";
+
+        struct AutoUnregister : public OnDestroy
+        {
+            AutoUnregister(RpcHub const* hub, std::string name)
+                : OnDestroy{[hub, name = std::move(name)]() {
+                    hub->unregisterFunction(name);
+                }}
+            {}
+        };
+
+        template <typename T>
+        AutoUnregister autoRegisterFunction(std::string const& name, T&& func) const
+        {
+            registerFunction(name, std::forward<T>(func));
+            return AutoUnregister{this, name};
+        }
 
         template <typename T>
         void registerFunction(std::string const& name, T&& func) const
