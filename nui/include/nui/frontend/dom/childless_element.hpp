@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <variant>
 
 namespace Nui::Dom
 {
@@ -75,9 +76,23 @@ namespace Nui::Dom
             if (value)
                 setAttribute(key, *value);
         }
+        template <typename... List>
+        void setAttribute(std::string_view key, std::variant<List...> const& variant)
+        {
+            std::visit(
+                [this, &key](auto const& value) {
+                    this->setAttribute(key, value);
+                },
+                variant);
+        }
+
         void setNodeValue(std::string_view value)
         {
             element_.set("nodeValue", Nui::val{std::string{value}});
+        }
+        void setNodeValue(std::string const& value)
+        {
+            element_.set("nodeValue", Nui::val{value});
         }
 
       protected:

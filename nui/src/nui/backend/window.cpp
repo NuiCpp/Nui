@@ -253,19 +253,15 @@ namespace Nui
         std::lock_guard schemeResponseRegistryLock{impl_->schemeResponseRegistryGuard};
         const auto id = impl_->schemeResponseRegistry.emplace(std::make_unique<SchemeContext>());
         auto& entry = impl_->schemeResponseRegistry[id];
-        entry.item.value()->id = id;
-        entry.item.value()->impl = impl_;
+        entry->id = id;
+        entry->impl = impl_;
 
         impl_->schemes.push_back(options.localScheme);
 
         auto nativeWebView = WEBKIT_WEB_VIEW(getNativeWebView());
         auto* webContext = webkit_web_view_get_context(nativeWebView);
         webkit_web_context_register_uri_scheme(
-            webContext,
-            impl_->schemes.back().c_str(),
-            &uriSchemeRequestCallback,
-            entry.item->get(),
-            &uriSchemeDestroyNotify);
+            webContext, impl_->schemes.back().c_str(), &uriSchemeRequestCallback, entry.get(), &uriSchemeDestroyNotify);
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------

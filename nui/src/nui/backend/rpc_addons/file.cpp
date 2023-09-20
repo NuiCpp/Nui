@@ -53,46 +53,46 @@ namespace Nui
         hub.registerFunction("Nui::tellg", [&hub](std::string const& responseId, int32_t id) {
             auto& store = Detail::getStore(hub);
             auto& stream = store[static_cast<Nui::SelectablesRegistry<std::fstream>::IdType>(id)];
-            hub.callRemote(responseId, static_cast<std::streamsize>(stream.item->tellg()));
+            hub.callRemote(responseId, static_cast<std::streamsize>(stream.tellg()));
         });
         hub.registerFunction("Nui::tellp", [&hub](std::string const& responseId, int32_t id) {
             auto& store = Detail::getStore(hub);
             auto& stream = store[static_cast<Nui::SelectablesRegistry<std::fstream>::IdType>(id)];
-            hub.callRemote(responseId, static_cast<std::streamsize>(stream.item->tellp()));
+            hub.callRemote(responseId, static_cast<std::streamsize>(stream.tellp()));
         });
         hub.registerFunction("Nui::seekg", [&hub](std::string const& responseId, int32_t id, int32_t pos, int32_t dir) {
             auto& store = Detail::getStore(hub);
             auto& stream = store[static_cast<Nui::SelectablesRegistry<std::fstream>::IdType>(id)];
-            stream.item->seekg(pos, static_cast<std::ios_base::seekdir>(dir));
+            stream.seekg(pos, static_cast<std::ios_base::seekdir>(dir));
             hub.callRemote(responseId);
         });
         hub.registerFunction("Nui::seekp", [&hub](std::string const& responseId, int32_t id, int32_t pos, int32_t dir) {
             auto& store = Detail::getStore(hub);
             auto& stream = store[static_cast<Nui::SelectablesRegistry<std::fstream>::IdType>(id)];
-            stream.item->seekp(pos, static_cast<std::ios_base::seekdir>(dir));
+            stream.seekp(pos, static_cast<std::ios_base::seekdir>(dir));
             hub.callRemote(responseId);
         });
         hub.registerFunction("Nui::read", [&hub](std::string const& responseId, int32_t id, int32_t size) {
             auto& store = Detail::getStore(hub);
             auto& stream = store[static_cast<Nui::SelectablesRegistry<std::fstream>::IdType>(id)];
             std::string buffer(static_cast<std::size_t>(size), '\0');
-            stream.item->read(buffer.data(), size);
+            stream.read(buffer.data(), size);
             hub.callRemote(responseId, buffer);
         });
         hub.registerFunction("Nui::readAll", [&hub](std::string const& responseId, int32_t id) {
             auto& store = Detail::getStore(hub);
             auto& stream = store[static_cast<Nui::SelectablesRegistry<std::fstream>::IdType>(id)];
             std::string buffer;
-            stream.item->seekg(0, std::ios_base::end);
-            buffer.resize(static_cast<std::size_t>(stream.item->tellg()));
-            stream.item->seekg(0, std::ios_base::beg);
-            stream.item->read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+            stream.seekg(0, std::ios_base::end);
+            buffer.resize(static_cast<std::size_t>(stream.tellg()));
+            stream.seekg(0, std::ios_base::beg);
+            stream.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
             hub.callRemote(responseId, buffer);
         });
         hub.registerFunction("Nui::write", [&hub](std::string const& responseId, int32_t id, std::string const& data) {
             auto& store = Detail::getStore(hub);
             auto& stream = store[static_cast<Nui::SelectablesRegistry<std::fstream>::IdType>(id)];
-            stream.item->write(data.data(), static_cast<std::streamsize>(data.size()));
+            stream.write(data.data(), static_cast<std::streamsize>(data.size()));
             hub.callRemote(responseId);
         });
     }
