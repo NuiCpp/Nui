@@ -572,4 +572,25 @@ namespace Nui::Tests
         EXPECT_EQ(registry.size(), idCount);
         EXPECT_FALSE(registry.empty());
     }
+
+    TEST_F(TestSelectablesRegistry, RawIteratorsIterateEvenSelectedItems)
+    {
+        constexpr auto idCount = 100;
+
+        std::vector<decltype(registry)::IdType> ids;
+        for (int i = 0; i != idCount; ++i)
+        {
+            auto id = registry.emplace("?");
+            registry[id].data = std::to_string(id);
+            ids.push_back(id);
+        }
+
+        std::shuffle(ids.begin(), ids.end(), engine);
+        for (std::size_t i = 0; i != ids.size() / 2; ++i)
+        {
+            registry.select(ids[i]);
+        }
+
+        EXPECT_EQ(std::distance(registry.rawBegin(), registry.rawEnd()), idCount);
+    }
 }
