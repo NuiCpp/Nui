@@ -121,7 +121,7 @@ namespace Nui
                 auto& store = Detail::getStore(hub);
                 const auto id = store.append(std::make_shared<Detail::ThrottleInstance>(
                     std::chrono::milliseconds(period), callWhenReady, &hub, hub.window().getExecutor()));
-                (*store[id].item)->setId(id);
+                store[id]->setId(id);
                 hub.callRemote(responseId, id);
             });
         hub.registerFunction("Nui::removeThrottle", [&hub](int32_t id) {
@@ -130,7 +130,7 @@ namespace Nui
         });
         hub.registerFunction("Nui::mayCallThrottled", [&hub](std::string const& responseId, int32_t id) {
             auto& store = Detail::getStore(hub);
-            auto& instance = *store[static_cast<Nui::SelectablesRegistry<Detail::ThrottleInstance>::IdType>(id)].item;
+            auto& instance = store[static_cast<Nui::SelectablesRegistry<Detail::ThrottleInstance>::IdType>(id)];
             hub.callRemote(responseId, instance->mayCall());
         });
     }

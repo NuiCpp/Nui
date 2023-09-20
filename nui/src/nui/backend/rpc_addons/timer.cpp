@@ -119,7 +119,7 @@ namespace Nui
             auto& store = Detail::getStore(hub);
             const auto id = store.append(std::make_shared<Detail::TimerInstance>(
                 std::chrono::milliseconds(period), &hub, hub.window().getExecutor(), -1));
-            auto& timer = *store[id].item;
+            auto& timer = store[id];
             timer->setId(id);
             timer->start();
             hub.callRemote(responseId, id);
@@ -128,8 +128,8 @@ namespace Nui
             auto& store = Detail::getStore(hub);
             const auto id = store.append(std::make_shared<Detail::TimerInstance>(
                 std::chrono::milliseconds(period), &hub, hub.window().getExecutor(), 1));
-            (*store[id].item)->setId(id);
-            auto& timer = *store[id].item;
+            store[id]->setId(id);
+            auto& timer = store[id];
             timer->setId(id);
             timer->start();
             hub.callRemote(responseId, id);

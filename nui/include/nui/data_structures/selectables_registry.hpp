@@ -9,8 +9,7 @@
 #include <variant>
 #include <limits>
 #include <set>
-
-#include <iostream>
+#include <iterator>
 
 namespace Nui
 {
@@ -60,8 +59,10 @@ namespace Nui
         class IteratorBase
         {
           public:
-            IteratorBase(WrappedIterator wrapped)
+            IteratorBase(WrappedIterator wrapped, WrappedIterator begin, WrappedIterator end)
                 : wrappedIterator_{std::move(wrapped)}
+                , beginIterator_{std::move(begin)}
+                , endIterator_{std::move(end)}
             {}
             IteratorBase(IteratorBase const&) = default;
             IteratorBase(IteratorBase&&) = default;
@@ -72,7 +73,7 @@ namespace Nui
             IteratorBase& operator++()
             {
                 ++wrappedIterator_;
-                while (wrappedIterator_ != wrappedIterator_.end() && !wrappedIterator_->item)
+                while (wrappedIterator_ != endIterator_ && !wrappedIterator_->item)
                     ++wrappedIterator_;
                 return *this;
             }
@@ -87,8 +88,10 @@ namespace Nui
             IteratorBase& operator--()
             {
                 --wrappedIterator_;
-                while (wrappedIterator_ != wrappedIterator_.begin() && !wrappedIterator_->item)
+                while (wrappedIterator_ != beginIterator_ && !wrappedIterator_->item)
                     --wrappedIterator_;
+                if (wrappedIterator_ == beginIterator_ && !wrappedIterator_->item)
+                    wrappedIterator_ = endIterator_;
                 return *this;
             }
 
@@ -112,7 +115,7 @@ namespace Nui
             IteratorBase operator+(std::size_t offset) const
             {
                 IteratorType tmp = *this;
-                for (std::size_t i = 0; i < offset && tmp != wrappedIterator_.end(); ++i)
+                for (std::size_t i = 0; i < offset && tmp != endIterator_; ++i)
                     ++tmp;
                 return tmp;
             }
@@ -120,25 +123,32 @@ namespace Nui
             IteratorBase operator-(std::size_t offset) const
             {
                 IteratorType tmp = *this;
-                for (std::size_t i = 0; i < offset && tmp != wrappedIterator_.begin(); ++i)
+                for (std::size_t i = 0; i < offset && tmp != beginIterator_; ++i)
                     --tmp;
                 return tmp;
             }
 
             IteratorBase& operator+=(std::size_t offset)
             {
-                for (std::size_t i = 0; i < offset && *this != wrappedIterator_.end(); ++i)
+                for (std::size_t i = 0; i < offset && *this != endIterator_; ++i)
                     ++*this;
             }
 
             IteratorBase& operator-=(std::size_t offset)
             {
-                for (std::size_t i = 0; i < offset && *this != wrappedIterator_.begin(); ++i)
+                for (std::size_t i = 0; i < offset && *this != beginIterator_; ++i)
                     --*this;
+            }
+
+            bool isEnd() const
+            {
+                return wrappedIterator_ == endIterator_;
             }
 
           protected:
             WrappedIterator wrappedIterator_;
+            WrappedIterator beginIterator_;
+            WrappedIterator endIterator_;
         };
 
         template <typename WrappedIterator>
@@ -155,12 +165,16 @@ namespace Nui
 
             auto const& operator*() const
             {
-                return *wrappedIterator_;
+                if (IteratorBase<WrappedIterator>::isEnd())
+                    throw std::runtime_error{"Dereferencing end iterator"};
+                return wrappedIterator_->item.value();
             }
 
             auto const* operator->() const
             {
-                return &*wrappedIterator_;
+                if (IteratorBase<WrappedIterator>::isEnd())
+                    throw std::runtime_error{"Dereferencing end iterator"};
+                return &wrappedIterator_->item.value();
             }
         };
 
@@ -174,12 +188,16 @@ namespace Nui
 
             auto& operator*()
             {
-                return *wrappedIterator_;
+                if (IteratorBase<WrappedIterator>::isEnd())
+                    throw std::runtime_error{"Dereferencing end iterator"};
+                return wrappedIterator_->item.value();
             }
 
             auto* operator->()
             {
-                return &*wrappedIterator_;
+                if (IteratorBase<WrappedIterator>::isEnd())
+                    throw std::runtime_error{"Dereferencing end iterator"};
+                return &wrappedIterator_->item.value();
             }
         };
 
@@ -237,10 +255,7 @@ namespace Nui
             --itemCount_;
 
             auto result = condense();
-            if (result != std::end(items_))
-                return result;
-
-            return p;
+            return {result, items_.begin(), items_.end()};
         }
 
         std::optional<T> pop(IdType id)
@@ -292,8 +307,8 @@ namespace Nui
                 if (callback(selected))
                 {
                     ++itemCount_;
-                    auto entry = get(id);
-                    if (entry != end())
+                    auto entry = findItem(id);
+                    if (entry != std::end(items_))
                         entry->item = std::move(const_cast<ItemWithId&>(selected).item);
                 }
             }
@@ -310,8 +325,8 @@ namespace Nui
             if (callback(*iter))
             {
                 ++itemCount_;
-                auto entry = get(id);
-                if (entry != end())
+                auto entry = findItem(id);
+                if (entry != std::end(items_))
                     entry->item = std::move(const_cast<ItemWithId&>(*iter).item);
             }
             selected_.erase(iter);
@@ -324,7 +339,7 @@ namespace Nui
             auto iter = findItem(id);
             if (iter == std::end(items_))
                 return end();
-            return IteratorType{iter};
+            return IteratorType{iter, items_.begin(), items_.end()};
         }
 
         ConstIteratorType get(IdType id) const
@@ -332,7 +347,7 @@ namespace Nui
             auto iter = findItem(id);
             if (iter == std::end(items_))
                 return end();
-            return ConstIteratorType{iter};
+            return ConstIteratorType{iter, items_.begin(), items_.end()};
         }
 
         auto const& operator[](IdType id) const
@@ -346,27 +361,27 @@ namespace Nui
 
         IteratorType begin()
         {
-            return {items_.begin()};
+            return {items_.begin(), items_.begin(), items_.end()};
         }
         IteratorType begin() const
         {
-            return {items_.begin()};
+            return {items_.begin(), items_.begin(), items_.end()};
         }
         ConstIteratorType cbegin() const
         {
-            return {items_.cbegin()};
+            return {items_.cbegin(), items_.begin(), items_.end()};
         }
         IteratorType end()
         {
-            return {items_.end()};
+            return {items_.end(), items_.begin(), items_.end()};
         }
         ConstIteratorType end() const
         {
-            return {items_.end()};
+            return {items_.end(), items_.begin(), items_.end()};
         }
         ConstIteratorType cend() const
         {
-            return {items_.cend()};
+            return {items_.cend(), items_.begin(), items_.end()};
         }
 
         bool empty() const
