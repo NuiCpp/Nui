@@ -552,7 +552,7 @@ namespace Nui
         /**
          * @brief Returns an iterator to the underlying container.
          */
-        ItemContainerType::iterator rawBegin()
+        typename ItemContainerType::iterator rawBegin()
         {
             return items_.begin();
         }
@@ -560,7 +560,7 @@ namespace Nui
         /**
          * @brief Returns an iterator to the underlying container.
          */
-        ItemContainerType::iterator rawEnd()
+        typename ItemContainerType::iterator rawEnd()
         {
             return items_.end();
         }
@@ -568,7 +568,7 @@ namespace Nui
         /**
          * @brief Returns a const iterator to the underlying container.
          */
-        ItemContainerType::const_iterator rawBegin() const
+        typename ItemContainerType::const_iterator rawBegin() const
         {
             return items_.begin();
         }
@@ -576,7 +576,7 @@ namespace Nui
         /**
          * @brief Returns a const iterator to the underlying container.
          */
-        ItemContainerType::const_iterator rawEnd() const
+        typename ItemContainerType::const_iterator rawEnd() const
         {
             return items_.end();
         }
