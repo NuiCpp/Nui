@@ -63,7 +63,13 @@ namespace Nui
                 : wrappedIterator_{std::move(wrapped)}
                 , beginIterator_{std::move(begin)}
                 , endIterator_{std::move(end)}
-            {}
+            {
+                if (wrappedIterator_ == endIterator_)
+                    return;
+                // shift iterator to first valid item
+                while (wrappedIterator_ != endIterator_ && !wrappedIterator_->item)
+                    ++wrappedIterator_;
+            }
             IteratorBase(IteratorBase const&) = default;
             IteratorBase(IteratorBase&&) = default;
             IteratorBase& operator=(IteratorBase const&) = default;
@@ -299,14 +305,22 @@ namespace Nui
             };
         }
 
-        void deselectAll(std::invocable<ItemWithId const&> auto callback)
+        /**
+         * @brief Deselects all items. Will reinsert items when callback returns true.
+         *
+         * @param callback callback to execute on each item.
+         * @return std::size_t Amount of reinserted elements.
+         */
+        std::size_t deselectAll(std::invocable<ItemWithId const&> auto const& callback)
         {
+            std::size_t result = 0;
             for (auto const& selected : selected_)
             {
                 auto const id = selected.id;
                 if (callback(selected))
                 {
                     ++itemCount_;
+                    ++result;
                     auto entry = findItem(id);
                     if (entry != std::end(items_))
                         entry->item = std::move(const_cast<ItemWithId&>(selected).item);
@@ -314,13 +328,22 @@ namespace Nui
             }
             selected_.clear();
             condense();
+            return result;
         }
 
-        void deselect(IdType id, std::invocable<ItemWithId const&> auto callback)
+        /**
+         * @brief Deselects item with id. Will reinsert item when callback returns true.
+         *
+         * @param id id of the item to deselect
+         * @param callback callback to execute on the item
+         * @return true Deselected and reinserted item
+         * @return false Either did not find item or item was not reinserted
+         */
+        bool deselect(IdType id, std::invocable<ItemWithId const&> auto const& callback)
         {
             auto const iter = selected_.find(ItemWithId{id, std::nullopt});
             if (iter == std::end(selected_))
-                return;
+                return false;
 
             if (callback(*iter))
             {
@@ -328,10 +351,12 @@ namespace Nui
                 auto entry = findItem(id);
                 if (entry != std::end(items_))
                     entry->item = std::move(const_cast<ItemWithId&>(*iter).item);
+                return true;
             }
             selected_.erase(iter);
             if (selected_.empty())
                 condense();
+            return false;
         }
 
         IteratorType get(IdType id)
@@ -363,7 +388,7 @@ namespace Nui
         {
             return {items_.begin(), items_.begin(), items_.end()};
         }
-        IteratorType begin() const
+        ConstIteratorType begin() const
         {
             return {items_.begin(), items_.begin(), items_.end()};
         }
@@ -405,6 +430,17 @@ namespace Nui
                 return std::end(items_);
             return p;
         }
+        typename std::vector<ItemWithId>::const_iterator findItem(IdType id) const
+        {
+            const auto p =
+                std::lower_bound(std::begin(items_), std::end(items_), id, [](auto const& lhs, auto const& rhs) {
+                    return lhs.id < rhs;
+                });
+
+            if (p == std::end(items_) || p->id != id)
+                return std::end(items_);
+            return p;
+        }
 
         auto condense()
         {
@@ -423,10 +459,10 @@ namespace Nui
         }
 
       private:
-        std::vector<ItemWithId> items_;
+        std::vector<ItemWithId> items_{};
         // TODO: improve performance, id link backs are costly, each one is a binary search.
-        std::set<ItemWithId> selected_;
-        IdType itemCount_;
-        IdType id_;
+        std::set<ItemWithId> selected_{};
+        IdType itemCount_{0};
+        IdType id_{0};
     };
 }
