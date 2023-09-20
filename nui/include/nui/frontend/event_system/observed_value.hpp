@@ -217,14 +217,14 @@ namespace Nui
         }
 
         template <typename T = ContainedT>
-        requires std::equality_comparable<T> && Fundamental<T>
+        requires std::equality_comparable_with<ContainedT, T> && Fundamental<T> && Fundamental<ContainedT>
         ModifiableObserved& operator=(T&& t)
         {
             return assignChecked(t);
         }
 
         template <typename T = ContainedT>
-        requires std::equality_comparable<T>
+        requires std::equality_comparable_with<ContainedT, T>
         ModifiableObserved& assignChecked(T&& other)
         {
             if (contained_ != other)

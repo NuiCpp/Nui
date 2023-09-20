@@ -474,4 +474,42 @@ namespace Nui::Tests
         globalEventContext.executeActiveEventsImmediately();
         EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "B");
     }
+
+    TEST_F(TestAttributes, AttributeCanBeVariant1)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        std::variant<std::string, int> idValue{"A"};
+
+        render(div{id = idValue}());
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "A");
+    }
+
+    TEST_F(TestAttributes, AttributeCanBeVariant2)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        std::variant<std::string, int> idValue{2};
+
+        render(div{id = idValue}());
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<long long>(), 2);
+    }
+
+    TEST_F(TestAttributes, AttributeCanBeObservedVariant)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        Observed<std::variant<std::string, int>> idValue{"A"};
+
+        render(div{id = idValue}());
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "A");
+
+        idValue = 2;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<long long>(), 2);
+    }
 }
