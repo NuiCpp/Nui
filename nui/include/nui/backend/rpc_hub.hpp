@@ -86,14 +86,17 @@ namespace Nui
         RpcHub& operator=(RpcHub&&) = delete;
 
         constexpr static char const* remoteCallScript = R"(
-            (function() {{ 
-                globalThis.nui_rpc.frontend["{}"]({});
-            }})();
-        )";
+            (function() {{
+                if (globalThis.nui_rpc.frontend.hasOwnProperty("{0}")) {{
+                    globalThis.nui_rpc.frontend["{0}"]({1});
+                    return;
+                }}
 
-        constexpr static char const* remoteCallScript0Args = R"(
-            (function() {{ 
-                globalThis.nui_rpc.frontend["{}"](undefined);
+                globalThis.nui_rpc.errors = globalThis.nui_rpc.errors || [];
+                globalThis.nui_rpc.errors.push("Function {0} does not exist.");
+                if (globalThis.nui_rpc.errors.length > 100) {{
+                    globalThis.nui_rpc.errors.shift();
+                }}
             }})();
         )";
 
@@ -243,7 +246,7 @@ namespace Nui
         void callRemoteImpl(std::string const& name) const
         {
             // window is threadsafe.
-            window_->eval(fmt::format(remoteCallScript0Args, name));
+            window_->eval(fmt::format(remoteCallScript, name, "undefined"));
         }
 
       private:
