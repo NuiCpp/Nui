@@ -120,6 +120,16 @@ namespace Nui
                     return callable_(convertToVal(backChannel_), val);
             }
 
+            bool isValid() const
+            {
+                return resolve();
+            }
+
+            explicit operator bool() const
+            {
+                return isValid();
+            }
+
             RemoteCallable(std::string name)
                 : name_{std::move(name)}
                 , backChannel_{}
