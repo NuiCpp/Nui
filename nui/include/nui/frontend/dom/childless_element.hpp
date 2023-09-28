@@ -11,6 +11,38 @@
 
 namespace Nui::Dom
 {
+    class Flag
+    {
+      public:
+        Flag()
+            : set_{false}
+        {}
+        Flag(bool set)
+            : set_{set}
+        {}
+        Flag(Flag const&) = default;
+        Flag(Flag&&) = default;
+        Flag& operator=(Flag const&) = default;
+        Flag& operator=(Flag&&) = default;
+        Flag& operator=(bool set)
+        {
+            set_ = set;
+            return *this;
+        }
+
+        explicit operator bool() const
+        {
+            return set_;
+        }
+        bool isSet() const
+        {
+            return set_;
+        }
+
+      private:
+        bool set_;
+    };
+
     /**
      * @brief The basic element cannot have children and does not hold explicit ownership of them.
      * To represent an actual HtmlElement use the Element class.
@@ -52,7 +84,16 @@ namespace Nui::Dom
         void setAttribute(std::string_view key, bool value)
         {
             if (value)
-                element_.call<Nui::val>("setAttribute", Nui::val{std::string{key}}, Nui::val{""});
+                element_.call<Nui::val>("setAttribute", Nui::val{std::string{key}}, Nui::val{std::string{key}});
+            else
+                element_.call<Nui::val>("removeAttribute", Nui::val{std::string{key}});
+        }
+        void setAttribute(std::string_view key, Flag flag)
+        {
+            if (flag)
+                element_.call<Nui::val>("setAttribute", Nui::val{std::string{key}}, Nui::val{"true"});
+            else
+                element_.call<Nui::val>("removeAttribute", Nui::val{std::string{key}});
         }
         template <typename T>
         requires std::integral<T>
