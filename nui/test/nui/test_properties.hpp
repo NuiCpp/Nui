@@ -255,4 +255,24 @@ namespace Nui::Tests
         render(div{tabIndex = property(tabIndexValue)}());
         EXPECT_EQ(Nui::val::global("document")["body"]["tabIndex"].as<long double>(), 1.5);
     }
+
+    TEST_F(TestProperties, CanUseGeneratorWithPropertyLiteral)
+    {
+        using Nui::Elements::input;
+        using Nui::property;
+        using namespace Nui::Attributes::Literals;
+
+        Observed<std::string> observed{"Hello"};
+
+        render(input{"value"_prop = observe(observed).generate([&observed]() {
+            return observed.value() + " World";
+        })}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["value"].as<std::string>(), "Hello World");
+
+        observed = "Goodbye";
+        Nui::globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["value"].as<std::string>(), "Goodbye World");
+    }
 }
