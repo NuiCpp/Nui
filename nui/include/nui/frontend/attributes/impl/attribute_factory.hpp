@@ -6,6 +6,7 @@
 #include <nui/frontend/event_system/event_context.hpp>
 #include <nui/frontend/event_system/observed_value_combinator.hpp>
 #include <nui/utility/fixed_string.hpp>
+#include <nui/frontend/property.hpp>
 
 #include <nui/frontend/val.hpp>
 
@@ -17,7 +18,6 @@ namespace Nui::Attributes
         EventContext::EventIdType changeEventHandler(
             std::weak_ptr<ElementT> element,
             T const& obs,
-            char const* name,
             std::function<bool(std::shared_ptr<ElementT> const&)> onLock)
         {
             const auto eventId = globalEventContext.registerEvent(Event{
@@ -42,7 +42,6 @@ namespace Nui::Attributes
             return changeEventHandler(
                 element,
                 obs,
-                name,
                 std::function<bool(std::shared_ptr<ElementT> const&)>{
                     [name, obs](std::shared_ptr<ElementT> const& shared) {
                         shared->setAttribute(name, obs.value());
@@ -56,40 +55,124 @@ namespace Nui::Attributes
             return changeEventHandler(
                 element,
                 obs,
-                name,
                 std::function<bool(std::shared_ptr<ElementT> const&)>{
                     [name, obs](std::shared_ptr<ElementT> const& shared) {
                         shared->setProperty(name, obs.value());
                         return true;
                     }});
         }
+    }
 
-        template <typename T>
-        struct Property
+    class PropertyFactory
+    {
+      public:
+        explicit constexpr PropertyFactory(char const* name)
+            : name_{name}
+        {}
+
+        // Dont use this class like a value
+        PropertyFactory(PropertyFactory const&) = delete;
+        PropertyFactory(PropertyFactory&&) = delete;
+        PropertyFactory& operator=(PropertyFactory const&) = delete;
+        PropertyFactory& operator=(PropertyFactory&&) = delete;
+
+        constexpr char const* name() const
         {
-            T prop;
+            return name_;
         };
 
-        template <IsObserved T>
-        struct Property<T>
+        template <typename U>
+        requires(
+            !IsObserved<std::decay_t<U>> && !std::invocable<U, Nui::val> && !std::invocable<U> &&
+            !Nui::Detail::IsProperty<std::decay_t<U>>)
+        Attribute operator=(U val) const
         {
-            T const* prop;
-        };
-    }
+            return Attribute{
+                [name = name(), val = std::move(val)](Dom::ChildlessElement& element) {
+                    element.setProperty(name, val);
+                },
+            };
+        }
 
-    template <typename U>
-    requires(IsObserved<std::decay_t<U>>)
-    Detail::Property<std::decay_t<U>> property(U& val)
-    {
-        return Detail::Property<std::decay_t<U>>{.prop = &val};
-    }
+        template <typename U>
+        requires(IsObserved<std::decay_t<U>>)
+        Attribute operator=(U& val) const
+        {
+            return Attribute{
+                [name = name(), &val](Dom::ChildlessElement& element) {
+                    element.setProperty(name, val.value());
+                },
+                [name = name(), &val](std::weak_ptr<Dom::ChildlessElement>&& element) {
+                    return Detail::defaultPropertyEvent(
+                        std::move(element), Nui::Detail::CopiableObservedWrap{val}, name);
+                },
+                [&val](EventContext::EventIdType const& id) {
+                    val.unattachEvent(id);
+                },
+            };
+        }
 
-    template <typename U>
-    requires(!IsObserved<std::decay_t<U>>)
-    Detail::Property<std::decay_t<U>> property(U val)
-    {
-        return Detail::Property<std::decay_t<U>>{.prop = std::move(val)};
-    }
+        template <typename RendererType, typename... ObservedValues>
+        Attribute
+        operator=(ObservedValueCombinatorWithPropertyGenerator<RendererType, ObservedValues...> const& combinator) const
+        {
+            return Attribute{
+                [name = name(), combinator](Dom::ChildlessElement& element) {
+                    element.setProperty(name, combinator.value());
+                },
+                [name = name(), combinator](std::weak_ptr<Dom::ChildlessElement>&& element) {
+                    return Detail::defaultPropertyEvent(std::move(element), combinator, name);
+                },
+                [combinator](EventContext::EventIdType const& id) {
+                    combinator.unattachEvent(id);
+                },
+            };
+        }
+
+        template <typename RendererType, typename... ObservedValues>
+        Attribute
+        operator=(ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...> const& combinator) const
+        {
+            return Attribute{
+                [name = name(), combinator](Dom::ChildlessElement& element) {
+                    element.setProperty(name, combinator.value());
+                },
+                [name = name(), combinator](std::weak_ptr<Dom::ChildlessElement>&& element) {
+                    return Detail::defaultPropertyEvent(std::move(element), combinator, name);
+                },
+                [combinator](EventContext::EventIdType const& id) {
+                    combinator.unattachEvent(id);
+                },
+            };
+        }
+
+        Attribute operator=(std::function<void(Nui::val)> func) const
+        {
+            return Attribute{
+                [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
+                    element.setProperty(name, [func](Nui::val val) {
+                        func(val);
+                        globalEventContext.executeActiveEventsImmediately();
+                    });
+                },
+            };
+        }
+
+        Attribute operator=(std::function<void()> func) const
+        {
+            return Attribute{
+                [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
+                    element.setProperty(name, [func](Nui::val) {
+                        func();
+                        globalEventContext.executeActiveEventsImmediately();
+                    });
+                },
+            };
+        }
+
+      private:
+        char const* name_;
+    };
 
     class AttributeFactory
     {
@@ -99,10 +182,10 @@ namespace Nui::Attributes
         {}
 
         // Dont use this class like a value
-        AttributeFactory(Attribute const&) = delete;
-        AttributeFactory(Attribute&&) = delete;
-        AttributeFactory& operator=(Attribute const&) = delete;
-        AttributeFactory& operator=(Attribute&&) = delete;
+        AttributeFactory(AttributeFactory const&) = delete;
+        AttributeFactory(AttributeFactory&&) = delete;
+        AttributeFactory& operator=(AttributeFactory const&) = delete;
+        AttributeFactory& operator=(AttributeFactory&&) = delete;
 
         constexpr char const* name() const
         {
@@ -110,7 +193,9 @@ namespace Nui::Attributes
         };
 
         template <typename U>
-        requires(!IsObserved<std::decay_t<U>> && !std::invocable<U, Nui::val> && !std::invocable<U>)
+        requires(
+            !IsObserved<std::decay_t<U>> && !std::invocable<U, Nui::val> && !std::invocable<U> &&
+            !Nui::Detail::IsProperty<std::decay_t<U>>)
         Attribute operator=(U val) const
         {
             return Attribute{
@@ -119,6 +204,7 @@ namespace Nui::Attributes
                 },
             };
         }
+
         template <typename U>
         requires(IsObserved<std::decay_t<U>>)
         Attribute operator=(U& val) const
@@ -139,7 +225,7 @@ namespace Nui::Attributes
 
         template <typename U>
         requires(IsObserved<std::decay_t<U>>)
-        Attribute operator=(Detail::Property<U>&& prop) const
+        Attribute operator=(Nui::Detail::Property<U> const& prop) const
         {
             return Attribute{
                 [name = name(), p = prop.prop](Dom::ChildlessElement& element) {
@@ -156,11 +242,29 @@ namespace Nui::Attributes
         }
 
         template <typename U>
-        Attribute operator=(Detail::Property<U>&& prop) const
+        requires(!IsObserved<std::decay_t<U>> && !std::invocable<U, Nui::val> && !std::invocable<U>)
+        Attribute operator=(Nui::Detail::Property<U> const& prop) const
         {
             return Attribute{[name = name(), p = std::move(prop.prop)](Dom::ChildlessElement& element) {
                 element.setProperty(name, p);
             }};
+        }
+
+        template <typename RendererType, typename... ObservedValues>
+        Attribute
+        operator=(ObservedValueCombinatorWithPropertyGenerator<RendererType, ObservedValues...> const& combinator) const
+        {
+            return Attribute{
+                [name = name(), combinator](Dom::ChildlessElement& element) {
+                    element.setProperty(name, combinator.value());
+                },
+                [name = name(), combinator](std::weak_ptr<Dom::ChildlessElement>&& element) {
+                    return Detail::defaultPropertyEvent(std::move(element), combinator, name);
+                },
+                [combinator](EventContext::EventIdType const& id) {
+                    combinator.unattachEvent(id);
+                },
+            };
         }
 
         template <typename RendererType, typename... ObservedValues>
@@ -204,9 +308,45 @@ namespace Nui::Attributes
             };
         }
 
+        Attribute operator=(Nui::Detail::Property<std::function<void(Nui::val)>> func) const
+        {
+            return Attribute{
+                [name = name(), func = std::move(func.prop)](Dom::ChildlessElement& element) {
+                    element.setProperty(name, [func](Nui::val val) {
+                        func(val);
+                        globalEventContext.executeActiveEventsImmediately();
+                    });
+                },
+            };
+        }
+
+        Attribute operator=(Nui::Detail::Property<std::function<void()>> func) const
+        {
+            return Attribute{
+                [name = name(), func = std::move(func.prop)](Dom::ChildlessElement& element) {
+                    element.setProperty(name, [func](Nui::val) {
+                        func();
+                        globalEventContext.executeActiveEventsImmediately();
+                    });
+                },
+            };
+        }
+
       private:
         char const* name_;
     };
+
+    inline namespace Literals
+    {
+        constexpr AttributeFactory operator""_attr(char const* name, std::size_t)
+        {
+            return AttributeFactory{name};
+        }
+        constexpr PropertyFactory operator""_prop(char const* name, std::size_t)
+        {
+            return PropertyFactory{name};
+        }
+    }
 }
 
 #define MAKE_HTML_VALUE_ATTRIBUTE_RENAME(NAME, HTML_NAME) \

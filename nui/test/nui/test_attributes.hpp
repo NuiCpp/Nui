@@ -512,4 +512,15 @@ namespace Nui::Tests
 
         EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<long long>(), 2);
     }
+
+    TEST_F(TestAttributes, CanUseAttributeLiteral)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+        using namespace Nui::Attributes::Literals;
+
+        render(div{"id"_attr = "A"}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "A");
+    }
 }
