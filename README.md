@@ -8,6 +8,7 @@ Documentation: https://nuicpp.github.io/nui-documentation/
 
 ## Setup
 How to get going with nui is explained here in detail: [Installation](https://nuicpp.github.io/nui-documentation/docs/getting_started/installation)
+
 A template to get going can be found here: [Template](https://github.com/NuiCpp/nui-template)
 
 ## Platforms & Compilers
@@ -16,9 +17,9 @@ Tested on:
   - Ubuntu 22 (using clang14 and libstdc++12) ![example workflow](https://github.com/NuiCpp/Nui/actions/workflows/ubuntu_22.yml/badge.svg)
   - Windows (using clang16 and current msys libstdc++) ![example workflow](https://github.com/NuiCpp/Nui/actions/workflows/windows.yml/badge.svg)
 
-Untested but should work:
+Not automatically tested but should work:
   - Arch Linux
-  - Other Linux Distributions
+  - Other Linux Distributions with new enough packages for C++20
 
 Planed:
   - Mac OS
