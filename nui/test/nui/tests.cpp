@@ -1,4 +1,5 @@
 #include "test_attributes.hpp"
+#include "test_properties.hpp"
 #include "test_ranges.hpp"
 #include "test_render.hpp"
 #include "test_switch.hpp"

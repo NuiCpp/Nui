@@ -512,4 +512,31 @@ namespace Nui::Tests
 
         EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<long long>(), 2);
     }
+
+    TEST_F(TestAttributes, CanUseAttributeLiteral)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+        using namespace Nui::Attributes::Literals;
+
+        render(div{"id"_attr = "A"}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "A");
+    }
+
+    TEST_F(TestAttributes, OptionalIsUnsetByObserved)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        Observed<std::optional<std::string>> idValue{std::string{"A"}};
+
+        render(div{id = idValue}());
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "A");
+
+        idValue = std::nullopt;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_FALSE(Nui::val::global("document")["body"]["attributes"].hasOwnProperty("id"));
+    }
 }

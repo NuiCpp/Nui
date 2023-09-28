@@ -91,8 +91,25 @@ namespace Nui
             return std::move(generator_);
         }
 
-      private:
+      protected:
         const RendererType generator_;
+    };
+
+    template <typename RendererType, typename... ObservedValues>
+    class ObservedValueCombinatorWithPropertyGenerator
+        : public ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>
+    {
+      public:
+        using ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>::
+            ObservedValueCombinatorWithGenerator;
+        ObservedValueCombinatorWithPropertyGenerator(
+            ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>&& other)
+            : ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>{std::move(other)}
+        {}
+
+        using ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>::split;
+        using ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>::value;
+        using ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>::generator;
     };
 
     template <typename... ObservedValues>
@@ -108,6 +125,15 @@ namespace Nui
         generate(RendererType&& generator)
         {
             return ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>{
+                observedValues_, std::forward<RendererType>(generator)};
+        }
+
+        template <typename RendererType>
+        requires std::invocable<RendererType>
+        constexpr ObservedValueCombinatorWithPropertyGenerator<RendererType, ObservedValues...>
+        generateProperty(RendererType&& generator)
+        {
+            return ObservedValueCombinatorWithPropertyGenerator<RendererType, ObservedValues...>{
                 observedValues_, std::forward<RendererType>(generator)};
         }
     };
