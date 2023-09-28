@@ -11,38 +11,6 @@
 
 namespace Nui::Dom
 {
-    class Flag
-    {
-      public:
-        Flag()
-            : set_{false}
-        {}
-        Flag(bool set)
-            : set_{set}
-        {}
-        Flag(Flag const&) = default;
-        Flag(Flag&&) = default;
-        Flag& operator=(Flag const&) = default;
-        Flag& operator=(Flag&&) = default;
-        Flag& operator=(bool set)
-        {
-            set_ = set;
-            return *this;
-        }
-
-        explicit operator bool() const
-        {
-            return set_;
-        }
-        bool isSet() const
-        {
-            return set_;
-        }
-
-      private:
-        bool set_;
-    };
-
     /**
      * @brief The basic element cannot have children and does not hold explicit ownership of them.
      * To represent an actual HtmlElement use the Element class.
@@ -56,6 +24,59 @@ namespace Nui::Dom
         explicit ChildlessElement(Nui::val val)
             : BasicElement{std::move(val)}
         {}
+
+        void setProperty(std::string_view key, std::string const& value)
+        {
+            element_.set(Nui::val{std::string{key}}, Nui::val{value});
+        }
+        void setProperty(std::string_view key, std::string_view value)
+        {
+            setProperty(key, std::string{value});
+        }
+        void setProperty(std::string_view key, char const* value)
+        {
+            if (value[0] == '\0')
+                element_.delete_(std::string{key});
+            else
+                setProperty(key, std::string{value});
+        }
+        void setProperty(std::string_view key, std::invocable<Nui::val> auto&& value)
+        {
+            element_.set(Nui::val{std::string{key}}, Nui::bind(value, std::placeholders::_1));
+        }
+        template <typename T>
+        void setProperty(std::string_view key, std::optional<T> const& value)
+        {
+            if (value)
+                setProperty(key, *value);
+            else
+                element_.delete_(std::string{key});
+        }
+        void setProperty(std::string_view key, bool value)
+        {
+            element_.set(Nui::val{std::string{key}}, Nui::val{value});
+        }
+        template <typename... List>
+        void setProperty(std::string_view key, std::variant<List...> const& variant)
+        {
+            std::visit(
+                [this, &key](auto const& value) {
+                    this->setProperty(key, value);
+                },
+                variant);
+        }
+        template <typename T>
+        requires std::integral<T>
+        void setProperty(std::string_view key, T value)
+        {
+            element_.set(Nui::val{std::string{key}}, Nui::val{static_cast<int>(value)});
+        }
+        template <typename T>
+        requires std::floating_point<T>
+        void setProperty(std::string_view key, T value)
+        {
+            element_.set(Nui::val{std::string{key}}, Nui::val{static_cast<double>(value)});
+        }
 
         // TODO: more overloads?
         void setAttribute(std::string_view key, std::string const& value)
@@ -88,13 +109,6 @@ namespace Nui::Dom
             else
                 element_.call<Nui::val>("removeAttribute", Nui::val{std::string{key}});
         }
-        void setAttribute(std::string_view key, Flag flag)
-        {
-            if (flag)
-                element_.call<Nui::val>("setAttribute", Nui::val{std::string{key}}, Nui::val{"true"});
-            else
-                element_.call<Nui::val>("removeAttribute", Nui::val{std::string{key}});
-        }
         template <typename T>
         requires std::integral<T>
         void setAttribute(std::string_view key, T value)
@@ -116,6 +130,8 @@ namespace Nui::Dom
         {
             if (value)
                 setAttribute(key, *value);
+            else
+                element_.call<Nui::val>("removeAttribute", Nui::val{std::string{key}});
         }
         template <typename... List>
         void setAttribute(std::string_view key, std::variant<List...> const& variant)

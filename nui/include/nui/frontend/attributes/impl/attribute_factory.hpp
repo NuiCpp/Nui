@@ -14,14 +14,17 @@ namespace Nui::Attributes
     namespace Detail
     {
         template <typename ElementT, typename T>
-        EventContext::EventIdType defaultSetEvent(std::weak_ptr<ElementT> element, T const& obs, char const* name)
+        EventContext::EventIdType changeEventHandler(
+            std::weak_ptr<ElementT> element,
+            T const& obs,
+            char const* name,
+            std::function<bool(std::shared_ptr<ElementT> const&)> onLock)
         {
             const auto eventId = globalEventContext.registerEvent(Event{
-                [element, obs, name](auto eventId) {
+                [element, obs, onLock = std::move(onLock)](auto eventId) {
                     if (auto shared = element.lock(); shared)
                     {
-                        shared->setAttribute(name, obs.value());
-                        return true;
+                        return onLock(shared);
                     }
                     obs.unattachEvent(eventId);
                     return false;
@@ -32,6 +35,60 @@ namespace Nui::Attributes
             obs.attachEvent(eventId);
             return eventId;
         }
+
+        template <typename ElementT, typename T>
+        EventContext::EventIdType defaultAttributeEvent(std::weak_ptr<ElementT> element, T const& obs, char const* name)
+        {
+            return changeEventHandler(
+                element,
+                obs,
+                name,
+                std::function<bool(std::shared_ptr<ElementT> const&)>{
+                    [name, obs](std::shared_ptr<ElementT> const& shared) {
+                        shared->setAttribute(name, obs.value());
+                        return true;
+                    }});
+        }
+
+        template <typename ElementT, typename T>
+        EventContext::EventIdType defaultPropertyEvent(std::weak_ptr<ElementT> element, T const& obs, char const* name)
+        {
+            return changeEventHandler(
+                element,
+                obs,
+                name,
+                std::function<bool(std::shared_ptr<ElementT> const&)>{
+                    [name, obs](std::shared_ptr<ElementT> const& shared) {
+                        shared->setProperty(name, obs.value());
+                        return true;
+                    }});
+        }
+
+        template <typename T>
+        struct Property
+        {
+            T prop;
+        };
+
+        template <IsObserved T>
+        struct Property<T>
+        {
+            T const* prop;
+        };
+    }
+
+    template <typename U>
+    requires(IsObserved<std::decay_t<U>>)
+    Detail::Property<std::decay_t<U>> property(U& val)
+    {
+        return Detail::Property<std::decay_t<U>>{.prop = &val};
+    }
+
+    template <typename U>
+    requires(!IsObserved<std::decay_t<U>>)
+    Detail::Property<std::decay_t<U>> property(U val)
+    {
+        return Detail::Property<std::decay_t<U>>{.prop = std::move(val)};
     }
 
     class AttributeFactory
@@ -71,13 +128,41 @@ namespace Nui::Attributes
                     element.setAttribute(name, val.value());
                 },
                 [name = name(), &val](std::weak_ptr<Dom::ChildlessElement>&& element) {
-                    return Detail::defaultSetEvent(std::move(element), Nui::Detail::CopiableObservedWrap{val}, name);
+                    return Detail::defaultAttributeEvent(
+                        std::move(element), Nui::Detail::CopiableObservedWrap{val}, name);
                 },
                 [&val](EventContext::EventIdType const& id) {
                     val.unattachEvent(id);
                 },
             };
         }
+
+        template <typename U>
+        requires(IsObserved<std::decay_t<U>>)
+        Attribute operator=(Detail::Property<U>&& prop) const
+        {
+            return Attribute{
+                [name = name(), p = prop.prop](Dom::ChildlessElement& element) {
+                    element.setProperty(name, p->value());
+                },
+                [name = name(), p = prop.prop](std::weak_ptr<Dom::ChildlessElement>&& element) {
+                    return Detail::defaultPropertyEvent(
+                        std::move(element), Nui::Detail::CopiableObservedWrap{*p}, name);
+                },
+                [p = prop.prop](EventContext::EventIdType const& id) {
+                    p->unattachEvent(id);
+                },
+            };
+        }
+
+        template <typename U>
+        Attribute operator=(Detail::Property<U>&& prop) const
+        {
+            return Attribute{[name = name(), p = std::move(prop.prop)](Dom::ChildlessElement& element) {
+                element.setProperty(name, p);
+            }};
+        }
+
         template <typename RendererType, typename... ObservedValues>
         Attribute
         operator=(ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...> const& combinator) const
@@ -87,7 +172,7 @@ namespace Nui::Attributes
                     element.setAttribute(name, combinator.value());
                 },
                 [name = name(), combinator](std::weak_ptr<Dom::ChildlessElement>&& element) {
-                    return Detail::defaultSetEvent(std::move(element), combinator, name);
+                    return Detail::defaultAttributeEvent(std::move(element), combinator, name);
                 },
                 [combinator](EventContext::EventIdType const& id) {
                     combinator.unattachEvent(id);
