@@ -576,9 +576,67 @@ namespace Nui
         /**
          * @brief Returns a const iterator to the underlying container.
          */
+        typename ItemContainerType::const_iterator rawConstBegin() const
+        {
+            return items_.cbegin();
+        }
+
+        /**
+         * @brief Returns a const iterator to the underlying container.
+         */
         typename ItemContainerType::const_iterator rawEnd() const
         {
             return items_.end();
+        }
+
+        /**
+         * @brief Returns a const iterator to the underlying container.
+         */
+        typename ItemContainerType::const_iterator rawConstEnd() const
+        {
+            return items_.cend();
+        }
+
+        template <typename RegistryPtr>
+        struct RawRangeWrap
+        {
+            RegistryPtr registry;
+            typename ItemContainerType::iterator begin() const
+            {
+                return registry->rawBegin();
+            }
+            typename ItemContainerType::iterator end() const
+            {
+                return registry->rawEnd();
+            }
+            typename ItemContainerType::iterator cbegin() const
+            {
+                return registry->rawConstBegin();
+            }
+            typename ItemContainerType::iterator cend() const
+            {
+                return registry->rawConstEnd();
+            }
+        };
+
+        /**
+         * @brief Helper for range based for loops.
+         *
+         * @return RawRangeWrap
+         */
+        RawRangeWrap<SelectablesRegistry<T>*> rawRange()
+        {
+            return {this};
+        }
+
+        /**
+         * @brief Helper for range based for loops.
+         *
+         * @return RawRangeWrap
+         */
+        RawRangeWrap<SelectablesRegistry<T> const*> rawRange() const
+        {
+            return {this};
         }
 
       private:

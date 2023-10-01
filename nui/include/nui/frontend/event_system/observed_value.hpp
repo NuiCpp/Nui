@@ -4,7 +4,6 @@
 #include <nui/concepts.hpp>
 #include <nui/frontend/event_system/range_event_context.hpp>
 #include <nui/frontend/event_system/event_context.hpp>
-#include <nui/frontend/event_system/range.hpp>
 #include <nui/utility/meta/pick_first.hpp>
 
 #include <memory>
@@ -1115,23 +1114,14 @@ namespace Nui
             return *this;
         }
     };
-
-    template <typename ContainerT>
-    constexpr auto ObservedContainer<ContainerT>::map(auto&& function) const
+    template <>
+    class Observed<void> : public ObservedBase
     {
-        return std::pair<ObservedRange<Observed<ContainerT>>, std::decay_t<decltype(function)>>{
-            ObservedRange<Observed<ContainerT>>{static_cast<Observed<ContainerT> const&>(*this)},
-            std::forward<std::decay_t<decltype(function)>>(function),
+        void modify() const
+        {
+            update();
         };
-    }
-    template <typename ContainerT>
-    constexpr auto ObservedContainer<ContainerT>::map(auto&& function)
-    {
-        return std::pair<ObservedRange<Observed<ContainerT>>, std::decay_t<decltype(function)>>{
-            ObservedRange<Observed<ContainerT>>{static_cast<Observed<ContainerT>&>(*this)},
-            std::forward<std::decay_t<decltype(function)>>(function),
-        };
-    }
+    };
 
     namespace Detail
     {

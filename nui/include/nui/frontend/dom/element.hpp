@@ -250,3 +250,4 @@ namespace Nui::Dom
 }
 
 #include <nui/frontend/elements/impl/html_element.tpp>
+#include <nui/frontend/elements/impl/range_renderer.tpp>
