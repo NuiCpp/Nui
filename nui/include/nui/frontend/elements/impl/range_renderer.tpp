@@ -41,13 +41,13 @@ namespace Nui::Detail
 
         void operator()(auto& materialized)
         {
-            created_ = materialized;
+            weakMaterialized_ = materialized;
             valueRange_.attachEvent(Nui::globalEventContext.registerEvent(Event{
                 [self = this->shared_from_this()](int) -> bool {
                     return self->updateChildren();
                 },
                 [this /* fine because other function holds this */]() {
-                    return !created_.expired();
+                    return !weakMaterialized_.expired();
                 },
             }));
             updateChildren();
@@ -56,7 +56,7 @@ namespace Nui::Detail
       protected:
         ObservedType const& valueRange_;
         GeneratorT elementRenderer_;
-        std::weak_ptr<Nui::Dom::Element> created_;
+        std::weak_ptr<Nui::Dom::Element> weakMaterialized_;
     };
 
     template <typename RangeT, typename GeneratorT>
@@ -66,7 +66,7 @@ namespace Nui::Detail
     {
       public:
         using BasicObservedRenderer<RangeT, GeneratorT>::BasicObservedRenderer;
-        using BasicObservedRenderer<RangeT, GeneratorT>::created_;
+        using BasicObservedRenderer<RangeT, GeneratorT>::weakMaterialized_;
         using BasicObservedRenderer<RangeT, GeneratorT>::valueRange_;
         using BasicObservedRenderer<RangeT, GeneratorT>::elementRenderer_;
 
@@ -122,7 +122,7 @@ namespace Nui::Detail
 
         bool updateChildren() const override
         {
-            auto parent = created_.lock();
+            auto parent = weakMaterialized_.lock();
             if (!parent)
                 return InvalidateRange;
 
@@ -138,13 +138,13 @@ namespace Nui::Detail
 
         void operator()(auto& materialized)
         {
-            created_ = materialized;
+            weakMaterialized_ = materialized;
             valueRange_.attachEvent(Nui::globalEventContext.registerEvent(Event{
                 [self = this->shared_from_this()](int) -> bool {
                     return self->updateChildren();
                 },
                 [this /* fine because other function holds this */]() {
-                    return !created_.expired();
+                    return !weakMaterialized_.expired();
                 },
             }));
             updateChildren();
@@ -158,13 +158,13 @@ namespace Nui::Detail
     {
       public:
         using BasicObservedRenderer<RangeT, GeneratorT>::BasicObservedRenderer;
-        using BasicObservedRenderer<RangeT, GeneratorT>::created_;
+        using BasicObservedRenderer<RangeT, GeneratorT>::weakMaterialized_;
         using BasicObservedRenderer<RangeT, GeneratorT>::valueRange_;
         using BasicObservedRenderer<RangeT, GeneratorT>::elementRenderer_;
 
         bool updateChildren() const override
         {
-            auto parent = created_.lock();
+            auto parent = weakMaterialized_.lock();
             if (!parent)
                 return InvalidateRange;
 
@@ -173,43 +173,53 @@ namespace Nui::Detail
         }
     };
 
-    template <typename IteratorT, typename GeneratorT>
-    class BasicStaticRangeRenderer
+    template <typename RangeLike, typename GeneratorT, typename... ObservedT>
+    class UnoptimizedRangeRenderer
+        : public std::enable_shared_from_this<UnoptimizedRangeRenderer<RangeLike, GeneratorT, ObservedT...>>
     {
       public:
         template <typename Generator = GeneratorT>
-        BasicStaticRangeRenderer(StaticRange<IteratorT> staticRange, Generator&& elementRenderer)
-            : staticRange_{std::move(staticRange)}
+        UnoptimizedRangeRenderer(
+            UnoptimizedRange<RangeLike, ObservedT...>&& unoptimizedRange,
+            Generator&& elementRenderer)
+            : unoptimizedRange_{std::move(unoptimizedRange)}
             , elementRenderer_{std::forward<GeneratorT>(elementRenderer)}
         {}
 
-        void operator()(auto& materialized) const
+        bool updateChildren() const
         {
+            auto materialized = weakMaterialized_.lock();
+            if (!materialized)
+                return InvalidateRange;
+
+            materialized->clearChildren();
+
             long long counter = 0;
-            for (auto& element : staticRange_)
+            for (auto& element : unoptimizedRange_)
+            {
                 elementRenderer_(counter++, element)(*materialized, Renderer{.type = RendererType::Append});
+            }
+
+            return KeepRange;
+        }
+
+        void operator()(auto& materialized)
+        {
+            weakMaterialized_ = materialized;
+            unoptimizedRange_.underlying().attachEvent(Nui::globalEventContext.registerEvent(Event{
+                [self = this->shared_from_this()](int) -> bool {
+                    return self->updateChildren();
+                },
+                [this]() {
+                    return !weakMaterialized_.expired();
+                },
+            }));
+            updateChildren();
         }
 
       protected:
-        StaticRange<IteratorT> staticRange_;
+        UnoptimizedRange<RangeLike, ObservedT...> unoptimizedRange_;
         GeneratorT elementRenderer_;
-    };
-
-    template <typename IteratorT, typename GeneratorT>
-    class RangeRenderer<StaticRange<IteratorT>, GeneratorT, true>
-        : public BasicStaticRangeRenderer<IteratorT, GeneratorT>
-    {
-      public:
-        using BasicStaticRangeRenderer<IteratorT, GeneratorT>::BasicStaticRangeRenderer;
-        using BasicStaticRangeRenderer<IteratorT, GeneratorT>::operator();
-    };
-
-    template <typename IteratorT, typename GeneratorT>
-    class RangeRenderer<StaticRange<IteratorT>, GeneratorT, false>
-        : public BasicStaticRangeRenderer<IteratorT, GeneratorT>
-    {
-      public:
-        using BasicStaticRangeRenderer<IteratorT, GeneratorT>::BasicStaticRangeRenderer;
-        using BasicStaticRangeRenderer<IteratorT, GeneratorT>::operator();
+        std::weak_ptr<Nui::Dom::Element> weakMaterialized_;
     };
 }

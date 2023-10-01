@@ -10,4 +10,7 @@ namespace Nui::Detail
 {
     template <typename RangeType, typename GeneratorT, bool RandomAccess>
     class RangeRenderer;
+
+    template <typename RangeLike, typename GeneratorT, typename... ObservedT>
+    class UnoptimizedRangeRenderer;
 }

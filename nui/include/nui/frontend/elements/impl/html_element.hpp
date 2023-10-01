@@ -88,12 +88,12 @@ namespace Nui
 
       private:
         template <typename... ObservedValues, std::invocable GeneratorT>
-        auto reactiveRender(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& ElementRenderer) &&
+        auto reactiveRender(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& elementRenderer) &&
         {
             return [self = this->clone(),
                     observedValues = std::move(observedValues),
-                    ElementRenderer =
-                        std::forward<GeneratorT>(ElementRenderer)](auto& parentElement, Renderer const& gen) {
+                    elementRenderer =
+                        std::forward<GeneratorT>(elementRenderer)](auto& parentElement, Renderer const& gen) {
                 using ElementType = std::decay_t<decltype(parentElement)>;
 
                 // function is called when observed values change to refabricate the children.
@@ -104,7 +104,7 @@ namespace Nui
                 if (gen.type == RendererType::Inplace)
                 {
                     *childrenRefabricator = [observedValues,
-                                             ElementRenderer,
+                                             elementRenderer,
                                              fragmentContext = Detail::FragmentContext<ElementType>{},
                                              createdSelfWeak = std::weak_ptr<ElementType>(createdSelf),
                                              childrenRefabricator]() mutable {
@@ -120,16 +120,16 @@ namespace Nui
                         Detail::makeChildrenUpdateEvent(observedValues, childrenRefabricator, createdSelfWeak);
 
                         // regenerate children
-                        if constexpr ((std::is_same_v<decltype(ElementRenderer()), std::string>))
-                            parent->setTextContent(ElementRenderer());
+                        if constexpr ((std::is_same_v<decltype(elementRenderer()), std::string>))
+                            parent->setTextContent(elementRenderer());
                         else
-                            fragmentContext.push(ElementRenderer()(*parent, Renderer{.type = RendererType::Fragment}));
+                            fragmentContext.push(elementRenderer()(*parent, Renderer{.type = RendererType::Fragment}));
                     };
                 }
                 else
                 {
                     *childrenRefabricator = [observedValues,
-                                             ElementRenderer,
+                                             elementRenderer,
                                              createdSelfWeak = std::weak_ptr<ElementType>(createdSelf),
                                              childrenRefabricator]() mutable {
                         auto parent = createdSelfWeak.lock();
@@ -145,10 +145,10 @@ namespace Nui
                         Detail::makeChildrenUpdateEvent(observedValues, childrenRefabricator, createdSelfWeak);
 
                         // regenerate children
-                        if constexpr ((std::is_same_v<decltype(ElementRenderer()), std::string>))
-                            parent->setTextContent(ElementRenderer());
+                        if constexpr ((std::is_same_v<decltype(elementRenderer()), std::string>))
+                            parent->setTextContent(elementRenderer());
                         else
-                            ElementRenderer()(*parent, Renderer{.type = RendererType::Append});
+                            elementRenderer()(*parent, Renderer{.type = RendererType::Append});
                     };
                 }
 
@@ -265,20 +265,20 @@ namespace Nui
         }
         template <std::invocable GeneratorT>
         requires(!InvocableReturns<GeneratorT, std::string>)
-        auto operator()(GeneratorT&& ElementRenderer) &&
+        auto operator()(GeneratorT&& elementRenderer) &&
         {
             return [self = this->clone(),
-                    ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](auto& parentElement, Renderer const&) {
-                return ElementRenderer()(parentElement, Renderer{.type = RendererType::Append});
+                    elementRenderer = std::forward<GeneratorT>(elementRenderer)](auto& parentElement, Renderer const&) {
+                return elementRenderer()(parentElement, Renderer{.type = RendererType::Append});
             };
         }
         template <typename T, std::invocable<T&, Renderer const&> GeneratorT>
         requires InvocableReturns<GeneratorT, std::string>
-        auto operator()(GeneratorT&& ElementRenderer) &&
+        auto operator()(GeneratorT&& elementRenderer) &&
         {
             return [self = this->clone(),
-                    ElementRenderer = std::forward<GeneratorT>(ElementRenderer)](auto& parentElement, Renderer const&) {
-                return ElementRenderer(parentElement, Renderer{.type = RendererType::Append});
+                    elementRenderer = std::forward<GeneratorT>(elementRenderer)](auto& parentElement, Renderer const&) {
+                return elementRenderer(parentElement, Renderer{.type = RendererType::Append});
             };
         }
 
@@ -289,27 +289,38 @@ namespace Nui
             return std::move(*this).operator()(std::move(combinator).split(), std::move(combinator).generator());
         }
         template <typename... ObservedValues, std::invocable GeneratorT>
-        auto operator()(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& ElementRenderer) &&
+        auto operator()(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& elementRenderer) &&
         {
             return std::move(*this).reactiveRender(
-                std::move(observedValues), std::forward<GeneratorT>(ElementRenderer));
+                std::move(observedValues), std::forward<GeneratorT>(elementRenderer));
         }
 
         // Range functions:
         template <typename ObservedValue, typename GeneratorT>
-        auto operator()(ObservedRange<ObservedValue> observedRange, GeneratorT&& ElementRenderer) &&
+        auto operator()(ObservedRange<ObservedValue> observedRange, GeneratorT&& elementRenderer) &&
         {
-            return std::move(*this).rangeRender(std::move(observedRange), std::forward<GeneratorT>(ElementRenderer));
+            return std::move(*this).rangeRender(std::move(observedRange), std::forward<GeneratorT>(elementRenderer));
         }
         template <typename ObservedValue, typename GeneratorT>
         auto operator()(std::pair<ObservedRange<ObservedValue>, GeneratorT>&& mapPair) &&
         {
             return std::move(*this).rangeRender(std::move(mapPair.first), std::move(mapPair.second));
         }
-        template <typename IteratorT, typename GeneratorT>
-        auto operator()(StaticRange<IteratorT> observedRange, GeneratorT&& ElementRenderer) &&
+        template <typename IteratorT, typename GeneratorT, typename... ObservedT>
+        auto operator()(UnoptimizedRange<IteratorT, ObservedT...>&& unoptimizedRange, GeneratorT&& elementRenderer) &&
         {
-            return std::move(*this).rangeRender(std::move(observedRange), std::forward<GeneratorT>(ElementRenderer));
+            return [self = this->clone(),
+                    rangeRenderer =
+                        std::make_shared<Detail::UnoptimizedRangeRenderer<IteratorT, GeneratorT, ObservedT...>>(
+                            std::move(unoptimizedRange), std::forward<GeneratorT>(elementRenderer))](
+                       auto& parentElement, Renderer const& gen) {
+                if (gen.type == RendererType::Inplace)
+                    throw std::runtime_error("fragments are not supported for range generators");
+
+                auto&& materialized = renderElement(gen, parentElement, self);
+                (*rangeRenderer)(materialized);
+                return materialized;
+            };
         }
 
         // Observed text and number content functions:

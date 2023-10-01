@@ -1114,6 +1114,14 @@ namespace Nui
             return *this;
         }
     };
+    template <>
+    class Observed<void> : public ObservedBase
+    {
+        void modify() const
+        {
+            update();
+        };
+    };
 
     namespace Detail
     {

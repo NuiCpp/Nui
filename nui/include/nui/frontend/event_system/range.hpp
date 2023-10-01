@@ -1,6 +1,15 @@
 #pragma once
 
+#include <nui/feature_test.hpp>
+#include <nui/utility/iterator_accessor.hpp>
 #include <nui/frontend/event_system/observed_value.hpp>
+
+#include <iterator>
+#include <utility>
+
+#ifdef NUI_HAS_STD_RANGES
+#    include <ranges>
+#endif
 
 namespace Nui
 {
@@ -30,39 +39,32 @@ namespace Nui
         ObservedValue& observedValue_;
     };
 
-    template <typename IteratorT>
-    class StaticRange
+    template <typename CopyableRangeLike, typename... ObservedValues>
+    class UnoptimizedRange
     {
       public:
-        static constexpr bool isRandomAccess = std::
-            is_same_v<typename std::iterator_traits<IteratorT>::iterator_category, std::random_access_iterator_tag>;
-
-        StaticRange(IteratorT begin, IteratorT end)
-            : begin_{std::move(begin)}
-            , end_{std::move(end)}
+        UnoptimizedRange(ObservedValueCombinator<ObservedValues...>&& observedValues, CopyableRangeLike&& rangeLike)
+            : observedValues_{std::move(observedValues)}
+            , rangeLike_{std::move(rangeLike)}
         {}
 
-        IteratorT begin() const
+        auto begin() const
         {
-            return begin_;
+            return rangeLike_.begin();
         }
-        IteratorT end() const
+        auto end() const
         {
-            return end_;
+            return rangeLike_.end();
         }
 
-        StaticRange<IteratorT> underlying() const&
+        ObservedValueCombinator<ObservedValues...> const& underlying() const
         {
-            return *this;
-        }
-        StaticRange<IteratorT> underlying() &&
-        {
-            return std::move(*this);
+            return observedValues_;
         }
 
       private:
-        IteratorT begin_;
-        IteratorT end_;
+        ObservedValueCombinator<ObservedValues...> observedValues_;
+        CopyableRangeLike rangeLike_;
     };
 
     template <typename ObservedValue>
@@ -79,17 +81,38 @@ namespace Nui
         return ObservedRange<const ObservedValue>{observedValues};
     }
 
-    template <typename IteratorT>
-    StaticRange<IteratorT> range(IteratorT begin, IteratorT end)
+    template <typename ContainerT, typename... Observed>
+    UnoptimizedRange<IteratorAccessor<ContainerT const>, Observed...>
+    range(ContainerT const& container, Observed const&... observed)
     {
-        return StaticRange<IteratorT>{std::move(begin), std::move(end)};
+        return UnoptimizedRange<IteratorAccessor<ContainerT const>, Observed...>{
+            ObservedValueCombinator{observed...},
+            IteratorAccessor<ContainerT const>{container},
+        };
     }
 
-    template <typename ContainerT>
-    StaticRange<typename ContainerT::const_iterator> range(ContainerT const& container)
+    template <typename ContainerT, typename... Observed>
+    UnoptimizedRange<IteratorAccessor<ContainerT>, Observed...>
+    range(ContainerT& container, Observed const&... observed)
     {
-        return StaticRange<typename ContainerT::const_iterator>{std::begin(container), std::end(container)};
+        return UnoptimizedRange<IteratorAccessor<ContainerT>, Observed...>{
+            ObservedValueCombinator{observed...},
+            IteratorAccessor<ContainerT>{container},
+        };
     }
+
+#ifdef NUI_HAS_STD_RANGES
+    template <typename T, typename... Observed>
+    UnoptimizedRange<std::ranges::subrange<std::ranges::iterator_t<T const>>, Observed...>
+    range(T const& container, Observed const&... observed)
+    {
+        return UnoptimizedRange<std::ranges::subrange<std::ranges::iterator_t<T const>>, Observed...>{
+            ObservedValueCombinator{observed...},
+            std::ranges::subrange<std::ranges::iterator_t<T const>>{
+                std::ranges::begin(container), std::ranges::end(container)},
+        };
+    }
+#endif
 
     template <typename ContainerT>
     constexpr auto ObservedContainer<ContainerT>::map(auto&& function) const
@@ -99,6 +122,7 @@ namespace Nui
             std::forward<std::decay_t<decltype(function)>>(function),
         };
     }
+
     template <typename ContainerT>
     constexpr auto ObservedContainer<ContainerT>::map(auto&& function)
     {
