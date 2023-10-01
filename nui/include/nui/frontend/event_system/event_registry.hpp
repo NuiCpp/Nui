@@ -70,6 +70,21 @@ namespace Nui
             });
         }
 
+        void cleanInvalidEvents()
+        {
+            std::vector<EventIdType> invalidIds;
+            for (auto const& itemWithId : registry_.rawRange())
+            {
+                if (!itemWithId.item)
+                    continue;
+                if (!static_cast<bool>(itemWithId.item.value()))
+                    invalidIds.push_back(itemWithId.id);
+            }
+
+            for (auto const& id : invalidIds)
+                registry_.erase(id);
+        }
+
       private:
         RegistryType registry_;
         RegistryType afterEffects_;

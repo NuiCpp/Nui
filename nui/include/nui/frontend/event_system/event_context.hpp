@@ -68,6 +68,10 @@ namespace Nui
         {
             return impl_->eventRegistry().registerAfterEffect(std::move(event));
         }
+        void cleanInvalidEvents()
+        {
+            impl_->eventRegistry().cleanInvalidEvents();
+        }
 
       private:
         std::shared_ptr<EventEngine> impl_;

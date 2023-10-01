@@ -543,4 +543,49 @@ namespace Nui::Tests
             textBodyParityTest(container, parent);
         }
     }
+
+    TEST_F(TestRanges, CanUseNonObservedContainerForRange)
+    {
+        std::vector<char> characters{'A', 'B', 'C', 'D'};
+        Nui::val parent;
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(characters), [&characters](long long i, auto const& element) {
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters.size()));
+        for (int i = 0; i != characters.size(); ++i)
+        {
+            EXPECT_EQ(
+                parent["children"][i]["textContent"].as<std::string>(),
+                std::string{characters[i]} + ":" + std::to_string(i));
+        }
+    }
+
+    TEST_F(TestRanges, CanUseSetAsNonObservedContainerForRange)
+    {
+        std::set<char> characters{'A', 'B', 'C', 'D'};
+        Nui::val parent;
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(characters), [&characters](long long i, auto const& element) {
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters.size()));
+        int i = 0;
+        for (auto const& elem : characters)
+        {
+            EXPECT_EQ(
+                parent["children"][i]["textContent"].as<std::string>(), std::string{elem} + ":" + std::to_string(i));
+            ++i;
+        }
+    }
 }
