@@ -8,5 +8,5 @@ target_compile_features(parcel-adapter PRIVATE cxx_std_20)
 
 set_target_properties(parcel-adapter
     PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools_bin"
 )

@@ -7,5 +7,5 @@ target_compile_features(bin2hpp PRIVATE cxx_std_20)
 
 set_target_properties(bin2hpp
     PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools_bin"
 )
