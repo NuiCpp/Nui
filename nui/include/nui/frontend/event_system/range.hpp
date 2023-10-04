@@ -47,6 +47,11 @@ namespace Nui
             : observedValues_{std::move(observedValues)}
             , rangeLike_{std::move(rangeLike)}
         {}
+        UnoptimizedRange(CopyableRangeLike&& rangeLike)
+        requires(sizeof...(ObservedValues) == 0)
+            : observedValues_{}
+            , rangeLike_{std::move(rangeLike)}
+        {}
 
         auto begin() const
         {
@@ -58,6 +63,10 @@ namespace Nui
         }
 
         ObservedValueCombinator<ObservedValues...> const& underlying() const
+        {
+            return observedValues_;
+        }
+        ObservedValueCombinator<ObservedValues...>& underlying()
         {
             return observedValues_;
         }
@@ -97,6 +106,41 @@ namespace Nui
     {
         return UnoptimizedRange<IteratorAccessor<ContainerT>, Observed...>{
             ObservedValueCombinator{observed...},
+            IteratorAccessor<ContainerT>{container},
+        };
+    }
+
+    template <typename ContainerT, typename... Observed>
+    UnoptimizedRange<IteratorAccessor<ContainerT const>, Observed...>
+    range(ContainerT const& container, Observed&... observed)
+    {
+        return UnoptimizedRange<IteratorAccessor<ContainerT const>, Observed...>{
+            ObservedValueCombinator{observed...},
+            IteratorAccessor<ContainerT const>{container},
+        };
+    }
+
+    template <typename ContainerT, typename... Observed>
+    UnoptimizedRange<IteratorAccessor<ContainerT>, Observed...> range(ContainerT& container, Observed&... observed)
+    {
+        return UnoptimizedRange<IteratorAccessor<ContainerT>, Observed...>{
+            ObservedValueCombinator{observed...},
+            IteratorAccessor<ContainerT>{container},
+        };
+    }
+
+    template <typename ContainerT>
+    UnoptimizedRange<IteratorAccessor<ContainerT>> range(ContainerT& container)
+    {
+        return UnoptimizedRange<IteratorAccessor<ContainerT>>{
+            IteratorAccessor<ContainerT>{container},
+        };
+    }
+
+    template <typename ContainerT>
+    UnoptimizedRange<IteratorAccessor<ContainerT>> range(ContainerT const& container)
+    {
+        return UnoptimizedRange<IteratorAccessor<ContainerT>>{
             IteratorAccessor<ContainerT>{container},
         };
     }

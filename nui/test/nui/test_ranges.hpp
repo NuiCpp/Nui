@@ -623,4 +623,119 @@ namespace Nui::Tests
                 std::string{characters[i]} + ":" + std::to_string(i));
         }
     }
+
+    TEST_F(TestRanges, StaticRangeRendererCanTakeNonConstElement)
+    {
+        std::vector<char> characters{'A', 'B', 'C', 'D'};
+        Nui::val parent;
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(characters), [&characters](long long i, auto& element) {
+            element = 'X';
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters.size()));
+        for (int i = 0; i != characters.size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i]["textContent"].as<std::string>(), "X:" + std::to_string(i));
+        }
+    }
+
+    TEST_F(TestRanges, ObservedRangeRendererCanTakeNonConstElement)
+    {
+        Nui::Observed<std::vector<char>> characters{{'A', 'B', 'C', 'D'}};
+        Nui::val parent;
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(characters), [&characters](long long i, auto& element) {
+            element = 'X';
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters.size()));
+        for (int i = 0; i != characters.size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i]["textContent"].as<std::string>(), "X:" + std::to_string(i));
+        }
+    }
+
+    TEST_F(TestRanges, StaticRangeRendererCanTakeConstObserved)
+    {
+        std::vector<char> characters{'A', 'B', 'C', 'D'};
+        Nui::val parent;
+        Nui::Observed<bool> other{true};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        auto doRender = [&](Nui::Observed<bool> const& constObserved) {
+            render(body{reference = parent}(
+                range(characters, constObserved), [&characters](long long i, auto const& element) {
+                    return div{}(std::string{element} + ":" + std::to_string(i));
+                }));
+        };
+        doRender(other);
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters.size()));
+        for (int i = 0; i != characters.size(); ++i)
+        {
+            EXPECT_EQ(
+                parent["children"][i]["textContent"].as<std::string>(),
+                std::string{characters[i]} + ":" + std::to_string(i));
+        }
+    }
+
+    TEST_F(TestRanges, CanUseObservedNonRandomAccessRange)
+    {
+        Nui::Observed<std::set<char>> characters{{'A', 'B', 'C', 'D'}};
+        Nui::val parent;
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(characters), [&characters](long long i, auto const& element) {
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters.size()));
+        int i = 0;
+        for (auto const& elem : characters.value())
+        {
+            EXPECT_EQ(
+                parent["children"][i]["textContent"].as<std::string>(), std::string{elem} + ":" + std::to_string(i));
+            ++i;
+        }
+    }
+
+    TEST_F(TestRanges, CanUseStaticNonRandomAccessRange)
+    {
+        std::set<char> characters{'A', 'B', 'C', 'D'};
+        Nui::val parent;
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(characters), [&characters](long long i, auto const& element) {
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters.size()));
+        int i = 0;
+        for (auto const& elem : characters)
+        {
+            EXPECT_EQ(
+                parent["children"][i]["textContent"].as<std::string>(), std::string{elem} + ":" + std::to_string(i));
+            ++i;
+        }
+    }
 }
