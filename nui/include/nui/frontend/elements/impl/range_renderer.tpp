@@ -13,7 +13,7 @@ namespace Nui::Detail
         using ObservedType = typename RangeT::ObservedType;
 
         template <typename Generator = GeneratorT>
-        BasicObservedRenderer(ObservedType const& observed, Generator&& elementRenderer)
+        BasicObservedRenderer(ObservedType& observed, Generator&& elementRenderer)
             : valueRange_{observed}
             , elementRenderer_{std::forward<GeneratorT>(elementRenderer)}
         {}
@@ -23,7 +23,6 @@ namespace Nui::Detail
         BasicObservedRenderer& operator=(BasicObservedRenderer const&) = delete;
         BasicObservedRenderer& operator=(BasicObservedRenderer&&) = delete;
 
-      protected:
         bool fullRangeUpdate(auto& parent) const
         {
             if (valueRange_.rangeContext().isFullRangeUpdate())
@@ -39,22 +38,8 @@ namespace Nui::Detail
 
         virtual bool updateChildren() const = 0;
 
-        void operator()(auto& materialized)
-        {
-            weakMaterialized_ = materialized;
-            valueRange_.attachEvent(Nui::globalEventContext.registerEvent(Event{
-                [self = this->shared_from_this()](int) -> bool {
-                    return self->updateChildren();
-                },
-                [this /* fine because other function holds this */]() {
-                    return !weakMaterialized_.expired();
-                },
-            }));
-            updateChildren();
-        }
-
       protected:
-        ObservedType const& valueRange_;
+        ObservedType& valueRange_;
         GeneratorT elementRenderer_;
         std::weak_ptr<Nui::Dom::Element> weakMaterialized_;
     };
@@ -69,19 +54,7 @@ namespace Nui::Detail
         using BasicObservedRenderer<RangeT, GeneratorT>::weakMaterialized_;
         using BasicObservedRenderer<RangeT, GeneratorT>::valueRange_;
         using BasicObservedRenderer<RangeT, GeneratorT>::elementRenderer_;
-
-        bool fullRangeUpdate(auto& parent) const
-        {
-            if (valueRange_.rangeContext().isFullRangeUpdate())
-            {
-                parent->clearChildren();
-                long long counter = 0;
-                for (auto& element : valueRange_.value())
-                    elementRenderer_(counter++, element)(*parent, Renderer{.type = RendererType::Append});
-                return true;
-            }
-            return false;
-        }
+        using BasicObservedRenderer<RangeT, GeneratorT>::fullRangeUpdate;
 
         void insertions(auto& parent) const
         {
@@ -161,6 +134,7 @@ namespace Nui::Detail
         using BasicObservedRenderer<RangeT, GeneratorT>::weakMaterialized_;
         using BasicObservedRenderer<RangeT, GeneratorT>::valueRange_;
         using BasicObservedRenderer<RangeT, GeneratorT>::elementRenderer_;
+        using BasicObservedRenderer<RangeT, GeneratorT>::fullRangeUpdate;
 
         bool updateChildren() const override
         {
@@ -170,6 +144,20 @@ namespace Nui::Detail
 
             fullRangeUpdate(parent);
             return KeepRange;
+        }
+
+        void operator()(auto& materialized)
+        {
+            weakMaterialized_ = materialized;
+            valueRange_.attachEvent(Nui::globalEventContext.registerEvent(Event{
+                [self = this->shared_from_this()](int) -> bool {
+                    return self->updateChildren();
+                },
+                [this /* fine because other function holds this */]() {
+                    return !weakMaterialized_.expired();
+                },
+            }));
+            updateChildren();
         }
     };
 

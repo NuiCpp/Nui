@@ -17,6 +17,7 @@
 #include <nui/frontend/elements/caption.hpp>
 #include <nui/frontend/elements/cite.hpp>
 #include <nui/frontend/elements/code.hpp>
+#include <nui/frontend/elements/comment.hpp>
 #include <nui/frontend/elements/data.hpp>
 #include <nui/frontend/elements/datalist.hpp>
 #include <nui/frontend/elements/dd.hpp>

@@ -30,4 +30,12 @@ namespace Nui
                     .call<Nui::val>("createTextNode", Nui::val{element.attributes()[0].stringData()});
             },
     };
+
+    constexpr auto CommentElementBridge = HtmlElementBridge{
+        .createElement =
+            +[](HtmlElement const& element) {
+                return Nui::val::global("document")
+                    .call<Nui::val>("createComment", Nui::val{element.attributes()[0].stringData()});
+            },
+    };
 }
