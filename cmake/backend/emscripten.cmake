@@ -12,12 +12,12 @@ else()
         COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" install latest --build=Release
         COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcc" --generate-config
         COMMAND $<TARGET_FILE:patch-acorn> "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/tools/acorn-optimizer.js"
-        COMMAND $<TARGET_FILE:patch-emscripten-config> 
-            "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten" 
-            "${CMAKE_BINARY_DIR}/_deps/binaryen_release-src" 
+        COMMAND $<TARGET_FILE:patch-emscripten-config>
+            "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten"
+            "${CMAKE_BINARY_DIR}/_deps/binaryen_release-src"
             "${CMAKE_BINARY_DIR}/_deps/emscripten-src/java/bin/java.exe"
-            # not setting node, because global installed node might be preferred
-            # "${CMAKE_BINARY_DIR}/_deps/emscripten-src/node/bin/node.exe"
+            # Not patching node
+            # "${NUI_NODE}"
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/emscripten-src"
     )
 endif()
@@ -42,7 +42,7 @@ function(nui_add_emscripten_target)
         "TARGET;PREJS;SOURCE_DIR"
         "CMAKE_OPTIONS"
         ${ARGN}
-    )    
+    )
 
     if (NOT NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET)
         message(FATAL_ERROR "You must provide a target to create a frontend pendant of.")
@@ -63,7 +63,7 @@ function(nui_add_emscripten_target)
     string(REPLACE "-" "_" targetNormalized ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET})
 
     message(STATUS "emcmake: ${EMCMAKE}")
-    
+
     if (${TARGET_TYPE} STREQUAL "INTERFACE_LIBRARY")
         set(ENABLE_BIN2HPP "no")
     else()
@@ -75,9 +75,9 @@ function(nui_add_emscripten_target)
         "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten"
         SOURCE_DIR "${SOURCE_DIR}"
         # emscripten cmake with passed down Release/Debug build type
-        CONFIGURE_COMMAND 
+        CONFIGURE_COMMAND
             ${EMCMAKE} cmake
-                ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS}
+                ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS} "-DNUI_NPM=${NUI_NPM}" "-DNUI_NODE=${NUI_NODE}"
                 "${SOURCE_DIR}"
         # copy over package.json and fill parcel options that do not exist on it
         BUILD_COMMAND $<TARGET_FILE:parcel-adapter> "${SOURCE_DIR}/package.json" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/package.json" "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
@@ -97,7 +97,7 @@ function(nui_add_emscripten_target)
         DEPENDS ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_PREJS}
     )
     add_custom_target(
-        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel-dep 
+        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel-dep
         DEPENDS ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
     )
     add_dependencies(

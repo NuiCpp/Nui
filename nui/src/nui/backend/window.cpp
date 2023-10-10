@@ -101,6 +101,8 @@ namespace Nui
             : view{[&options]() -> webview::webview {
 #if __linux__
                 return {options.debug, nullptr, nullptr};
+#elif defined(__APPLE__)
+                return {options.debug, nullptr, nullptr};
 #elif defined(_WIN32)
                 // TODO: ICoreWebView2EnvironmentOptions
                 return {options.debug, nullptr, nullptr};
@@ -396,6 +398,9 @@ namespace Nui
         std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
         SetWindowPos(reinterpret_cast<HWND>(impl_->view.window()), nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+#elif defined(__APPLE__)
+        // TODO: Implement
+        throw std::runtime_error("Not implemented");
 #else
         gtk_window_move(static_cast<GtkWindow*>(impl_->view.window()), x, y);
 #endif
@@ -428,7 +433,7 @@ namespace Nui
                                 name: name,
                                 id: id,
                                 args: [...args]
-                            }}))  
+                            }}))
                         }};
                     }})();
                 )",
@@ -508,6 +513,8 @@ namespace Nui
             });
             PostThreadMessage(impl_->windowThreadId, wakeUpMessage, 0, 0);
         }
+#elif defined(__APPLE__)
+        throw std::runtime_error("Not implemented");
 #else
         impl_->view.eval(js);
 #endif
@@ -515,7 +522,11 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void* Window::getNativeWebView()
     {
+#if defined(__APPLE__)
+        throw std::runtime_error("Not implemented");
+#else
         return static_cast<webview::browser_engine&>(impl_->view).webview();
+#endif
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::openDevTools()
