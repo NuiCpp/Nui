@@ -115,8 +115,9 @@ namespace Nui
          *
          * @param x xCoordinate
          * @param y yCoordinate
+         * @param (MacOS only) use setFrameOrigin instead of setFrameTopLeftPoint (see apple doc)
          */
-        void setPosition(int x, int y);
+        void setPosition(int x, int y, bool useFrameOrigin = true);
 
         /**
          * @brief Center the window on the primary display. Requires size to be set first.
@@ -144,10 +145,14 @@ namespace Nui
          */
         void terminate();
 
+#ifndef APPLE
         /**
          * @brief Open the dev tools.
+         * @note This function is not available on MacOS.
          */
         void openDevTools();
+#endif
+
 #ifdef NUI_BACKEND
         /**
          * @brief Bind a function into the web context. These will be available under globalThis.nui_rpc.backend.NAME
@@ -197,6 +202,13 @@ namespace Nui
          * @param js
          */
         void eval(std::string const& js);
+
+        /**
+         * @brief Run javascript in the window.
+         *
+         * @param js
+         */
+        void eval(char const* js);
 
         /**
          * @brief Run javascript in the window.

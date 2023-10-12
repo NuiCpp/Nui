@@ -397,17 +397,26 @@ namespace Nui
         impl_->view.terminate();
     }
     //---------------------------------------------------------------------------------------------------------------------
-    void Window::setPosition(int x, int y)
+    void Window::setPosition(int x, int y, bool useFrameOrigin)
     {
         std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
+        reinterpret_cast<void>(useFrameOrigin);
         SetWindowPos(reinterpret_cast<HWND>(impl_->view.window()), nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 #elif defined(__APPLE__)
         using namespace webview::detail;
         auto wnd = static_cast<id>(impl_->view.window());
-        objc::msg_send<void>(
-            wnd, "setFrameTopLeftPoint:"_sel, CGPoint{static_cast<CGFloat>(x), static_cast<CGFloat>(y)});
+        if (useFrameOrigin)
+        {
+            objc::msg_send<void>(wnd, "setFrameOrigin:"_sel, CGPoint{static_cast<CGFloat>(x), static_cast<CGFloat>(y)});
+        }
+        else
+        {
+            objc::msg_send<void>(
+                wnd, "setFrameTopLeftPoint:"_sel, CGPoint{static_cast<CGFloat>(x), static_cast<CGFloat>(y)});
+        }
 #else
+        reinterpret_cast<void>(useFrameOrigin);
         gtk_window_move(static_cast<GtkWindow*>(impl_->view.window()), x, y);
 #endif
     }
@@ -418,7 +427,8 @@ namespace Nui
         const auto primaryDisplay = Screen::getPrimaryDisplay();
         setPosition(
             primaryDisplay.x() + (primaryDisplay.width() - impl_->width) / 2,
-            primaryDisplay.y() + (primaryDisplay.height() - impl_->height) / 2);
+            primaryDisplay.y() + (primaryDisplay.height() - impl_->height) / 2,
+            true);
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::bind(std::string const& name, std::function<void(nlohmann::json const&)> const& callback)
@@ -504,6 +514,11 @@ namespace Nui
         impl_->view.init(loadFile(file));
     }
     //---------------------------------------------------------------------------------------------------------------------
+    void Window::eval(char const* js)
+    {
+        eval(std::string{js});
+    }
+    //---------------------------------------------------------------------------------------------------------------------
     void Window::eval(std::string const& js)
     {
         std::scoped_lock lock{impl_->viewGuard};
@@ -520,7 +535,7 @@ namespace Nui
             PostThreadMessage(impl_->windowThreadId, wakeUpMessage, 0, 0);
         }
 #elif defined(__APPLE__)
-        throw std::runtime_error("Not implemented");
+        impl_->view.eval(js);
 #else
         impl_->view.eval(js);
 #endif
@@ -543,7 +558,7 @@ namespace Nui
         auto* nativeWebView = static_cast<ICoreWebView2*>(getNativeWebView());
         nativeWebView->OpenDevToolsWindow();
 #elif defined(__APPLE__)
-        throw std::runtime_error("Not implemented");
+        // Currently not easily possible.
 #else
         // FIXME: This freezes the view on Linux when called from there. "received NeedDebuggerBreak trap" in the
         // console, Is a breakpoint auto set and locks everything up?
