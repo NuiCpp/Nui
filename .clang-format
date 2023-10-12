@@ -1,18 +1,16 @@
 #AlignAfterOpenBracket: BlockIndent
 AlignAfterOpenBracket: AlwaysBreak
 AlignEscapedNewlines: DontAlign
-AlignOperands: true
 AlignTrailingComments: false
 AllowAllArgumentsOnNextLine: true
 AllowAllConstructorInitializersOnNextLine: false
-AllowAllParametersOfDeclarationOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortBlocksOnASingleLine: Empty
 AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: None
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLambdasOnASingleLine: Empty
 AllowShortLoopsOnASingleLine: false
-AllowAllParametersOfDeclarationOnNextLine: false
 AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: Yes
 BasedOnStyle: LLVM
@@ -36,7 +34,6 @@ BraceWrapping:
   SplitEmptyFunction: false
   SplitEmptyNamespace: true
   SplitEmptyRecord: false
-AlignEscapedNewlines: DontAlign
 BreakConstructorInitializers: BeforeComma
 BreakInheritanceList: BeforeComma
 BreakStringLiterals: true
@@ -50,7 +47,7 @@ IndentCaseLabels: true
 IndentPPDirectives: AfterHash
 IndentWidth: 4
 Language: Cpp
-NamespaceIndentation: All 
+NamespaceIndentation: All
 PointerAlignment: Left
 ReflowComments: true
 SortIncludes: false
