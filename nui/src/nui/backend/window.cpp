@@ -17,7 +17,11 @@
 #include <roar/mime_type.hpp>
 #include <roar/utility/scope_exit.hpp>
 
-#if __linux__
+#if defined(APPLE)
+#    include <objc/objc-runtime.h>
+#    include <objc/NSObjCRuntime.h>
+#    include <CoreGraphics/CoreGraphics.h>
+#elif __linux__
 #    include <gtk/gtk.h>
 #    include <libsoup/soup.h>
 #elif defined(_WIN32)
@@ -399,8 +403,10 @@ namespace Nui
 #if defined(_WIN32)
         SetWindowPos(reinterpret_cast<HWND>(impl_->view.window()), nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 #elif defined(__APPLE__)
-        // TODO: Implement
-        throw std::runtime_error("Not implemented");
+        using namespace webview::detail;
+        auto wnd = static_cast<id>(impl_->view.window());
+        objc::msg_send<void>(
+            wnd, "setFrameTopLeftPoint:"_sel, CGPoint{static_cast<CGFloat>(x), static_cast<CGFloat>(y)});
 #else
         gtk_window_move(static_cast<GtkWindow*>(impl_->view.window()), x, y);
 #endif
@@ -522,11 +528,12 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void* Window::getNativeWebView()
     {
-#if defined(__APPLE__)
-        throw std::runtime_error("Not implemented");
-#else
         return static_cast<webview::browser_engine&>(impl_->view).webview();
-#endif
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void* Window::getNativeWindow()
+    {
+        return static_cast<webview::browser_engine&>(impl_->view).window();
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::openDevTools()

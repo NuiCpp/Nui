@@ -218,11 +218,19 @@ namespace Nui
         void init(std::filesystem::path const& file);
 
         /**
-         * @brief Get a pointer to the underlying webview (ICoreWebView2* on windows and WEBKIT_WEB_VIEW on linux.
+         * @brief Get a pointer to the underlying webview (ICoreWebView2* on windows, WEBKIT_WEB_VIEW on linux, id on
+         * mac).
          *
          * @return void* Cast this pointer to the correct type depending on the OS.
          */
         void* getNativeWebView();
+
+        /**
+         * @brief Get a pointer to the underlying window (HWND on windows, GtkWidget* on linux, id on mac)
+         *
+         * @return void* Cast this pointer to the correct type depending on the OS.
+         */
+        void* getNativeWindow();
 
         /**
          * @brief [LINUX ONLY] Enable/Disable console output from view in the console.
