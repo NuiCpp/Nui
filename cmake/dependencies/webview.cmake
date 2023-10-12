@@ -48,6 +48,13 @@ if (NUI_FETCH_WEBVIEW)
                 WebView2Loader.lib
             >
     )
+    target_link_libraries(
+        webview
+        INTERFACE
+            $<$<PLATFORM_ID:Darwin>:
+                "-framework WebKit"
+            >
+    )
 
     if (WIN32)
         option(NUI_FETCH_WEBVIEW_BINARY "Fetch webview binary" ON)

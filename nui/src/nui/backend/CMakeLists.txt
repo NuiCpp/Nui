@@ -38,7 +38,6 @@ target_link_libraries(
 
 if (APPLE)
     target_link_libraries(nui-backend PUBLIC
-        "-framework WebKit"
         "-framework CoreGraphics"
         "-framework IOKit"
         "-framework Foundation"
