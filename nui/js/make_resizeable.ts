@@ -1,4 +1,4 @@
-const makeResizeable = (element: HTMLElement, borderSize: number, edge?: "right" | "bottom") => {
+const makeResizeable = (element: HTMLElement, borderSize: number, edge?: "right" | "bottom" | "top") => {
     edge = edge || "right";
 
     let pos: number;
@@ -7,7 +7,7 @@ const makeResizeable = (element: HTMLElement, borderSize: number, edge?: "right"
             return (x: number, y: number, w: number, h: number) => {
                 const dx = -(pos - x);
                 pos = x;
-                element.style.width = (w + dx) + "px";       
+                element.style.width = (w + dx) + "px";
             };
         }
         else if (edge === "bottom") {
@@ -16,6 +16,14 @@ const makeResizeable = (element: HTMLElement, borderSize: number, edge?: "right"
                 pos = y;
                 element.style.height = (h + dy) + "px";
             };
+        }
+        else if (edge === "top") {
+            // Assuming that the previous elements auto resize
+            return (x: number, y: number, w: number, h: number) => {
+                const dy = (pos - y);
+                pos = y;
+                element.style.height = (h + dy) + "px";
+            }
         }
         else {
             throw new Error("Invalid edge");
@@ -46,6 +54,13 @@ const makeResizeable = (element: HTMLElement, borderSize: number, edge?: "right"
         }
         else if (edge == "bottom") {
             if (h - e.y < borderSize + 1 /*rounding tolerance*/) {
+                pos = e.y;
+                document.addEventListener("mousemove", resize, false);
+            }
+        }
+        else if (edge == "top") {
+            const t = (e.target as HTMLElement).getBoundingClientRect().top;
+            if (e.y <= t + borderSize + 1 /*rounding tolerance*/) {
                 pos = e.y;
                 document.addEventListener("mousemove", resize, false);
             }

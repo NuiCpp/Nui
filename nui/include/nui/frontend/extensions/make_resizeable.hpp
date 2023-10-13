@@ -7,7 +7,8 @@ namespace Nui
     enum class ResizeableEdge
     {
         Right,
-        Bottom
+        Bottom,
+        Top
     };
 
     void makeResizeable(Nui::val const& element, ResizeableEdge edge = ResizeableEdge::Right);

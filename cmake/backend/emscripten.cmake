@@ -21,6 +21,7 @@ else()
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/emscripten-src"
     )
 endif()
+
 add_custom_target(
     emscripten-setup
     DEPENDS ${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten
@@ -38,11 +39,35 @@ function(nui_add_emscripten_target)
 
     cmake_parse_arguments(
         NUI_ADD_EMSCRIPTEN_TARGET_ARGS
-        ""
+        "DISABLE_BIN2HPP;DISABLE_PARCEL_ADAPTER"
         "TARGET;PREJS;SOURCE_DIR"
         "CMAKE_OPTIONS"
         ${ARGN}
-    )    
+    )
+
+    if (NOT NUI_ADD_EMSCRIPTEN_TARGET_ARGS_DISABLE_BIN2HPP)
+        set(ENABLE_BIN2HPP ON)
+    else()
+        if (NUI_ADD_EMSCRIPTEN_TARGET_ARGS_DISABLE_BIN2HPP)
+            set(ENABLE_BIN2HPP OFF)
+        else()
+            if (${TARGET_TYPE} STREQUAL "INTERFACE_LIBRARY")
+                set(ENABLE_BIN2HPP OFF)
+            else()
+                set(ENABLE_BIN2HPP ON)
+            endif()
+        endif()
+    endif()
+
+    if (NOT NUI_ADD_EMSCRIPTEN_TARGET_ARGS_DISABLE_PARCEL_ADAPTER)
+        set(ENABLE_PARCEL_ADAPTER ON)
+    else()
+        if (NUI_ADD_EMSCRIPTEN_TARGET_ARGS_DISABLE_PARCEL_ADAPTER)
+            set(ENABLE_PARCEL_ADAPTER OFF)
+        else()
+            set(ENABLE_PARCEL_ADAPTER ON)
+        endif()
+    endif()
 
     if (NOT NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET)
         message(FATAL_ERROR "You must provide a target to create a frontend pendant of.")
@@ -63,11 +88,17 @@ function(nui_add_emscripten_target)
     string(REPLACE "-" "_" targetNormalized ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET})
 
     message(STATUS "emcmake: ${EMCMAKE}")
-    
-    if (${TARGET_TYPE} STREQUAL "INTERFACE_LIBRARY")
-        set(ENABLE_BIN2HPP "no")
+
+    if (ENABLE_PARCEL_ADAPTER)
+        set(BUILD_COMMAND BUILD_COMMAND $<TARGET_FILE:parcel-adapter> "${SOURCE_DIR}/package.json" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/package.json" "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}")
     else()
-        set(ENABLE_BIN2HPP "yes")
+        set(BUILD_COMMAND BUILD_COMMAND cmake -E copy "${SOURCE_DIR}/package.json" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/package.json")
+    endif()
+
+    if (ENABLE_BIN2HPP)
+        set(BIN2HPP_COMMAND COMMAND $<TARGET_FILE:bin2hpp> "on" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html" "${CMAKE_BINARY_DIR}/include/index.hpp" index)
+    else()
+        set(BIN2HPP_COMMAND COMMAND cmake -E true)
     endif()
 
     include(ExternalProject)
@@ -80,11 +111,11 @@ function(nui_add_emscripten_target)
                 ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS}
                 "${SOURCE_DIR}"
         # copy over package.json and fill parcel options that do not exist on it
-        BUILD_COMMAND $<TARGET_FILE:parcel-adapter> "${SOURCE_DIR}/package.json" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/package.json" "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
+        ${BUILD_COMMAND}
         # emscripten make
         COMMAND cmake --build "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}" --target ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
         # convert result to header file containing the page
-        COMMAND $<TARGET_FILE:bin2hpp> ${ENABLE_BIN2HPP} "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html" "${CMAKE_BINARY_DIR}/include/index.hpp" index
+        ${BIN2HPP_COMMAND}
         BINARY_DIR "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
         BUILD_ALWAYS 1
         BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html"
