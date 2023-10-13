@@ -8,7 +8,7 @@ endif()
 
 option(NUI_FETCH_WEBVIEW "Fetch webview" ON)
 set(NUI_WEBVIEW_REPOSITORY "https://github.com/5cript/webview.git" CACHE STRING "Webview repository")
-set(NUI_WEBVIEW_TAG "c3e57c164a0751e5adb2ea45e1b5c308c3dbe716" CACHE STRING "Webview tag")
+set(NUI_WEBVIEW_TAG "749f9dfbe140f5fd0be1cd53abcec7f05496cbc3" CACHE STRING "Webview tag")
 
 if (NUI_FETCH_WEBVIEW)
     include(FetchContent)
@@ -21,8 +21,8 @@ if (NUI_FETCH_WEBVIEW)
     add_library(webview INTERFACE)
 
     add_custom_target(
-        webview-prep 
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/include" 
+        webview-prep
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/include"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_BINARY_DIR}/_deps/webview_raw-src/webview.h" "${CMAKE_BINARY_DIR}/include/webview.h"
         COMMAND_EXPAND_LISTS
     )
@@ -73,8 +73,8 @@ if (NUI_FETCH_WEBVIEW)
 
             target_include_directories(webview INTERFACE "${CMAKE_BINARY_DIR}/_deps/webview_binary-src/build/native/include")
             target_link_directories(
-                webview 
-                INTERFACE 
+                webview
+                INTERFACE
                     "${CMAKE_BINARY_DIR}/_deps/webview_binary-src/build/native/${WEBVIEW_DLL_SUBDIRECTORY}"
                     "${CMAKE_BINARY_DIR}/lib"
             )
