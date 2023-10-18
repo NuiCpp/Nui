@@ -131,7 +131,9 @@ function(nui_add_emscripten_target)
     )
     add_custom_target(
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel-dep
-        DEPENDS ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
+        DEPENDS
+            ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
+            "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html"
     )
     add_dependencies(
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
