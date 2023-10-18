@@ -27,9 +27,9 @@ add_executable(nui-tests
     engine/object.cpp
     engine/array.cpp
 )
-target_link_libraries(nui-tests PRIVATE 
-    nui-frontend-mocked 
-    gtest 
+target_link_libraries(nui-tests PRIVATE
+    nui-frontend-mocked
+    gtest
 )
 gtest_discover_tests(nui-tests)
 
