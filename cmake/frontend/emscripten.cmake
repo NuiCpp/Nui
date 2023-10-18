@@ -1,7 +1,7 @@
 function(nui_prepare_emscripten_target)
     cmake_parse_arguments(
         NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS
-        "NO_INLINE_JS"
+        "NO_INLINE"
         "TARGET;PREJS;STATIC;UNPACKED_MODE"
         "EMSCRIPTEN_LINK_OPTIONS;EMSCRIPTEN_COMPILE_OPTIONS;PARCEL_ARGS"
         ${ARGN}
@@ -14,7 +14,7 @@ function(nui_prepare_emscripten_target)
 
     nui_set_target_output_directories(${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET})
 
-    if (NOT NO_INLINE_JS)
+    if (NOT NO_INLINE)
         nui_enable_inline(TARGET ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET})
     endif()
 
