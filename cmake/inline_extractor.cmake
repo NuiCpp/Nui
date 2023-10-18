@@ -65,10 +65,10 @@ function(nui_enable_inline)
     )
 
     add_custom_target(
-        inline-js-${nui_enable_inline_ARGS_TARGET}
+        nui-inline-${nui_enable_inline_ARGS_TARGET}
         ALL
             DEPENDS ${INLINE_IMPORTS_SCRIPTS}
             DEPENDS ${INLINE_IMPORTS_STYLES}
     )
-    add_dependencies(${nui_enable_inline_ARGS_TARGET} inline-js-${nui_enable_inline_ARGS_TARGET})
+    add_dependencies(${nui_enable_inline_ARGS_TARGET} nui-inline-${nui_enable_inline_ARGS_TARGET})
 endfunction()
