@@ -12,9 +12,9 @@ else()
         COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" install latest --build=Release
         COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcc" --generate-config
         COMMAND $<TARGET_FILE:patch-acorn> "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/tools/acorn-optimizer.js"
-        COMMAND $<TARGET_FILE:patch-emscripten-config> 
-            "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten" 
-            "${CMAKE_BINARY_DIR}/_deps/binaryen_release-src" 
+        COMMAND $<TARGET_FILE:patch-emscripten-config>
+            "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten"
+            "${CMAKE_BINARY_DIR}/_deps/binaryen_release-src"
             "${CMAKE_BINARY_DIR}/_deps/emscripten-src/java/bin/java.exe"
             # not setting node, because global installed node might be preferred
             # "${CMAKE_BINARY_DIR}/_deps/emscripten-src/node/bin/node.exe"
@@ -106,9 +106,11 @@ function(nui_add_emscripten_target)
         "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten"
         SOURCE_DIR "${SOURCE_DIR}"
         # emscripten cmake with passed down Release/Debug build type
-        CONFIGURE_COMMAND 
+        CONFIGURE_COMMAND
             ${EMCMAKE} cmake
                 ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS}
+                -DNUI_INLINE_EXTRACTOR_TARGET_FILE=$<TARGET_FILE:inline-parser>
+                -DNUI_INLINE_INJECTOR_TARGET_FILE=$<TARGET_FILE:inline-injector>
                 "${SOURCE_DIR}"
         # copy over package.json and fill parcel options that do not exist on it
         ${BUILD_COMMAND}
@@ -120,6 +122,7 @@ function(nui_add_emscripten_target)
         BUILD_ALWAYS 1
         BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html"
         INSTALL_COMMAND ""
+        DEPENDS inline-parser inline-injector parcel-adapter
     )
     add_dependencies(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten)
     add_dependencies(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten bin2hpp)
@@ -128,8 +131,10 @@ function(nui_add_emscripten_target)
         DEPENDS ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_PREJS}
     )
     add_custom_target(
-        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel-dep 
-        DEPENDS ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
+        ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel-dep
+        DEPENDS
+            ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten
+            "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html"
     )
     add_dependencies(
         ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten

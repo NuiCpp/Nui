@@ -16,13 +16,13 @@ Tested on:
   - Ubuntu 20 (using clang15 and libstdc++10) ![example workflow](https://github.com/NuiCpp/Nui/actions/workflows/ubuntu_20.yml/badge.svg)
   - Ubuntu 22 (using clang14 and libstdc++12) ![example workflow](https://github.com/NuiCpp/Nui/actions/workflows/ubuntu_22.yml/badge.svg)
   - Windows (using clang16 and current msys libstdc++) ![example workflow](https://github.com/NuiCpp/Nui/actions/workflows/windows.yml/badge.svg)
+  - MacOS: Currently In Progress: https://github.com/NuiCpp/Nui/tree/macos
 
 Not automatically tested but should work:
   - Arch Linux
   - Other Linux Distributions with new enough packages for C++20
 
 Planed:
-  - Mac OS
   - Android if this gets more traction here: https://github.com/webview/webview/issues/871
 
 ## Examples
