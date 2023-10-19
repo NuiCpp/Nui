@@ -27,6 +27,7 @@ void disablePolyfillIfNotSet(nlohmann::json& alias, std::string_view aliasName)
 void addNuiAlias(nlohmann::json& alias)
 {
     alias["nui"] = "./nui-js";
+    alias["nui-inline"] = "./inline-js";
 }
 
 void createPackageJsonIfMissing(std::filesystem::path const& where, std::string const& targetName)
