@@ -23,7 +23,7 @@ function(nui_preprocess_inline_js)
 endfunction()
 
 function(nui_enable_inline)
-    set(one_value_args TARGET)
+    set(one_value_args TARGET UNPACKED_MODE)
     set(multi_value_args)
     cmake_parse_arguments(nui_enable_inline_ARGS "" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
@@ -71,4 +71,26 @@ function(nui_enable_inline)
             DEPENDS ${INLINE_IMPORTS_STYLES}
     )
     add_dependencies(${nui_enable_inline_ARGS_TARGET} nui-inline-${nui_enable_inline_ARGS_TARGET})
+
+    if (NOT nui_enable_inline_ARGS_UNPACKED_MODE)
+        set(nui_enable_inline_ARGS_UNPACKED_MODE off)
+    endif()
+
+    if (NOT ${nui_enable_inline_ARGS_UNPACKED_MODE})
+        add_custom_command(
+            OUTPUT
+                "${CMAKE_BINARY_DIR}/index_inserts.html"
+            COMMAND ${NUI_INLINE_INJECTOR_TARGET_FILE} "${CMAKE_BINARY_DIR}/module_${nui_enable_inline_ARGS_TARGET}/bin/index.html" ${INLINE_IMPORTS_SCRIPTS} ${INLINE_IMPORTS_STYLES}
+            DEPENDS
+                ${INLINE_IMPORTS_SCRIPTS}
+                ${INLINE_IMPORTS_STYLES}
+                "${CMAKE_BINARY_DIR}/module_${nui_enable_inline_ARGS_TARGET}/bin/index.html"
+        )
+
+        add_custom_target(
+            nui-inline-inject-${nui_enable_inline_ARGS_TARGET}
+            ALL
+                DEPENDS "${CMAKE_BINARY_DIR}/index_inserts.html"
+        )
+    endif()
 endfunction()

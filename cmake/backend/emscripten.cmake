@@ -110,6 +110,7 @@ function(nui_add_emscripten_target)
             ${EMCMAKE} cmake
                 ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS}
                 -DNUI_INLINE_EXTRACTOR_TARGET_FILE=$<TARGET_FILE:inline-parser>
+                -DNUI_INLINE_INJECTOR_TARGET_FILE=$<TARGET_FILE:inline-injector>
                 "${SOURCE_DIR}"
         # copy over package.json and fill parcel options that do not exist on it
         ${BUILD_COMMAND}
@@ -121,7 +122,7 @@ function(nui_add_emscripten_target)
         BUILD_ALWAYS 1
         BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html"
         INSTALL_COMMAND ""
-        DEPENDS inline-parser
+        DEPENDS inline-parser inline-injector parcel-adapter
     )
     add_dependencies(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten)
     add_dependencies(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten bin2hpp)
