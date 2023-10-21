@@ -1,4 +1,4 @@
-target_sources(basic-example PRIVATE main.cpp)	
+target_sources(basic-example PRIVATE main.cpp)
 
 target_include_directories(basic-example PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../../include)
 
@@ -11,10 +11,10 @@ set_target_properties(basic-example
 )
 
 # Creates a target that is compiled through emscripten. This target becomes the frontend part.
-nui_add_emscripten_target(basic-example
+nui_add_emscripten_target(
     TARGET
         basic-example
-    PREJS 
+    PREJS
         ${PREJS_FILE}
     SOURCE_DIR
         ${CMAKE_SOURCE_DIR}

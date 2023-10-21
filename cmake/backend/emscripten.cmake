@@ -111,6 +111,7 @@ function(nui_add_emscripten_target)
                 ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS}
                 -DNUI_INLINE_EXTRACTOR_TARGET_FILE=$<TARGET_FILE:inline-parser>
                 -DNUI_INLINE_INJECTOR_TARGET_FILE=$<TARGET_FILE:inline-injector>
+                -DNUI_MODULE_BUILD_DIR=${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}
                 "${SOURCE_DIR}"
         # copy over package.json and fill parcel options that do not exist on it
         ${BUILD_COMMAND}
