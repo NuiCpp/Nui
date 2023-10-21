@@ -225,6 +225,13 @@ namespace Nui
         void* getNativeWebView();
 
         /**
+         * @brief Get the Native Window object
+         *
+         * @return void*
+         */
+        void* getNativeWindow();
+
+        /**
          * @brief [LINUX ONLY] Enable/Disable console output from view in the console.
          */
         void setConsoleOutput(bool active);
