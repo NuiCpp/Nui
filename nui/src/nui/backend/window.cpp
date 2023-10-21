@@ -428,7 +428,7 @@ namespace Nui
                                 name: name,
                                 id: id,
                                 args: [...args]
-                            }}))  
+                            }}))
                         }};
                     }})();
                 )",
@@ -516,6 +516,11 @@ namespace Nui
     void* Window::getNativeWebView()
     {
         return static_cast<webview::browser_engine&>(impl_->view).webview();
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void* Window::getNativeWindow()
+    {
+        return impl_->view.window();
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::openDevTools()
