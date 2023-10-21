@@ -49,11 +49,11 @@ int main(int argc, char** argv)
         std::filesystem::relative(index.parent_path() / ".." / "bin" / "index.js", index.parent_path());
 
     const std::string importScriptsHtml = "\t<script type=\"module\" defer>\n\t\timport \"" +
-        relativeImportScriptsFile.generic_string() + "\";\n</script>\n";
+        relativeImportScriptsFile.generic_string() + "\";\n\t</script>\n";
     const std::string importStylesHtml =
-        "\t<style>\n\t\t@import \"" + relativeImportStylesFile.generic_string() + "\";\n</style>\n";
+        "\t<style>\n\t\t@import \"" + relativeImportStylesFile.generic_string() + "\";\n\t</style>\n";
     const std::string importBinIndexHtml =
-        "\t<script type=\"module\" defer>\n\t\timport \"" + binIndex.generic_string() + "\";\n</script>\n";
+        "\t<script type=\"module\" defer>\n\t\timport \"" + binIndex.generic_string() + "\";\n\t</script>\n";
 
     // find end of header </head> from behind in indexHtml:
     const auto headEnd = indexHtml.rfind("</head>");
