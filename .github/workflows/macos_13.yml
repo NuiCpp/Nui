@@ -34,7 +34,6 @@ jobs:
         env:
           LDFLAGS: "-L/opt/homebrew/lib"
           CPPFLAGS: "-I/opt/homebrew/include"
-          BOOST_ROOT: ${{ steps.install-boost.outputs.BOOST_ROOT }}
 
       - name: Build
         run: cmake --build ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}} --config ${{env.BUILD_TYPE}}
