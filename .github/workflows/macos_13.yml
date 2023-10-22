@@ -27,7 +27,7 @@ jobs:
           node-version: "20"
 
       - name: Install Brew Dependencies
-        run: brew install cmake llvm@16 boost git python3 openssl@3 cryptopp curl ninja make
+        run: brew install cmake llvm@16 boost git openssl@3 cryptopp curl ninja make
 
       - name: Configure CMake
         run: cmake -B ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}} -G"Ninja" -DNUI_ENABLE_TESTS=on -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DNUI_BUILD_EXAMPLES=on -DCMAKE_CXX_EXTENSIONS=on -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm@16/bin/clang++ -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm@16/bin/clang -DNUI_NPM=npm -DNUI_NODE=node -DCMAKE_CXX_STANDARD=20
