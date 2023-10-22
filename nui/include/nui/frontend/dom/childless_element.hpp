@@ -78,6 +78,12 @@ namespace Nui::Dom
             element_.set(Nui::val{std::string{key}}, Nui::val{static_cast<double>(value)});
         }
 
+        void addEventListener(std::string_view event, std::invocable<Nui::val> auto&& callback)
+        {
+            element_.call<void>(
+                "addEventListener", Nui::val{std::string{event}}, Nui::bind(callback, std::placeholders::_1));
+        }
+
         // TODO: more overloads?
         void setAttribute(std::string_view key, std::string const& value)
         {
