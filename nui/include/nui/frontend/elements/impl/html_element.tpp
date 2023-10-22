@@ -36,24 +36,29 @@ namespace Nui
     }
 }
 
+#define NUI_MAKE_HTML_ELEMENT_RENAME(NAME, HTML_ACTUAL) \
+    struct NAME : ::Nui::HtmlElement \
+    { \
+        NAME(NAME const&) = default; \
+        NAME(NAME&&) = default; \
+        NAME(std::vector<::Nui::Attribute> const& attributes) \
+            : ::Nui::HtmlElement{HTML_ACTUAL, &::Nui::RegularHtmlElementBridge, attributes} \
+        {} \
+        NAME(std::vector<::Nui::Attribute>&& attributes) \
+            : ::Nui::HtmlElement{HTML_ACTUAL, &::Nui::RegularHtmlElementBridge, std::move(attributes)} \
+        {} \
+        template <typename... T> \
+        NAME(T&&... attributes) \
+            : ::Nui::HtmlElement{HTML_ACTUAL, &::Nui::RegularHtmlElementBridge, std::forward<T>(attributes)...} \
+        {} \
+    };
+
+#define NUI_MAKE_HTML_ELEMENT(NAME) NUI_MAKE_HTML_ELEMENT_RENAME(NAME, #NAME)
+
 #define NUI_DECLARE_HTML_ELEMENT_RENAME(NAME, HTML_ACTUAL) \
     namespace Nui::Elements \
     { \
-        struct NAME : HtmlElement \
-        { \
-            NAME(NAME const&) = default; \
-            NAME(NAME&&) = default; \
-            NAME(std::vector<Attribute> const& attributes) \
-                : HtmlElement{HTML_ACTUAL, &RegularHtmlElementBridge, attributes} \
-            {} \
-            NAME(std::vector<Attribute>&& attributes) \
-                : HtmlElement{HTML_ACTUAL, &RegularHtmlElementBridge, std::move(attributes)} \
-            {} \
-            template <typename... T> \
-            NAME(T&&... attributes) \
-                : HtmlElement{HTML_ACTUAL, &RegularHtmlElementBridge, std::forward<T>(attributes)...} \
-            {} \
-        }; \
+        NUI_MAKE_HTML_ELEMENT_RENAME(NAME, HTML_ACTUAL) \
     }
 
 #define NUI_DECLARE_HTML_ELEMENT(NAME) NUI_DECLARE_HTML_ELEMENT_RENAME(NAME, #NAME)

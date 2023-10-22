@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(nui VERSION 0.1.0)
+project(nui VERSION 0.9.0)
 
 set(NUI_SOURCE_DIRECTORY ${CMAKE_CURRENT_LIST_DIR} CACHE INTERNAL "NUI source directory")
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/common.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/options.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/static_analyzers.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/inline_extractor.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/boostpp.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/mplex.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/interval_tree.cmake)
@@ -30,6 +31,8 @@ else()
     add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tools/patch_acorn)
     add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tools/parcel_adapter)
     add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tools/patch_emscripten_config)
+    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tools/inline_parser)
+    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tools/inline_injector)
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/backend/common.cmake)
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/backend/emscripten.cmake)
 endif()

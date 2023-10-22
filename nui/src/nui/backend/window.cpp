@@ -549,7 +549,7 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void* Window::getNativeWindow()
     {
-        return static_cast<webview::browser_engine&>(impl_->view).window();
+        return impl_->view.window();
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::openDevTools()

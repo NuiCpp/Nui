@@ -1,7 +1,7 @@
 function(nui_prepare_emscripten_target)
     cmake_parse_arguments(
         NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS
-        ""
+        "NO_INLINE;NO_INLINE_INJECT"
         "TARGET;PREJS;STATIC;UNPACKED_MODE"
         "EMSCRIPTEN_LINK_OPTIONS;EMSCRIPTEN_COMPILE_OPTIONS;PARCEL_ARGS"
         ${ARGN}
@@ -14,6 +14,18 @@ function(nui_prepare_emscripten_target)
 
     nui_set_target_output_directories(${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET})
 
+    if (NOT NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_UNPACKED_MODE)
+        set(NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_UNPACKED_MODE off)
+    endif()
+
+    set(INLINER_COMMAND "")
+    if (NOT NO_INLINE)
+        nui_enable_inline(TARGET ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET} RELATIVE_TO ${CMAKE_CURRENT_SOURCE_DIR})
+        if (NOT NO_INLINE_INJECT)
+            set(INLINER_COMMAND COMMAND ${NUI_INLINE_INJECTOR_TARGET_FILE} "${CMAKE_BINARY_DIR}/static/index.html" "${CMAKE_BINARY_DIR}/nui-inline/inline_imports.js" "${CMAKE_BINARY_DIR}/nui-inline/inline_imports.css")
+        endif()
+    endif()
+
     add_custom_target(
         ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-npm-install
         COMMAND ${NUI_NPM} install
@@ -22,17 +34,14 @@ function(nui_prepare_emscripten_target)
 
     add_custom_target(
         ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "${NUI_SOURCE_DIRECTORY}/nui/js" "${CMAKE_BINARY_DIR}/nui-js"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${NUI_SOURCE_DIRECTORY}/nui/js" "${NUI_MODULE_BUILD_DIR}/nui-js"
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_STATIC} "${CMAKE_BINARY_DIR}/static"
+        ${INLINER_COMMAND}
         COMMAND "${CMAKE_BINARY_DIR}/node_modules/.bin/parcel" build --dist-dir "${CMAKE_BINARY_DIR}/bin" ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PARCEL_ARGS}
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
         BYPRODUCTS "${CMAKE_BINARY_DIR}/bin/index.html"
         DEPENDS "${CMAKE_BINARY_DIR}/bin/index.js"
     )
-
-    if (NOT NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_UNPACKED_MODE)
-        set(NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_UNPACKED_MODE off)
-    endif()
 
     if (${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_UNPACKED_MODE})
         set(SINGLE_FILE_STRING "")
