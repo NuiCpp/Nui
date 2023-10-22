@@ -295,7 +295,11 @@ namespace Nui
         auto nativeWebView = WEBKIT_WEB_VIEW(getNativeWebView());
         auto* webContext = webkit_web_view_get_context(nativeWebView);
         webkit_web_context_register_uri_scheme(
-            webContext, linuxImpl->schemes.back().c_str(), &uriSchemeRequestCallback, entry.get(), &uriSchemeDestroyNotify);
+            webContext,
+            linuxImpl->schemes.back().c_str(),
+            &uriSchemeRequestCallback,
+            entry.get(),
+            &uriSchemeDestroyNotify);
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------
@@ -381,17 +385,18 @@ namespace Nui
     void Window::run()
     {
 #ifdef _WIN32
+        auto* winImpl = static_cast<WindowsImplementation*>(impl_.get());
         MSG msg;
         BOOL res;
         while ((res = GetMessage(&msg, nullptr, 0, 0)) != -1)
         {
             {
-                std::scoped_lock lock{impl_->viewGuard};
-                if (!impl_->toProcessOnWindowThread.empty())
+                std::scoped_lock lock{winImpl->viewGuard};
+                if (!winImpl->toProcessOnWindowThread.empty())
                 {
-                    for (auto const& func : impl_->toProcessOnWindowThread)
+                    for (auto const& func : winImpl->toProcessOnWindowThread)
                         func();
-                    impl_->toProcessOnWindowThread.clear();
+                    winImpl->toProcessOnWindowThread.clear();
                 }
             }
             if (msg.message == wakeUpMessage)
@@ -559,7 +564,7 @@ namespace Nui
         }
         else
         {
-            winImpl->toProcessOnWindowThread.push_back([this, js]() {
+            winImpl->toProcessOnWindowThread.push_back([js, winImpl]() {
                 winImpl->view.eval(js);
             });
             PostThreadMessage(winImpl->windowThreadId, wakeUpMessage, 0, 0);
