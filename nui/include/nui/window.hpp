@@ -115,8 +115,9 @@ namespace Nui
          *
          * @param x xCoordinate
          * @param y yCoordinate
+         * @param (MacOS only) use setFrameOrigin instead of setFrameTopLeftPoint (see apple doc)
          */
-        void setPosition(int x, int y);
+        void setPosition(int x, int y, bool useFrameOrigin = true);
 
         /**
          * @brief Center the window on the primary display. Requires size to be set first.
@@ -144,10 +145,14 @@ namespace Nui
          */
         void terminate();
 
+#ifndef APPLE
         /**
          * @brief Open the dev tools.
+         * @note This function is not available on MacOS.
          */
         void openDevTools();
+#endif
+
 #ifdef NUI_BACKEND
         /**
          * @brief Bind a function into the web context. These will be available under globalThis.nui_rpc.backend.NAME
@@ -200,6 +205,13 @@ namespace Nui
 
         /**
          * @brief Run javascript in the window.
+         *
+         * @param js
+         */
+        void eval(char const* js);
+
+        /**
+         * @brief Run javascript in the window.
          * @param file path to a javascript file.
          */
         void eval(std::filesystem::path const& file);
@@ -218,16 +230,17 @@ namespace Nui
         void init(std::filesystem::path const& file);
 
         /**
-         * @brief Get a pointer to the underlying webview (ICoreWebView2* on windows and WEBKIT_WEB_VIEW on linux.
+         * @brief Get a pointer to the underlying webview (ICoreWebView2* on windows, WEBKIT_WEB_VIEW on linux, id on
+         * mac).
          *
          * @return void* Cast this pointer to the correct type depending on the OS.
          */
         void* getNativeWebView();
 
         /**
-         * @brief Get the Native Window object
+         * @brief Get a pointer to the underlying window (HWND on windows, GtkWidget* on linux, id on mac)
          *
-         * @return void*
+         * @return void* Cast this pointer to the correct type depending on the OS.
          */
         void* getNativeWindow();
 
@@ -235,15 +248,18 @@ namespace Nui
          * @brief [LINUX ONLY] Enable/Disable console output from view in the console.
          */
         void setConsoleOutput(bool active);
-
-        struct SchemeContext;
 #endif
 
       private:
         void runInJavascriptThread(std::function<void()>&& func);
 
-      private:
+      public:
         struct Implementation;
+        struct WindowsImplementation;
+        struct LinuxImplementation;
+        struct MacOsImplementation;
+
+      private:
         std::shared_ptr<Implementation> impl_;
     };
 }

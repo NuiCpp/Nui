@@ -72,6 +72,10 @@ namespace Nui
         {
             impl_->eventRegistry().cleanInvalidEvents();
         }
+        void reset()
+        {
+            impl_->eventRegistry().clear();
+        }
 
       private:
         std::shared_ptr<EventEngine> impl_;

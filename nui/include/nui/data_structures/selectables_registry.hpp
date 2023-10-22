@@ -395,11 +395,13 @@ namespace Nui
                 auto const id = selected.id;
                 if (callback(selected))
                 {
-                    ++itemCount_;
-                    ++result;
                     auto entry = findItem(id);
                     if (entry != std::end(items_))
+                    {
+                        ++itemCount_;
+                        ++result;
                         entry->item = std::move(const_cast<ItemWithId&>(selected).item);
+                    }
                 }
             }
             selected_.clear();
@@ -423,16 +425,26 @@ namespace Nui
 
             if (callback(*iter))
             {
-                ++itemCount_;
                 auto entry = findItem(id);
                 if (entry != std::end(items_))
+                {
+                    ++itemCount_;
                     entry->item = std::move(const_cast<ItemWithId&>(*iter).item);
+                }
                 return true;
             }
             selected_.erase(iter);
             if (selected_.empty())
                 condense();
             return false;
+        }
+
+        void clear()
+        {
+            items_.clear();
+            selected_.clear();
+            itemCount_ = 0;
+            id_ = 0;
         }
 
         /**

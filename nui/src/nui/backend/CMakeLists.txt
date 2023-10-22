@@ -20,7 +20,9 @@ target_include_directories(
         ${CMAKE_BINARY_DIR}/include
 )
 nui_set_project_warnings(nui-backend)
+
 find_package(Boost 1.80.0 REQUIRED COMPONENTS system)
+
 target_link_libraries(
     nui-backend
     PRIVATE
@@ -33,17 +35,32 @@ target_link_libraries(
         roar
         Boost::boost
 )
+
+if (APPLE)
+    target_link_libraries(nui-backend PUBLIC
+        "-framework CoreGraphics"
+        "-framework IOKit"
+        "-framework Foundation"
+    )
+endif()
+
 if (WIN32)
     target_include_directories(nui-backend PUBLIC ${CMAKE_BINARY_DIR}/libs/webview2/build/native/include)
     target_link_libraries(nui-backend PUBLIC WebView2Loader.dll ole32 shell32 shlwapi user32)
-    target_sources(nui-backend 
-        PRIVATE 
+    target_sources(nui-backend
+        PRIVATE
             screen_win.cpp
             environment_variables_win.cpp
     )
+elseif(APPLE)
+    target_sources(nui-backend
+        PRIVATE
+            screen_mac.cpp
+            environment_variables_nix.cpp
+    )
 else()
-    target_sources(nui-backend 
-        PRIVATE 
+    target_sources(nui-backend
+        PRIVATE
             screen_nix.cpp
             environment_variables_nix.cpp
     )

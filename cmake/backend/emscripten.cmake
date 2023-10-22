@@ -16,8 +16,8 @@ else()
             "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten"
             "${CMAKE_BINARY_DIR}/_deps/binaryen_release-src"
             "${CMAKE_BINARY_DIR}/_deps/emscripten-src/java/bin/java.exe"
-            # not setting node, because global installed node might be preferred
-            # "${CMAKE_BINARY_DIR}/_deps/emscripten-src/node/bin/node.exe"
+            # Not patching node
+            # "${NUI_NODE}"
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/emscripten-src"
     )
 endif()
@@ -89,13 +89,17 @@ function(nui_add_emscripten_target)
 
     message(STATUS "emcmake: ${EMCMAKE}")
 
+    if (${TARGET_TYPE} STREQUAL "INTERFACE_LIBRARY")
+        set(ENABLE_BIN2HPP "no")
+    endif()
+
     if (ENABLE_PARCEL_ADAPTER)
         set(BUILD_COMMAND BUILD_COMMAND $<TARGET_FILE:parcel-adapter> "${SOURCE_DIR}/package.json" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/package.json" "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}")
     else()
         set(BUILD_COMMAND BUILD_COMMAND cmake -E copy "${SOURCE_DIR}/package.json" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/package.json")
     endif()
 
-    if (ENABLE_BIN2HPP)
+    if (ENABLE_BIN2HPP AND ${ENABLE_BIN2HPP})
         set(BIN2HPP_COMMAND COMMAND $<TARGET_FILE:bin2hpp> "on" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html" "${CMAKE_BINARY_DIR}/include/index.hpp" index)
     else()
         set(BIN2HPP_COMMAND COMMAND cmake -E true)
@@ -109,6 +113,8 @@ function(nui_add_emscripten_target)
         CONFIGURE_COMMAND
             ${EMCMAKE} cmake
                 ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS}
+                "-DNUI_NPM=${NUI_NPM}"
+                "-DNUI_NODE=${NUI_NODE}"
                 -DNUI_INLINE_EXTRACTOR_TARGET_FILE=$<TARGET_FILE:inline-parser>
                 -DNUI_INLINE_INJECTOR_TARGET_FILE=$<TARGET_FILE:inline-injector>
                 -DNUI_MODULE_BUILD_DIR=${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}

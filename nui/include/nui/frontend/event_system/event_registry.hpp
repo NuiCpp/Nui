@@ -85,6 +85,12 @@ namespace Nui
                 registry_.erase(id);
         }
 
+        void clear()
+        {
+            registry_.clear();
+            afterEffects_.clear();
+        }
+
       private:
         RegistryType registry_;
         RegistryType afterEffects_;

@@ -28,7 +28,7 @@ function(nui_prepare_emscripten_target)
 
     add_custom_target(
         ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-npm-install
-        COMMAND npm install
+        COMMAND ${NUI_NPM} install
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 

@@ -60,9 +60,9 @@ namespace Nui
         RpcClient::getRemoteCallable("Nui::openDevTools")();
     }
     //---------------------------------------------------------------------------------------------------------------------
-    void Window::setPosition(int x, int y)
+    void Window::setPosition(int x, int y, bool useFrameOrigin)
     {
-        RpcClient::getRemoteCallable("Nui::setPosition")(x, y);
+        RpcClient::getRemoteCallable("Nui::setPosition")(x, y, useFrameOrigin);
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::centerOnPrimaryDisplay()
