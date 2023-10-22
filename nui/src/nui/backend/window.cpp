@@ -17,7 +17,7 @@
 #include <roar/mime_type.hpp>
 #include <roar/utility/scope_exit.hpp>
 
-#if defined(APPLE)
+#if defined(__APPLE__)
 #    include <objc/objc-runtime.h>
 #    include <objc/NSObjCRuntime.h>
 #    include <CoreGraphics/CoreGraphics.h>
@@ -255,7 +255,8 @@ namespace Nui
         if (options.title)
             setTitle(*options.title);
 
-#if __linux__
+#ifdef __APPLE__
+#elif defined(__linux__)
         std::lock_guard schemeResponseRegistryLock{impl_->schemeResponseRegistryGuard};
         const auto id = impl_->schemeResponseRegistry.emplace(std::make_unique<SchemeContext>());
         auto& entry = impl_->schemeResponseRegistry[id];
@@ -605,6 +606,23 @@ namespace Nui
             widenString(hostName).c_str(), widenString(folderPath.string()).c_str(), nativeAccessKind);
 #elif defined(__APPLE__)
         throw std::runtime_error("Not implemented");
+        // // setURLSchemeHandler
+        // Protocol* proto = objc_allocateProtocol("WKURLSchemeHandler");
+
+        // protocol_addMethodDescription(
+        //     proto,
+        //     sel_registerName("webView:startURLSchemeTask:"),
+        //     "v@:@@", // return type, self, selector, first argument
+        //     true,
+        //     true); // is required
+        // protocol_addMethodDescription(
+        //     proto,
+        //     sel_registerName("webView:stopURLSchemeTask:"),
+        //     "v@:@@", // return type, self, selector, first argument
+        //     true,
+        //     true); // is required
+
+        // objc_registerProtocol(proto);
 #else
         (void)accessKind;
         impl_->hostNameMappingInfo.hostNameMappingMax =
