@@ -69,18 +69,6 @@ namespace Nui
     }
 
     // #####################################################################################################################
-    struct Window::SchemeContext
-    {
-#ifdef __linux__
-        std::size_t id;
-        std::weak_ptr<Window::Implementation> impl;
-
-        std::string mime;
-        GInputStream* stream;
-        SoupMessageHeaders* headers;
-        WebKitURISchemeResponse* response;
-#endif
-    };
     // #####################################################################################################################
     struct Window::Implementation
     {
@@ -91,26 +79,11 @@ namespace Nui
         std::recursive_mutex viewGuard;
         int width;
         int height;
-#if __linux__
-        HostNameMappingInfo hostNameMappingInfo;
-        std::recursive_mutex schemeResponseRegistryGuard;
-        SelectablesRegistry<std::unique_ptr<Window::SchemeContext>> schemeResponseRegistry;
-        std::list<std::string> schemes{};
-#elif defined(_WIN32)
-        DWORD windowThreadId;
-        std::vector<std::function<void()>> toProcessOnWindowThread;
-#endif
 
         Implementation(WindowOptions const& options)
             : view{[&options]() -> webview::webview {
-#if __linux__
-                return {options.debug, nullptr, nullptr};
-#elif defined(__APPLE__)
-                return {options.debug, nullptr, nullptr};
-#elif defined(_WIN32)
                 // TODO: ICoreWebView2EnvironmentOptions
                 return {options.debug, nullptr, nullptr};
-#endif
             }()}
             , cleanupFiles{}
             , callbacks{}
@@ -118,15 +91,6 @@ namespace Nui
             , viewGuard{}
             , width{0}
             , height{0}
-#if __linux__
-            , hostNameMappingInfo{}
-            , schemeResponseRegistryGuard{}
-            , schemeResponseRegistry{}
-            , schemes{}
-#elif defined(_WIN32)
-            , windowThreadId{GetCurrentThreadId()}
-            , toProcessOnWindowThread{}
-#endif
         {}
         ~Implementation()
         {
@@ -134,7 +98,62 @@ namespace Nui
             pool.join();
         }
     };
+
+#ifdef __APPLE__
     // #####################################################################################################################
+    struct Window::MacOsImplementation : public Window::Implementation
+    {
+        MacOsImplementation(WindowOptions const& options)
+            : Implementation{options}
+        {}
+    };
+    // #####################################################################################################################
+#else defined(__linux__)
+    // #####################################################################################################################
+    struct Window::LinuxImplementation : public Window::Implementation
+    {
+        struct SchemeContext
+        {
+            std::size_t id;
+            std::weak_ptr<Window::Implementation> impl;
+
+            std::string mime;
+            GInputStream* stream;
+            SoupMessageHeaders* headers;
+            WebKitURISchemeResponse* response;
+        };
+
+        HostNameMappingInfo hostNameMappingInfo;
+        std::recursive_mutex schemeResponseRegistryGuard;
+        SelectablesRegistry<std::unique_ptr<Window::LinuxImplementation::SchemeContext>> schemeResponseRegistry;
+        std::list<std::string> schemes{};
+
+        LinuxImplementation(WindowOptions const& options)
+            : Implementation{options}
+            , hostNameMappingInfo{}
+            , schemeResponseRegistryGuard{}
+            , schemeResponseRegistry{}
+            , schemes{}
+        {}
+    };
+    // #####################################################################################################################
+#endif
+
+#ifdef _WIN32
+    // #####################################################################################################################
+    struct Window::WindowsImplementation : public Window::Implementation
+    {
+        DWORD windowThreadId;
+        std::vector<std::function<void()>> toProcessOnWindowThread;
+
+        WindowsImplementation(WindowOptions const& options)
+            : Implementation{options}
+            , windowThreadId{GetCurrentThreadId()}
+            , toProcessOnWindowThread{}
+        {}
+    };
+    // #####################################################################################################################
+#endif
 }
 
 #if __linux__
@@ -149,7 +168,7 @@ std::size_t strlenLimited(char const* str, std::size_t limit)
 extern "C" {
     void uriSchemeRequestCallback(WebKitURISchemeRequest* request, gpointer userData)
     {
-        auto* schemeContext = static_cast<Nui::Window::SchemeContext*>(userData);
+        auto* schemeContext = static_cast<Nui::Window::LinuxImplementation::SchemeContext*>(userData);
 
         const auto path = std::string_view{webkit_uri_scheme_request_get_path(request)};
         const auto uri = std::string_view{webkit_uri_scheme_request_get_uri(request)};
@@ -242,7 +261,13 @@ namespace Nui
     {}
     //---------------------------------------------------------------------------------------------------------------------
     Window::Window(WindowOptions const& options)
-        : impl_{std::make_shared<Implementation>(options)}
+#ifdef __APPLE__
+        : impl_{std::make_shared<MacOsImplementation>(options)}
+#elif defined(__linux__)
+        : impl_{std::make_shared<LinuxImplementation>(options)}
+#elif defined(_WIN32)
+        : impl_{std::make_shared<WindowsImplementation>(options)}
+#endif
     {
         impl_->view.install_message_hook([this](std::string const& msg) {
             std::scoped_lock lock{impl_->viewGuard};
@@ -258,7 +283,8 @@ namespace Nui
 #ifdef __APPLE__
 #elif defined(__linux__)
         std::lock_guard schemeResponseRegistryLock{impl_->schemeResponseRegistryGuard};
-        const auto id = impl_->schemeResponseRegistry.emplace(std::make_unique<SchemeContext>());
+        const auto id =
+            impl_->schemeResponseRegistry.emplace(std::make_unique<Window::LinuxImplementation::SchemeContext>());
         auto& entry = impl_->schemeResponseRegistry[id];
         entry->id = id;
         entry->impl = impl_;
@@ -606,6 +632,9 @@ namespace Nui
             widenString(hostName).c_str(), widenString(folderPath.string()).c_str(), nativeAccessKind);
 #elif defined(__APPLE__)
         throw std::runtime_error("Not implemented");
+        (void)hostName;
+        (void)folderPath;
+        (void)accessKind;
         // // setURLSchemeHandler
         // Protocol* proto = objc_allocateProtocol("WKURLSchemeHandler");
 
