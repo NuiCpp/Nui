@@ -21,6 +21,11 @@ namespace Nui::Tests
             , dom_{}
         {}
 
+        void TearDown() override
+        {
+            Nui::globalEventContext.reset();
+        }
+
         template <typename T>
         void render(T&& factory)
         {
