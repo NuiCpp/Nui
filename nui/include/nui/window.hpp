@@ -253,11 +253,13 @@ namespace Nui
       private:
         void runInJavascriptThread(std::function<void()>&& func);
 
-      private:
+      public:
         struct Implementation;
         struct WindowsImplementation;
         struct LinuxImplementation;
         struct MacOsImplementation;
+
+      private:
         std::shared_ptr<Implementation> impl_;
     };
 }

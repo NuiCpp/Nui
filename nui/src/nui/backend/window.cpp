@@ -108,14 +108,14 @@ namespace Nui
         {}
     };
     // #####################################################################################################################
-#else defined(__linux__)
+#elif defined(__linux__)
     // #####################################################################################################################
     struct Window::LinuxImplementation : public Window::Implementation
     {
         struct SchemeContext
         {
             std::size_t id;
-            std::weak_ptr<Window::Implementation> impl;
+            std::weak_ptr<Window::LinuxImplementation> impl;
 
             std::string mime;
             GInputStream* stream;
@@ -282,19 +282,20 @@ namespace Nui
 
 #ifdef __APPLE__
 #elif defined(__linux__)
-        std::lock_guard schemeResponseRegistryLock{impl_->schemeResponseRegistryGuard};
+        auto* linuxImpl = static_cast<LinuxImplementation*>(impl_.get());
+        std::lock_guard schemeResponseRegistryLock{linuxImpl->schemeResponseRegistryGuard};
         const auto id =
-            impl_->schemeResponseRegistry.emplace(std::make_unique<Window::LinuxImplementation::SchemeContext>());
-        auto& entry = impl_->schemeResponseRegistry[id];
+            linuxImpl->schemeResponseRegistry.emplace(std::make_unique<Window::LinuxImplementation::SchemeContext>());
+        auto& entry = linuxImpl->schemeResponseRegistry[id];
         entry->id = id;
-        entry->impl = impl_;
+        entry->impl = std::static_pointer_cast<Window::LinuxImplementation>(impl_);
 
-        impl_->schemes.push_back(options.localScheme);
+        linuxImpl->schemes.push_back(options.localScheme);
 
         auto nativeWebView = WEBKIT_WEB_VIEW(getNativeWebView());
         auto* webContext = webkit_web_view_get_context(nativeWebView);
         webkit_web_context_register_uri_scheme(
-            webContext, impl_->schemes.back().c_str(), &uriSchemeRequestCallback, entry.get(), &uriSchemeDestroyNotify);
+            webContext, linuxImpl->schemes.back().c_str(), &uriSchemeRequestCallback, entry.get(), &uriSchemeDestroyNotify);
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------
@@ -428,7 +429,7 @@ namespace Nui
     {
         std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
-        reinterpret_cast<void>(useFrameOrigin);
+        (void)useFrameOrigin;
         SetWindowPos(reinterpret_cast<HWND>(impl_->view.window()), nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 #elif defined(__APPLE__)
         using namespace webview::detail;
@@ -443,7 +444,7 @@ namespace Nui
                 wnd, "setFrameTopLeftPoint:"_sel, CGPoint{static_cast<CGFloat>(x), static_cast<CGFloat>(y)});
         }
 #else
-        reinterpret_cast<void>(useFrameOrigin);
+        (void)useFrameOrigin;
         gtk_window_move(static_cast<GtkWindow*>(impl_->view.window()), x, y);
 #endif
     }
@@ -511,12 +512,13 @@ namespace Nui
     {
         std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
-        if (GetCurrentThreadId() == impl_->windowThreadId)
+        auto* winImpl = static_cast<WindowsImplementation*>(impl_.get());
+        if (GetCurrentThreadId() == winImpl->windowThreadId)
             func();
         else
         {
-            impl_->toProcessOnWindowThread.push_back(std::move(func));
-            PostThreadMessage(impl_->windowThreadId, wakeUpMessage, 0, 0);
+            winImpl->toProcessOnWindowThread.push_back(std::move(func));
+            PostThreadMessage(winImpl->windowThreadId, wakeUpMessage, 0, 0);
         }
 #else
         func();
@@ -550,16 +552,17 @@ namespace Nui
     {
         std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
-        if (GetCurrentThreadId() == impl_->windowThreadId)
+        auto* winImpl = static_cast<WindowsImplementation*>(impl_.get());
+        if (GetCurrentThreadId() == winImpl->windowThreadId)
         {
-            impl_->view.eval(js);
+            winImpl->view.eval(js);
         }
         else
         {
-            impl_->toProcessOnWindowThread.push_back([this, js]() {
-                impl_->view.eval(js);
+            winImpl->toProcessOnWindowThread.push_back([this, js]() {
+                winImpl->view.eval(js);
             });
-            PostThreadMessage(impl_->windowThreadId, wakeUpMessage, 0, 0);
+            PostThreadMessage(winImpl->windowThreadId, wakeUpMessage, 0, 0);
         }
 #elif defined(__APPLE__)
         impl_->view.eval(js);
@@ -654,9 +657,10 @@ namespace Nui
         // objc_registerProtocol(proto);
 #else
         (void)accessKind;
-        impl_->hostNameMappingInfo.hostNameMappingMax =
-            std::max(impl_->hostNameMappingInfo.hostNameMappingMax, hostName.size());
-        impl_->hostNameMappingInfo.hostNameToFolderMapping[hostName] = folderPath;
+        auto* linuxImpl = static_cast<LinuxImplementation*>(impl_.get());
+        linuxImpl->hostNameMappingInfo.hostNameMappingMax =
+            std::max(linuxImpl->hostNameMappingInfo.hostNameMappingMax, hostName.size());
+        linuxImpl->hostNameMappingInfo.hostNameToFolderMapping[hostName] = folderPath;
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------
