@@ -1,5 +1,4 @@
 option(NUI_USE_EXTERNAL_EMSCRIPTEN "Use external emscripten?" off)
-option(NUI_NPM "set npm" "npm")
 
 option(NUI_ENABLE_TESTS "Enable test target" off)
 set(NUI_NPM "npm" CACHE STRING "Path to npm (node package manager)")
