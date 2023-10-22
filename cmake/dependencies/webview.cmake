@@ -1,4 +1,5 @@
-if (UNIX)
+if (APPLE)
+elseif (UNIX)
     find_package(PkgConfig REQUIRED)
     pkg_search_module(
         webkit2 REQUIRED webkit2gtk-4.0 webkit2gtk-4.1 webkit2gtk
@@ -45,6 +46,13 @@ if (NUI_FETCH_WEBVIEW)
             $<$<PLATFORM_ID:Windows>:
                 Version.lib
                 WebView2Loader.lib
+            >
+    )
+    target_link_libraries(
+        webview
+        INTERFACE
+            $<$<PLATFORM_ID:Darwin>:
+                "-framework WebKit"
             >
     )
 

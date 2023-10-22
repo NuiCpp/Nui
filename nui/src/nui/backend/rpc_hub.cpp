@@ -67,8 +67,8 @@ namespace Nui
         registerFunction("Nui::setWindowTitle", [this](std::string const& title) {
             window_->setTitle(title);
         });
-        registerFunction("Nui::setPosition", [this](int x, int y) {
-            window_->setPosition(x, y);
+        registerFunction("Nui::setPosition", [this](int x, int y, bool useFrameOrigin) {
+            window_->setPosition(x, y, useFrameOrigin);
         });
         registerFunction("Nui::centerOnPrimaryDisplay", [this]() {
             window_->centerOnPrimaryDisplay();

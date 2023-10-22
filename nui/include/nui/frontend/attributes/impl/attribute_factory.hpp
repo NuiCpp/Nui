@@ -336,6 +336,52 @@ namespace Nui::Attributes
         char const* name_;
     };
 
+    class EventFactory
+    {
+      public:
+        explicit constexpr EventFactory(char const* name)
+            : name_{name}
+        {}
+
+        // Dont use this class like a value
+        EventFactory(EventFactory const&) = delete;
+        EventFactory(EventFactory&&) = delete;
+        EventFactory& operator=(EventFactory const&) = delete;
+        EventFactory& operator=(EventFactory&&) = delete;
+
+        constexpr char const* name() const
+        {
+            return name_;
+        };
+
+        Attribute operator=(std::function<void()> func) const
+        {
+            return Attribute{
+                [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
+                    element.addEventListener(name, [func](Nui::val) {
+                        func();
+                        globalEventContext.executeActiveEventsImmediately();
+                    });
+                },
+            };
+        }
+
+        Attribute operator=(std::function<void(Nui::val)> func) const
+        {
+            return Attribute{
+                [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
+                    element.addEventListener(name, [func](Nui::val val) {
+                        func(std::move(val));
+                        globalEventContext.executeActiveEventsImmediately();
+                    });
+                },
+            };
+        }
+
+      private:
+        char const* name_;
+    };
+
     inline namespace Literals
     {
         constexpr AttributeFactory operator""_attr(char const* name, std::size_t)
@@ -345,6 +391,10 @@ namespace Nui::Attributes
         constexpr PropertyFactory operator""_prop(char const* name, std::size_t)
         {
             return PropertyFactory{name};
+        }
+        constexpr EventFactory operator""_event(char const* name, std::size_t)
+        {
+            return EventFactory{name};
         }
     }
 }
