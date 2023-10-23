@@ -1,6 +1,6 @@
 option(NUI_FETCH_ROAR "Fetch roar" ON)
 set(NUI_ROAR_REPOSITORY "https://github.com/5cript/roar.git" CACHE STRING "roar repository")
-set(NUI_ROAR_TAG "2f264f1b739c937791cc0bfacf7e2136205aac8f" CACHE STRING "roar tag")
+set(NUI_ROAR_TAG "d76fa5a7386008c32157856e5dcf448ab9600dda" CACHE STRING "roar tag")
 
 if(NUI_FETCH_ROAR)
     include(FetchContent)
