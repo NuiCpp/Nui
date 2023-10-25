@@ -29,7 +29,7 @@ function(nui_preprocess_inline_js)
 endfunction()
 
 function(nui_enable_inline)
-    set(one_value_args TARGET UNPACKED_MODE RELATIVE_TO)
+    set(one_value_args TARGET UNPACKED_MODE RELATIVE_TO CXX_STANDARD)
     set(multi_value_args)
     cmake_parse_arguments(nui_enable_inline_ARGS "" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
@@ -41,6 +41,10 @@ function(nui_enable_inline)
     set(INLINE_CACHE "${INLINE_DIRECTORY}/inline.cache")
     set(INLINE_IMPORTS_SCRIPTS "${INLINE_DIRECTORY}/inline_imports.js")
     set(INLINE_IMPORTS_STYLES "${INLINE_DIRECTORY}/inline_imports.css")
+
+    if (NOT nui_enable_inline_ARGS_CXX_STANDARD)
+        set(nui_enable_inline_ARGS_CXX_STANDARD 20)
+    endif()
 
     # for each source file preprocess it:
     set(IS_FIRST TRUE)
@@ -61,11 +65,15 @@ function(nui_enable_inline)
             INLINE_CACHE "${INLINE_CACHE}"
             SOURCE "${SOURCE_FILE}"
             OUTPUT "${PREPROCESSED_SOURCE_FILE}"
-            EXTRA_CXX_FLAGS -P -CC -DNUI_INLINE -DNUI_MODULE_SOURCE_DIR="${CMAKE_SOURCE_DIR}" -DNUI_MODULE_CURRENT_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+            CXX_STANDARD ${nui_enable_inline_ARGS_CXX_STANDARD}
+            EXTRA_CXX_FLAGS
+                -P -CC -DNUI_INLINE
+                -DNUI_MODULE_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+                -DNUI_MODULE_CURRENT_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+                -std=c++${nui_enable_inline_ARGS_CXX_STANDARD}
             IS_FIRST ${IS_FIRST}
         )
         set(IS_FIRST FALSE)
-        message(STATUS "Preprocessing ${SOURCE_FILE} to ${PREPROCESSED_SOURCE_FILE}")
         list(APPEND PREPROCESSED_SOURCES "${PREPROCESSED_SOURCE_FILE}")
     endforeach()
 
