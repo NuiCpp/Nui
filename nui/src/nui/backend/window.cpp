@@ -496,7 +496,7 @@ namespace Nui
     //--------------------------------------------------------------------------------------------------------------------
     void Window::unbind(std::string const& name)
     {
-        runInJavascriptThread([this, &name]() {
+        runInJavascriptThread([this, name]() {
             std::scoped_lock lock{impl_->viewGuard};
             auto script = fmt::format(
                 R"(
