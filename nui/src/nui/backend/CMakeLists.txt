@@ -17,6 +17,7 @@ target_include_directories(
     nui-backend
     PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}/../../../include
+        ${CMAKE_CURRENT_LIST_DIR}/../../../windows
         ${CMAKE_BINARY_DIR}/include
 )
 nui_set_project_warnings(nui-backend)

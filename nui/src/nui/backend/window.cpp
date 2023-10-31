@@ -39,6 +39,11 @@
 #include <functional>
 #include <list>
 
+#ifdef _WIN32
+#    include <webview2_environment_options.hpp>
+#    include <webview2_iids.h>
+#endif
+
 #if __linux__
 struct HostNameMappingInfo
 {
@@ -69,6 +74,27 @@ namespace Nui
     }
 
     // #####################################################################################################################
+#ifdef _WIN32
+    Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions>
+    webView2EnvironmentOptionsFromOptions(WindowOptions const& options)
+    {
+        auto environmentOptions = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
+
+        if (options.browserArguments)
+            environmentOptions->put_AdditionalBrowserArguments(widenString(*options.browserArguments).c_str());
+
+        // auto customSchemeRegistration = Nui::Com::makeComWrapper<ICoreWebView2CustomSchemeRegistration>(L"assets");
+        // const WCHAR* allowedOrigins[1] = {L"*"};
+        // customSchemeRegistration->SetAllowedOrigins(1, allowedOrigins);
+        // customSchemeRegistration->put_TreatAsSecure(true);
+        // customSchemeRegistration->put_HasAuthorityComponent(true);
+
+        // ICoreWebView2CustomSchemeRegistration* registrations[1] = {customSchemeRegistration.get()};
+        // env4->SetCustomSchemeRegistrations(1, static_cast<ICoreWebView2CustomSchemeRegistration**>(registrations));
+
+        return environmentOptions;
+    }
+#endif
     // #####################################################################################################################
     struct Window::Implementation
     {
@@ -82,7 +108,9 @@ namespace Nui
 
         Implementation(WindowOptions const& options)
             : view{[&options]() -> webview::webview {
-                // TODO: ICoreWebView2EnvironmentOptions
+#ifdef _WIN32
+                return {options.debug, nullptr, webView2EnvironmentOptionsFromOptions(options).Get()};
+#endif
                 return {options.debug, nullptr, nullptr};
             }()}
             , cleanupFiles{}
@@ -681,6 +709,14 @@ namespace Nui
         (void)active;
 #endif
     }
+    //---------------------------------------------------------------------------------------------------------------------
+    //     void Window::registerCustomSchemeHandler(CustomSchemeOptions const& options)
+    //     {
+    //         std::scoped_lock lock{impl_->viewGuard};
+    // #if defined(_WIN32)
+    //         registerCustomSchemeHandlerWindows(options);
+    // #endif
+    //     }
     //---------------------------------------------------------------------------------------------------------------------
     boost::asio::any_io_executor Window::getExecutor() const
     {

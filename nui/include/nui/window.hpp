@@ -30,6 +30,9 @@ namespace Nui
         DenyCors
     };
 
+    struct CustomScheme
+    {};
+
     struct WindowOptions
     {
         /// The title of the window.
@@ -38,8 +41,11 @@ namespace Nui
         /// May open the dev tools?
         bool debug = false;
 
+        /// Custom schemes to register.
+        std::vector<CustomScheme> customSchemes = {};
+
         /// WINDOWS ONLY
-        // currently unimplemented: std::optional<std::string> browserArguments = std::nullopt;
+        std::optional<std::string> browserArguments = std::nullopt;
 
         /// WEBKIT ONLY
         std::string localScheme = "assets";

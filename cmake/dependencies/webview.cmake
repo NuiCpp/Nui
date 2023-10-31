@@ -98,22 +98,16 @@ if (NUI_FETCH_WEBVIEW)
                 COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/lib"
                 COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/_deps/webview_binary-src/build/native/${WEBVIEW_DLL_SUBDIRECTORY}/WebView2Loader.dll.lib" "${CMAKE_BINARY_DIR}/lib/WebView2Loader.lib"
             )
-            # add_custom_command(
-            #     OUTPUT "${CMAKE_BINARY_DIR}/include/WebView2.h"
-            #     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/include"
-            #     COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/_deps/webview_binary-src/build/native/include/WebView2.h" "${CMAKE_BINARY_DIR}/include"
-            # )
-            # add_custom_command(
-            #     OUTPUT "${CMAKE_BINARY_DIR}/include/WebView2EnvironmentOptions.h"
-            #     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/include"
-            #     COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/_deps/webview_binary-src/build/native/include/WebView2EnvironmentOptions.h" "${CMAKE_BINARY_DIR}/include"
-            # )
+            add_custom_command(
+                OUTPUT "${CMAKE_BINARY_DIR}/include/webview2_iids.h"
+                COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/include"
+                COMMAND $<TARGET_FILE:webview-uuid> "${CMAKE_BINARY_DIR}/_deps/webview_binary-src/build/native/include/WebView2.h" "${CMAKE_BINARY_DIR}/include/webview2_iids.h"
+            )
             add_custom_target(
                 webview2-win
                 DEPENDS "${CMAKE_BINARY_DIR}/bin/WebView2Loader.dll"
                 DEPENDS "${CMAKE_BINARY_DIR}/lib/WebView2Loader.lib"
-                # DEPENDS "${CMAKE_BINARY_DIR}/include/WebView2.h"
-                # DEPENDS "${CMAKE_BINARY_DIR}/include/WebView2EnvironmentOptions.h"
+                DEPENDS "${CMAKE_BINARY_DIR}/include/webview2_iids.h"
             )
         endif()
     endif()
