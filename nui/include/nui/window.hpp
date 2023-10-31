@@ -11,6 +11,7 @@
 #include <optional>
 #include <string>
 #include <functional>
+#include <unordered_map>
 
 namespace Nui
 {
@@ -30,8 +31,62 @@ namespace Nui
         DenyCors
     };
 
+    enum class NuiCoreWebView2WebResourceContext
+    {
+        All,
+        Document,
+        Stylesheet,
+        Image,
+        Media,
+        Font,
+        Script,
+        XmlHttpRequest,
+        Fetch,
+        TextTrack,
+        EventSource,
+        WebSocket,
+        Manifest,
+        SignedExchange,
+        Ping,
+        CspViolationReport,
+        Other,
+    };
+
+    struct CustomSchemeRequest
+    {
+        std::string scheme;
+        std::function<std::string const&()> getContent;
+        std::unordered_multimap<std::string, std::string> headers;
+        std::string uri;
+        std::string method;
+
+        // WINDOWS ONLY
+        NuiCoreWebView2WebResourceContext resourceContext;
+    };
+
+    struct CustomSchemeResponse
+    {
+        int statusCode;
+        std::string reasonPhrase;
+        std::unordered_multimap<std::string, std::string> headers;
+        std::string body;
+    };
+
     struct CustomScheme
-    {};
+    {
+        std::string scheme;
+        std::vector<std::string> allowedOrigins = {};
+        std::function<CustomSchemeResponse(CustomSchemeRequest const&)> onRequest = {};
+
+        /// WINDOWS ONLY
+        NuiCoreWebView2WebResourceContext resourceContext = NuiCoreWebView2WebResourceContext::All;
+
+        /// WINDOWS ONLY
+        bool treatAsSecure = true;
+
+        /// WINDOWS ONLY
+        bool hasAuthorityComponent = false;
+    };
 
     struct WindowOptions
     {
@@ -46,6 +101,12 @@ namespace Nui
 
         /// WINDOWS ONLY
         std::optional<std::string> browserArguments = std::nullopt;
+
+        /// WINDOWS ONLY
+        bool enableTrackingPrevention = true;
+
+        /// WINDOWS ONLY
+        std::optional<std::string> language = std::nullopt;
 
         /// WEBKIT ONLY
         std::string localScheme = "assets";

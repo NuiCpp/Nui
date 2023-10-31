@@ -38,10 +38,13 @@
 #include <mutex>
 #include <functional>
 #include <list>
+#include <array>
+#include <string>
 
 #ifdef _WIN32
 #    include <webview2_environment_options.hpp>
 #    include <webview2_iids.h>
+#    include <wrl/event.h>
 #endif
 
 #if __linux__
@@ -81,16 +84,57 @@ namespace Nui
         auto environmentOptions = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
 
         if (options.browserArguments)
-            environmentOptions->put_AdditionalBrowserArguments(widenString(*options.browserArguments).c_str());
+        {
+            const auto wideArgs = widenString(*options.browserArguments);
+            environmentOptions->put_AdditionalBrowserArguments(wideArgs.c_str());
+        }
 
-        // auto customSchemeRegistration = Nui::Com::makeComWrapper<ICoreWebView2CustomSchemeRegistration>(L"assets");
-        // const WCHAR* allowedOrigins[1] = {L"*"};
-        // customSchemeRegistration->SetAllowedOrigins(1, allowedOrigins);
-        // customSchemeRegistration->put_TreatAsSecure(true);
-        // customSchemeRegistration->put_HasAuthorityComponent(true);
+        if (options.language)
+        {
+            const auto wideLanguage = widenString(*options.language);
+            environmentOptions->put_Language(wideLanguage.c_str());
+        }
 
-        // ICoreWebView2CustomSchemeRegistration* registrations[1] = {customSchemeRegistration.get()};
-        // env4->SetCustomSchemeRegistrations(1, static_cast<ICoreWebView2CustomSchemeRegistration**>(registrations));
+        Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions4> options4;
+        if (environmentOptions.As(&options4) == S_OK)
+        {
+            std::vector<Microsoft::WRL::ComPtr<CoreWebView2CustomSchemeRegistration>> customSchemeRegistrations;
+            for (const auto& customScheme : options.customSchemes)
+            {
+                const auto wideScheme = widenString(customScheme.scheme);
+                customSchemeRegistrations.push_back(
+                    Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(wideScheme.c_str()));
+                auto& customSchemeRegistration = customSchemeRegistrations.back();
+
+                std::vector<std::wstring> allowedOrigins;
+                allowedOrigins.reserve(customScheme.allowedOrigins.size());
+                for (const auto& allowedOrigin : customScheme.allowedOrigins)
+                    allowedOrigins.push_back(widenString(allowedOrigin));
+
+                std::vector<std::wstring::value_type const*> allowedOriginsRaw;
+                allowedOriginsRaw.reserve(allowedOrigins.size());
+                for (const auto& allowedOrigin : allowedOrigins)
+                    allowedOriginsRaw.push_back(allowedOrigin.c_str());
+
+                customSchemeRegistration->SetAllowedOrigins(
+                    static_cast<UINT>(allowedOriginsRaw.size()), allowedOriginsRaw.data());
+                customSchemeRegistration->put_TreatAsSecure(customScheme.treatAsSecure);
+                customSchemeRegistration->put_HasAuthorityComponent(customScheme.hasAuthorityComponent);
+            }
+            std::vector<ICoreWebView2CustomSchemeRegistration*> customSchemeRegistrationsRaw;
+            customSchemeRegistrationsRaw.reserve(customSchemeRegistrations.size());
+            for (const auto& customSchemeRegistration : customSchemeRegistrations)
+                customSchemeRegistrationsRaw.push_back(customSchemeRegistration.Get());
+
+            options4->SetCustomSchemeRegistrations(
+                static_cast<UINT>(customSchemeRegistrationsRaw.size()), customSchemeRegistrationsRaw.data());
+        }
+
+        Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions5> options5;
+        if (environmentOptions.As(&options5) == S_OK)
+        {
+            options5->put_EnableTrackingPrevention(options.enableTrackingPrevention);
+        }
 
         return environmentOptions;
     }
@@ -173,13 +217,156 @@ namespace Nui
     {
         DWORD windowThreadId;
         std::vector<std::function<void()>> toProcessOnWindowThread;
+        std::vector<EventRegistrationToken> schemeHandlerTokens;
 
         WindowsImplementation(WindowOptions const& options)
             : Implementation{options}
             , windowThreadId{GetCurrentThreadId()}
             , toProcessOnWindowThread{}
-        {}
+            , schemeHandlerTokens{}
+        {
+            registerSchemeHandlers(options);
+        }
+
+        void registerSchemeHandlers(WindowOptions const& options);
     };
+    //---------------------------------------------------------------------------------------------------------------------
+    void Window::WindowsImplementation::registerSchemeHandlers(WindowOptions const& options)
+    {
+        auto* webView = static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(view).webview());
+
+        for (auto const& customScheme : options.customSchemes)
+        {
+            const std::wstring filter = widenString(customScheme.scheme + ":*");
+
+            auto result = webView->AddWebResourceRequestedFilter(
+                filter.c_str(), static_cast<COREWEBVIEW2_WEB_RESOURCE_CONTEXT>(NuiCoreWebView2WebResourceContext::All));
+
+            if (result != S_OK)
+                throw std::runtime_error("Could not register custom scheme: " + customScheme.scheme);
+
+            EventRegistrationToken schemeHandlerToken;
+            webView->add_WebResourceRequested(
+                Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
+                    [this, customScheme](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* args) -> HRESULT {
+                        COREWEBVIEW2_WEB_RESOURCE_CONTEXT resourceContext;
+                        auto result = args->get_ResourceContext(&resourceContext);
+                        if (result != S_OK)
+                            return result;
+
+                        Microsoft::WRL::ComPtr<ICoreWebView2WebResourceRequest> webViewRequest;
+                        args->get_Request(&webViewRequest);
+
+                        CustomSchemeRequest request{
+                            .scheme = customScheme.scheme,
+                            .getContent = [&webViewRequest,
+                                           contentMemo = std::string{}]() mutable -> std::string const& {
+                                if (!contentMemo.empty())
+                                    return contentMemo;
+
+                                Microsoft::WRL::ComPtr<IStream> stream;
+                                webViewRequest->get_Content(&stream);
+
+                                ULONG bytesRead = 0;
+                                do
+                                {
+                                    std::array<char, 1024> buffer;
+                                    stream->Read(buffer.data(), 1024, &bytesRead);
+                                    contentMemo.append(buffer.data(), bytesRead);
+                                } while (bytesRead == 1024);
+                                return contentMemo;
+                            },
+                            .headers =
+                                [&webViewRequest]() {
+                                    ICoreWebView2HttpRequestHeaders* headers;
+                                    webViewRequest->get_Headers(&headers);
+
+                                    Microsoft::WRL::ComPtr<ICoreWebView2HttpHeadersCollectionIterator> iterator;
+                                    headers->GetIterator(&iterator);
+
+                                    std::unordered_multimap<std::string, std::string> headersMap;
+                                    for (BOOL hasCurrent;
+                                         SUCCEEDED(iterator->get_HasCurrentHeader(&hasCurrent)) && hasCurrent;)
+                                    {
+                                        LPWSTR name;
+                                        LPWSTR value;
+                                        iterator->GetCurrentHeader(&name, &value);
+                                        std::wstring nameW{name};
+                                        std::wstring valueW{value};
+                                        CoTaskMemFree(name);
+                                        CoTaskMemFree(value);
+
+                                        headersMap.emplace(shortenString(nameW), shortenString(valueW));
+
+                                        BOOL hasNext = FALSE;
+                                        if (FAILED(iterator->MoveNext(&hasNext)) || !hasNext)
+                                            break;
+                                    }
+                                    return headersMap;
+                                }(),
+                            .uri =
+                                [&webViewRequest]() {
+                                    LPWSTR uri;
+                                    webViewRequest->get_Uri(&uri);
+                                    std::wstring uriW{uri};
+                                    CoTaskMemFree(uri);
+                                    return shortenString(uriW);
+                                }(),
+                            .method =
+                                [&webViewRequest]() {
+                                    LPWSTR method;
+                                    webViewRequest->get_Method(&method);
+                                    std::wstring methodW{method};
+                                    CoTaskMemFree(method);
+                                    return shortenString(methodW);
+                                }(),
+                            .resourceContext = static_cast<NuiCoreWebView2WebResourceContext>(
+                                static_cast<COREWEBVIEW2_WEB_RESOURCE_CONTEXT>(resourceContext)),
+                        };
+
+                        if (!customScheme.onRequest)
+                            return E_NOTIMPL;
+
+                        const auto responseData = customScheme.onRequest(request);
+
+                        auto* webView =
+                            static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(view).webview());
+
+                        Microsoft::WRL::ComPtr<ICoreWebView2WebResourceResponse> response;
+                        Microsoft::WRL::ComPtr<ICoreWebView2_2> wv22;
+                        result = webView->QueryInterface(IID_PPV_ARGS(&wv22));
+
+                        Microsoft::WRL::ComPtr<ICoreWebView2Environment> environment;
+                        wv22->get_Environment(&environment);
+
+                        if (result != S_OK)
+                            return result;
+
+                        std::wstring responseHeaders;
+                        for (auto const& [key, value] : responseData.headers)
+                            responseHeaders += widenString(key) + L": " + widenString(value) + L"\r\n";
+
+                        Microsoft::WRL::ComPtr<IStream> stream;
+                        stream.Attach(SHCreateMemStream(
+                            reinterpret_cast<const BYTE*>(responseData.body.data()),
+                            static_cast<UINT>(responseData.body.size())));
+
+                        const auto phrase = widenString(responseData.reasonPhrase);
+                        result = environment->CreateWebResourceResponse(
+                            stream.Get(), responseData.statusCode, phrase.c_str(), responseHeaders.c_str(), &response);
+
+                        if (result != S_OK)
+                            return result;
+
+                        args->put_Response(response.Get());
+                        return S_OK;
+                    })
+                    .Get(),
+                &schemeHandlerToken);
+
+            schemeHandlerTokens.push_back(schemeHandlerToken);
+        }
+    }
     // #####################################################################################################################
 #endif
 }
@@ -664,8 +851,9 @@ namespace Nui
                 break;
         }
 
-        wv23->SetVirtualHostNameToFolderMapping(
-            widenString(hostName).c_str(), widenString(folderPath.string()).c_str(), nativeAccessKind);
+        const auto wideHost = widenString(hostName);
+        const auto widePath = widenString(folderPath.string());
+        wv23->SetVirtualHostNameToFolderMapping(wideHost.c_str(), widePath.c_str(), nativeAccessKind);
 #elif defined(__APPLE__)
         throw std::runtime_error("Not implemented");
         (void)hostName;
@@ -709,14 +897,6 @@ namespace Nui
         (void)active;
 #endif
     }
-    //---------------------------------------------------------------------------------------------------------------------
-    //     void Window::registerCustomSchemeHandler(CustomSchemeOptions const& options)
-    //     {
-    //         std::scoped_lock lock{impl_->viewGuard};
-    // #if defined(_WIN32)
-    //         registerCustomSchemeHandlerWindows(options);
-    // #endif
-    //     }
     //---------------------------------------------------------------------------------------------------------------------
     boost::asio::any_io_executor Window::getExecutor() const
     {
