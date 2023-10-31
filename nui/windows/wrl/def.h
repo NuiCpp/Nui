@@ -6,6 +6,8 @@
 //
 #pragma once
 
+#include "patch.h"
+
 #include <sdkddkver.h>
 #include <sal.h>
 
