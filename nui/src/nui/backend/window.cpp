@@ -115,7 +115,7 @@ namespace Nui
                 auto& customSchemeRegistration = customSchemeRegistrations.back();
 
                 allowedOrigins.push_back({});
-                allowedOrigins.back().reserve(customScheme.allowedOrigins.back().size());
+                allowedOrigins.back().reserve(customScheme.allowedOrigins.size());
                 for (const auto& allowedOrigin : customScheme.allowedOrigins)
                     allowedOrigins.back().push_back(widenString(allowedOrigin));
 
@@ -653,74 +653,6 @@ namespace Nui
             {
                 throw std::runtime_error("HTML size too large for WebView2.");
             }
-
-            // Workaround for bug in webview2?
-            // auto* winImpl = static_cast<WindowsImplementation*>(impl_.get());
-            // auto* webView = static_cast<ICoreWebView2*>(getNativeWebView());
-
-            // if (winImpl->setHtmlWorkaroundToken)
-            // {
-            //     webView->remove_NavigationCompleted(*winImpl->setHtmlWorkaroundToken);
-            //     winImpl->setHtmlWorkaroundToken.reset();
-            // }
-
-            // auto result = webView->AddWebResourceRequestedFilter(
-            //     L"https://setHtml/*",
-            //     static_cast<COREWEBVIEW2_WEB_RESOURCE_CONTEXT>(NuiCoreWebView2WebResourceContext::All));
-
-            // winImpl->setHtmlWorkaroundToken = std::make_optional<EventRegistrationToken>();
-            // webView->add_WebResourceRequested(
-            //     Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
-            //         [this, index = std::string{html}](
-            //             ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* args) -> HRESULT {
-            //             COREWEBVIEW2_WEB_RESOURCE_CONTEXT resourceContext;
-            //             auto result = args->get_ResourceContext(&resourceContext);
-            //             if (result != S_OK)
-            //                 return result;
-
-            //             Microsoft::WRL::ComPtr<ICoreWebView2WebResourceRequest> webViewRequest;
-            //             args->get_Request(&webViewRequest);
-
-            //             std::string uri;
-            //             {
-            //                 LPWSTR lpwstring;
-            //                 webViewRequest->get_Uri(&lpwstring);
-            //                 uri = shortenString(std::wstring{lpwstring});
-            //                 CoTaskMemFree(lpwstring);
-            //             }
-            //             if (uri != "https://setHtml/index.html")
-            //                 return E_NOTIMPL;
-
-            //             auto* webView =
-            //                 static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(impl_->view).webview());
-
-            //             Microsoft::WRL::ComPtr<ICoreWebView2WebResourceResponse> response;
-            //             Microsoft::WRL::ComPtr<ICoreWebView2_2> wv22;
-            //             result = webView->QueryInterface(IID_PPV_ARGS(&wv22));
-
-            //             Microsoft::WRL::ComPtr<ICoreWebView2Environment> environment;
-            //             wv22->get_Environment(&environment);
-
-            //             if (result != S_OK)
-            //                 return result;
-
-            //             Microsoft::WRL::ComPtr<IStream> stream;
-            //             stream.Attach(SHCreateMemStream(
-            //                 reinterpret_cast<const BYTE*>(index.data()), static_cast<UINT>(index.size())));
-
-            //             result = environment->CreateWebResourceResponse(
-            //                 stream.Get(), 200, L"OK", L"Content-Type: text/html; charset=utf-8", &response);
-
-            //             if (result != S_OK)
-            //                 return result;
-
-            //             result = args->put_Response(response.Get());
-            //             return result;
-            //         })
-            //         .Get(),
-            //     &*winImpl->setHtmlWorkaroundToken);
-
-            // webView->Navigate(L"https://setHtml/index.html");
 #else
             impl_->view.set_html(std::string{html});
 #endif
