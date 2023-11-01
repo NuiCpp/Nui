@@ -81,10 +81,10 @@ namespace Nui
         /// WINDOWS ONLY
         NuiCoreWebView2WebResourceContext resourceContext = NuiCoreWebView2WebResourceContext::All;
 
-        /// WINDOWS ONLY
+        /// WINDOWS ONLY - Whether the sites with this scheme will be treated as a Secure Context like an HTTPS site.
         bool treatAsSecure = true;
 
-        /// WINDOWS ONLY
+        /// WINDOWS ONLY - URI contains an authority. like "scheme://AUTHORITY_HERE/path".
         bool hasAuthorityComponent = false;
     };
 
@@ -198,6 +198,13 @@ namespace Nui
          */
         void navigate(const std::string& url);
 
+        /**
+         * @brief Navigate to url.
+         *
+         * @param url
+         */
+        void navigate(char const* url);
+
 #ifdef NUI_BACKEND
         /**
          * @brief Navigate to file.
@@ -260,8 +267,9 @@ namespace Nui
          *
          * @param html Page html.
          * @param fromFilesystem If true, the html is loaded from the filesystem instead of from memory.
+         * @param windowsForceNoFilesystem If true, the html is loaded from memory even on windows.
          */
-        void setHtml(std::string_view html, bool fromFilesystem = false);
+        void setHtml(std::string_view html, bool fromFilesystem = false, bool windowsForceNoFilesystem = false);
 
         /**
          * @brief Run javascript in the window.
