@@ -291,14 +291,6 @@ namespace Nui
             std::optional<std::string> windowsServeThroughAuthority = std::string{windowsServeAuthority});
 
         /**
-         * @brief Deprecated. Use setHtml or setHtmlThroughFilesystem instead.
-         */
-        [[deprecated]] void setHtml(
-            std::string_view html,
-            bool fromFilesystem,
-            std::optional<std::string> windowsServeThroughAuthority = std::string{windowsServeAuthority});
-
-        /**
          * @brief Dump the page into a temporary file and then load it from there.
          *
          * @param html A string containing the html.

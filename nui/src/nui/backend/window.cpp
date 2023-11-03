@@ -48,6 +48,8 @@
 
 #if defined(_WIN32)
 constexpr static auto wakeUpMessage = WM_APP + 1;
+
+#    include "environment_options_from_window_options.ipp"
 #endif
 
 using namespace std::string_literals;
@@ -218,15 +220,6 @@ namespace Nui
 
         impl_->view.navigate("file://"s + tempFile.string());
         impl_->cleanupFiles.push_back(tempFile);
-    }
-    //---------------------------------------------------------------------------------------------------------------------
-    void
-    Window::setHtml(std::string_view html, bool fromFilesystem, std::optional<std::string> windowsServeThroughAuthority)
-    {
-        if (fromFilesystem)
-            return setHtmlThroughFilesystem(html);
-
-        setHtml(html, windowsServeThroughAuthority);
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setHtml(std::string_view html, std::optional<std::string> windowsServeThroughAuthority)
@@ -582,7 +575,7 @@ namespace Nui
 
         if (wv23 == nullptr)
             throw std::runtime_error("Could not get interface to set mapping.");
-        auto releaseInterface = Roar::ScopeExit{[wv23] {
+        auto releaseInterface = Nui::ScopeExit{[wv23] {
             wv23->Release();
         }};
 
