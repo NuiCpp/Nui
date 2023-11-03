@@ -64,13 +64,14 @@ namespace Nui
 
         std::optional<Url> parseUrl() const;
 
-        // WINDOWS ONLY
+        /// WINDOWS ONLY
         NuiCoreWebView2WebResourceContext resourceContext;
     };
 
     struct CustomSchemeResponse
     {
         int statusCode;
+        /// WINDOWS ONLY
         std::string reasonPhrase;
         std::unordered_multimap<std::string, std::string> headers;
         std::string body;
@@ -79,7 +80,9 @@ namespace Nui
     struct CustomScheme
     {
         std::string scheme;
+        /// You should probably allow some origin, or '*', or this will never do much.
         std::vector<std::string> allowedOrigins = {};
+
         std::function<CustomSchemeResponse(CustomSchemeRequest const&)> onRequest = {};
 
         /// WINDOWS ONLY
@@ -113,7 +116,7 @@ namespace Nui
         std::optional<std::string> language = std::nullopt;
 
         /// WEBKIT ONLY
-        std::string localScheme = "assets";
+        std::optional<std::string> folderMappingScheme = std::string{"assets"};
     };
 #else
     struct WindowOptions
@@ -256,7 +259,10 @@ namespace Nui
         boost::asio::any_io_executor getExecutor() const;
 
         /**
-         * @brief Map a host name under the assets:// scheme to a folder.
+         * @brief Map a host name under the assets:// scheme to a folder (https:// on windows).
+         *
+         * This is emulated on linux and macos, via the assets scheme. Prefer to use custom schemes instead.
+         * The scheme can be changed via folderMappingScheme in the WindowOptions.
          *
          * @param hostName The host name to map. like "assets://HOSTNAME/...".
          * @param folderPath The path to the directory to map into.
@@ -265,7 +271,7 @@ namespace Nui
         void setVirtualHostNameToFolderMapping(
             std::string const& hostName,
             std::filesystem::path const& folderPath,
-            HostResourceAccessKind accessKind);
+            HostResourceAccessKind accessKind = HostResourceAccessKind::Allow);
 
         /**
          * @brief Run the webview. This function blocks until the window is closed.
@@ -289,7 +295,7 @@ namespace Nui
          */
         [[deprecated]] void setHtml(
             std::string_view html,
-            bool fromFilesystem = false,
+            bool fromFilesystem,
             std::optional<std::string> windowsServeThroughAuthority = std::string{windowsServeAuthority});
 
         /**

@@ -2,6 +2,7 @@ add_library(nui-backend
     STATIC
         window.cpp
         rpc_hub.cpp
+        load_file.cpp
         filesystem/special_paths.cpp
         filesystem/file_dialog.cpp
         filesystem/file_dialog_options.cpp

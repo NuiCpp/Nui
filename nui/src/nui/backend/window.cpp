@@ -7,6 +7,7 @@
 #include <nui/utility/scope_exit.hpp>
 #include <nui/data_structures/selectables_registry.hpp>
 #include <nui/screen.hpp>
+#include "load_file.hpp"
 
 #include <webview.h>
 #include <fmt/format.h>
@@ -14,8 +15,6 @@
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/thread_pool.hpp>
 #include <boost/asio/post.hpp>
-#include <roar/mime_type.hpp>
-#include <roar/utility/scope_exit.hpp>
 
 #if defined(__APPLE__)
 #    include <objc/objc-runtime.h>
@@ -47,118 +46,16 @@
 #    include <wrl/event.h>
 #endif
 
-#if __linux__
-struct HostNameMappingInfo
-{
-    std::unordered_map<std::string, std::filesystem::path> hostNameToFolderMapping{};
-    std::size_t hostNameMappingMax{0};
-};
-#endif
-
 #if defined(_WIN32)
 constexpr static auto wakeUpMessage = WM_APP + 1;
 #endif
 
+using namespace std::string_literals;
+
+// #####################################################################################################################
 namespace Nui
 {
-    namespace
-    {
-        static std::string loadFile(std::filesystem::path const& file)
-        {
-            std::ifstream reader{file, std::ios::binary};
-            if (!reader)
-                throw std::runtime_error("Could not open file: " + file.string());
-            reader.seekg(0, std::ios::end);
-            std::string content(static_cast<std::size_t>(reader.tellg()), '\0');
-            reader.seekg(0, std::ios::beg);
-            reader.read(content.data(), static_cast<std::streamsize>(content.size()));
-            return content;
-        }
-    }
-
-    std::optional<Url> CustomSchemeRequest::parseUrl() const
-    {
-        auto res = Url::fromString(uri);
-        if (!res)
-            return std::nullopt;
-        return res.value();
-    }
-
-    // #####################################################################################################################
-#ifdef _WIN32
-    Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions>
-    webView2EnvironmentOptionsFromOptions(WindowOptions const& options)
-    {
-        auto environmentOptions = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
-
-        if (options.browserArguments)
-        {
-            const auto wideArgs = widenString(*options.browserArguments);
-            environmentOptions->put_AdditionalBrowserArguments(wideArgs.c_str());
-        }
-
-        if (options.language)
-        {
-            const auto wideLanguage = widenString(*options.language);
-            environmentOptions->put_Language(wideLanguage.c_str());
-        }
-
-        Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions4> options4;
-        if (environmentOptions.As(&options4) == S_OK)
-        {
-            std::vector<Microsoft::WRL::ComPtr<CoreWebView2CustomSchemeRegistration>> customSchemeRegistrations;
-            std::vector<std::vector<std::wstring>> allowedOrigins;
-            std::vector<std::vector<std::wstring::value_type const*>> allowedOriginsRaw;
-            std::vector<std::wstring> wideSchemes;
-
-            allowedOrigins.reserve(options.customSchemes.size());
-            allowedOriginsRaw.reserve(options.customSchemes.size());
-            wideSchemes.reserve(options.customSchemes.size());
-
-            for (const auto& customScheme : options.customSchemes)
-            {
-                wideSchemes.push_back(widenString(customScheme.scheme));
-                customSchemeRegistrations.push_back(
-                    Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(wideSchemes.back().c_str()));
-                auto& customSchemeRegistration = customSchemeRegistrations.back();
-
-                allowedOrigins.push_back({});
-                allowedOrigins.back().reserve(customScheme.allowedOrigins.size());
-                for (const auto& allowedOrigin : customScheme.allowedOrigins)
-                    allowedOrigins.back().push_back(widenString(allowedOrigin));
-
-                allowedOriginsRaw.push_back({});
-                allowedOriginsRaw.back().reserve(allowedOrigins.back().size());
-                for (const auto& allowedOrigin : allowedOrigins.back())
-                    allowedOriginsRaw.back().push_back(allowedOrigin.c_str());
-
-                customSchemeRegistration->SetAllowedOrigins(
-                    static_cast<UINT>(allowedOriginsRaw.back().size()), allowedOriginsRaw.back().data());
-                customSchemeRegistration->put_TreatAsSecure(customScheme.treatAsSecure);
-                customSchemeRegistration->put_HasAuthorityComponent(customScheme.hasAuthorityComponent);
-            }
-            std::vector<ICoreWebView2CustomSchemeRegistration*> customSchemeRegistrationsRaw;
-            customSchemeRegistrationsRaw.reserve(customSchemeRegistrations.size());
-            for (const auto& customSchemeRegistration : customSchemeRegistrations)
-                customSchemeRegistrationsRaw.push_back(customSchemeRegistration.Get());
-
-            const auto result = options4->SetCustomSchemeRegistrations(
-                static_cast<UINT>(customSchemeRegistrationsRaw.size()), customSchemeRegistrationsRaw.data());
-            if (FAILED(result))
-                throw std::runtime_error("Could not set custom scheme registrations.");
-        }
-
-        Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions5> options5;
-        if (environmentOptions.As(&options5) == S_OK)
-        {
-            options5->put_EnableTrackingPrevention(options.enableTrackingPrevention);
-        }
-
-        return environmentOptions;
-    }
-#endif
-    // #####################################################################################################################
-    struct Window::Implementation
+    struct Window::Implementation : public std::enable_shared_from_this<Implementation>
     {
         webview::webview view;
         std::vector<std::filesystem::path> cleanupFiles;
@@ -168,12 +65,15 @@ namespace Nui
         int width;
         int height;
 
+        virtual void registerSchemeHandlers(WindowOptions const& options) = 0;
+
         Implementation(WindowOptions const& options)
             : view{[&options]() -> webview::webview {
 #ifdef _WIN32
                 return {options.debug, nullptr, webView2EnvironmentOptionsFromOptions(options).Get()};
-#endif
+#else
                 return {options.debug, nullptr, nullptr};
+#endif
             }()}
             , cleanupFiles{}
             , callbacks{}
@@ -182,356 +82,44 @@ namespace Nui
             , width{0}
             , height{0}
         {}
-        ~Implementation()
+        virtual ~Implementation()
         {
             pool.stop();
             pool.join();
         }
+
+        template <class Derived>
+        std::shared_ptr<Derived> shared_from_base()
+        {
+            return std::static_pointer_cast<Derived>(shared_from_this());
+        }
+        template <class Derived>
+        std::weak_ptr<Derived> weak_from_base()
+        {
+            return std::weak_ptr<Derived>(shared_from_base<Derived>());
+        }
     };
+}
+// #####################################################################################################################
 
 #ifdef __APPLE__
-    // #####################################################################################################################
-    struct Window::MacOsImplementation : public Window::Implementation
-    {
-        MacOsImplementation(WindowOptions const& options)
-            : Implementation{options}
-        {}
-    };
-    // #####################################################################################################################
+#    include "window_impl_mac.ipp"
 #elif defined(__linux__)
-    // #####################################################################################################################
-    struct Window::LinuxImplementation : public Window::Implementation
-    {
-        struct SchemeContext
-        {
-            std::size_t id;
-            std::weak_ptr<Window::LinuxImplementation> impl;
-
-            std::string mime;
-            GInputStream* stream;
-            SoupMessageHeaders* headers;
-            WebKitURISchemeResponse* response;
-        };
-
-        HostNameMappingInfo hostNameMappingInfo;
-        std::recursive_mutex schemeResponseRegistryGuard;
-        SelectablesRegistry<std::unique_ptr<Window::LinuxImplementation::SchemeContext>> schemeResponseRegistry;
-        std::list<std::string> schemes{};
-
-        LinuxImplementation(WindowOptions const& options)
-            : Implementation{options}
-            , hostNameMappingInfo{}
-            , schemeResponseRegistryGuard{}
-            , schemeResponseRegistry{}
-            , schemes{}
-        {}
-    };
-    // #####################################################################################################################
-#endif
-
-#ifdef _WIN32
-    // #####################################################################################################################
-    struct Window::WindowsImplementation : public Window::Implementation
-    {
-        DWORD windowThreadId;
-        std::vector<std::function<void()>> toProcessOnWindowThread;
-        EventRegistrationToken schemeHandlerToken;
-        std::optional<EventRegistrationToken> setHtmlWorkaroundToken;
-
-        WindowsImplementation(WindowOptions const& options)
-            : Implementation{options}
-            , windowThreadId{GetCurrentThreadId()}
-            , toProcessOnWindowThread{}
-            , schemeHandlerToken{}
-            , setHtmlWorkaroundToken{}
-        {
-            registerSchemeHandlers(options);
-        }
-
-        void registerSchemeHandlers(WindowOptions const& options);
-        HRESULT onSchemeRequest(
-            std::vector<CustomScheme> const& schemes,
-            ICoreWebView2*,
-            ICoreWebView2WebResourceRequestedEventArgs* args);
-        CustomSchemeRequest makeCustomSchemeRequest(
-            CustomScheme const& scheme,
-            std::string const& uri,
-            COREWEBVIEW2_WEB_RESOURCE_CONTEXT resourceContext,
-            ICoreWebView2WebResourceRequest* webViewRequest);
-        Microsoft::WRL::ComPtr<ICoreWebView2WebResourceResponse>
-        makeResponse(CustomSchemeResponse const& responseData, HRESULT& result);
-    };
-    //---------------------------------------------------------------------------------------------------------------------
-    void Window::WindowsImplementation::registerSchemeHandlers(WindowOptions const& options)
-    {
-        using namespace std::string_literals;
-
-        auto* webView = static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(view).webview());
-
-        for (auto const& customScheme : options.customSchemes)
-        {
-            const std::wstring filter = widenString(customScheme.scheme + ":*");
-
-            auto result = webView->AddWebResourceRequestedFilter(
-                filter.c_str(), static_cast<COREWEBVIEW2_WEB_RESOURCE_CONTEXT>(NuiCoreWebView2WebResourceContext::All));
-
-            if (result != S_OK)
-                throw std::runtime_error(
-                    "Could not AddWebResourceRequestedFilter: "s + std::to_string(result) +
-                    " for scheme: " + customScheme.scheme);
-        }
-
-        webView->add_WebResourceRequested(
-            Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
-                [this, schemes = options.customSchemes](
-                    ICoreWebView2* view, ICoreWebView2WebResourceRequestedEventArgs* args) -> HRESULT {
-                    return onSchemeRequest(schemes, view, args);
-                })
-                .Get(),
-            &schemeHandlerToken);
-    }
-    //---------------------------------------------------------------------------------------------------------------------
-    HRESULT
-    Window::WindowsImplementation::onSchemeRequest(
-        std::vector<CustomScheme> const& schemes,
-        ICoreWebView2*,
-        ICoreWebView2WebResourceRequestedEventArgs* args)
-    {
-        COREWEBVIEW2_WEB_RESOURCE_CONTEXT resourceContext;
-        auto result = args->get_ResourceContext(&resourceContext);
-        if (result != S_OK)
-            return result;
-
-        Microsoft::WRL::ComPtr<ICoreWebView2WebResourceRequest> webViewRequest;
-        args->get_Request(&webViewRequest);
-
-        const auto uri = [&webViewRequest]() {
-            LPWSTR uri;
-            webViewRequest->get_Uri(&uri);
-            std::wstring uriW{uri};
-            CoTaskMemFree(uri);
-            return shortenString(uriW);
-        }();
-
-        const auto customScheme = [&schemes, &uri]() -> std::optional<CustomScheme> {
-            // assuming short schemes list, a linear search is fine
-            for (auto const& scheme : schemes)
-            {
-                if (uri.starts_with(scheme.scheme + ":"))
-                    return scheme;
-            }
-            return std::nullopt;
-        }();
-
-        if (!customScheme)
-            return S_OK;
-
-        if (!customScheme->onRequest)
-            return S_OK;
-
-        CustomSchemeRequest request =
-            makeCustomSchemeRequest(*customScheme, uri, resourceContext, webViewRequest.Get());
-        auto response = makeResponse(customScheme->onRequest(request), result);
-
-        if (result != S_OK)
-            return result;
-
-        result = args->put_Response(response.Get());
-        return result;
-    }
-    //---------------------------------------------------------------------------------------------------------------------
-    Microsoft::WRL::ComPtr<ICoreWebView2WebResourceResponse>
-    Window::WindowsImplementation::makeResponse(CustomSchemeResponse const& responseData, HRESULT& result)
-    {
-        auto* webView = static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(view).webview());
-
-        Microsoft::WRL::ComPtr<ICoreWebView2WebResourceResponse> response;
-        Microsoft::WRL::ComPtr<ICoreWebView2_2> wv22;
-        result = webView->QueryInterface(IID_PPV_ARGS(&wv22));
-
-        Microsoft::WRL::ComPtr<ICoreWebView2Environment> environment;
-        wv22->get_Environment(&environment);
-
-        if (result != S_OK)
-            return {};
-
-        std::wstring responseHeaders;
-        for (auto const& [key, value] : responseData.headers)
-            responseHeaders += widenString(key) + L": " + widenString(value) + L"\r\n";
-        if (!responseHeaders.empty())
-        {
-            responseHeaders.pop_back();
-            responseHeaders.pop_back();
-        }
-
-        Microsoft::WRL::ComPtr<IStream> stream;
-        stream.Attach(SHCreateMemStream(
-            reinterpret_cast<const BYTE*>(responseData.body.data()), static_cast<UINT>(responseData.body.size())));
-
-        const auto phrase = widenString(responseData.reasonPhrase);
-        result = environment->CreateWebResourceResponse(
-            stream.Get(), responseData.statusCode, phrase.c_str(), responseHeaders.c_str(), &response);
-
-        return response;
-    }
-    //---------------------------------------------------------------------------------------------------------------------
-    CustomSchemeRequest Window::WindowsImplementation::makeCustomSchemeRequest(
-        CustomScheme const& customScheme,
-        std::string const& uri,
-        COREWEBVIEW2_WEB_RESOURCE_CONTEXT resourceContext,
-        ICoreWebView2WebResourceRequest* webViewRequest)
-    {
-        return CustomSchemeRequest{
-            .scheme = customScheme.scheme,
-            .getContent = [webViewRequest, contentMemo = std::string{}]() mutable -> std::string const& {
-                if (!contentMemo.empty())
-                    return contentMemo;
-
-                Microsoft::WRL::ComPtr<IStream> stream;
-                webViewRequest->get_Content(&stream);
-
-                if (!stream)
-                    return contentMemo;
-
-                // FIXME: Dont read the whole thing into memory, if possible via streaming.
-                ULONG bytesRead = 0;
-                do
-                {
-                    std::array<char, 1024> buffer;
-                    stream->Read(buffer.data(), 1024, &bytesRead);
-                    contentMemo.append(buffer.data(), bytesRead);
-                } while (bytesRead == 1024);
-                return contentMemo;
-            },
-            .headers =
-                [webViewRequest]() {
-                    ICoreWebView2HttpRequestHeaders* headers;
-                    webViewRequest->get_Headers(&headers);
-
-                    Microsoft::WRL::ComPtr<ICoreWebView2HttpHeadersCollectionIterator> iterator;
-                    headers->GetIterator(&iterator);
-
-                    std::unordered_multimap<std::string, std::string> headersMap;
-                    for (BOOL hasCurrent; SUCCEEDED(iterator->get_HasCurrentHeader(&hasCurrent)) && hasCurrent;)
-                    {
-                        LPWSTR name;
-                        LPWSTR value;
-                        iterator->GetCurrentHeader(&name, &value);
-                        std::wstring nameW{name};
-                        std::wstring valueW{value};
-                        CoTaskMemFree(name);
-                        CoTaskMemFree(value);
-
-                        headersMap.emplace(shortenString(nameW), shortenString(valueW));
-
-                        BOOL hasNext = FALSE;
-                        if (FAILED(iterator->MoveNext(&hasNext)) || !hasNext)
-                            break;
-                    }
-                    return headersMap;
-                }(),
-            .uri = uri,
-            .method =
-                [webViewRequest]() {
-                    LPWSTR method;
-                    webViewRequest->get_Method(&method);
-                    std::wstring methodW{method};
-                    CoTaskMemFree(method);
-                    return shortenString(methodW);
-                }(),
-            .resourceContext = static_cast<NuiCoreWebView2WebResourceContext>(resourceContext),
-        };
-    }
-    // #####################################################################################################################
-#endif
-}
-
-#if __linux__
-std::size_t strlenLimited(char const* str, std::size_t limit)
-{
-    std::size_t i = 0;
-    while (i <= limit && str[i] != '\0')
-        ++i;
-    return i;
-}
-
-extern "C" {
-    void uriSchemeRequestCallback(WebKitURISchemeRequest* request, gpointer userData)
-    {
-        auto* schemeContext = static_cast<Nui::Window::LinuxImplementation::SchemeContext*>(userData);
-
-        const auto path = std::string_view{webkit_uri_scheme_request_get_path(request)};
-        const auto uri = std::string_view{webkit_uri_scheme_request_get_uri(request)};
-        const auto scheme = std::string_view{webkit_uri_scheme_request_get_scheme(request)};
-
-        auto exitError = Nui::ScopeExit{[&] {
-            auto* error =
-                g_error_new(WEBKIT_DOWNLOAD_ERROR_DESTINATION, 1, "Invalid custom scheme / Host name mapping.");
-            auto freeError = Nui::ScopeExit{[error] {
-                g_error_free(error);
-            }};
-            webkit_uri_scheme_request_finish_error(request, error);
-        }};
-
-        auto impl = schemeContext->impl.lock();
-        if (!impl)
-            return;
-
-        auto hostName = std::string{uri.data() + scheme.size() + 3, uri.size() - scheme.size() - 3 - path.size()};
-        auto it = impl->hostNameMappingInfo.hostNameToFolderMapping.find(hostName);
-        if (it == impl->hostNameMappingInfo.hostNameToFolderMapping.end())
-        {
-            std::cerr << "Host name mapping not found: " << hostName << "\n";
-            return;
-        }
-
-        const auto filePath = it->second / std::string{path.data() + 1, path.size() - 1};
-        auto fileContent = std::string{};
-        {
-            auto file = std::ifstream{filePath, std::ios::binary};
-            if (!file)
-            {
-                std::cerr << "File not found: " << filePath << "\n";
-                return;
-            }
-            file.seekg(0, std::ios::end);
-            fileContent.resize(static_cast<std::size_t>(file.tellg()));
-            file.seekg(0, std::ios::beg);
-            file.read(fileContent.data(), static_cast<std::streamsize>(fileContent.size()));
-        }
-
-        exitError.disarm();
-
-        schemeContext->stream =
-            g_memory_input_stream_new_from_data(fileContent.c_str(), static_cast<gssize>(fileContent.size()), nullptr);
-        auto deleteStream = Roar::ScopeExit{[schemeContext] {
-            g_object_unref(schemeContext->stream);
-        }};
-
-        const auto maybeMime = Roar::extensionToMime(filePath.extension().string());
-        schemeContext->mime = maybeMime ? *maybeMime : "application/octet-stream";
-
-        schemeContext->response =
-            webkit_uri_scheme_response_new(schemeContext->stream, static_cast<gint64>(fileContent.size()));
-        webkit_uri_scheme_response_set_content_type(schemeContext->response, schemeContext->mime.c_str());
-        webkit_uri_scheme_response_set_status(schemeContext->response, fileContent.size() > 0 ? 200 : 204, nullptr);
-
-        schemeContext->headers = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
-        soup_message_headers_append(schemeContext->headers, "Access-Control-Allow-Origin", "*");
-
-        webkit_uri_scheme_response_set_http_headers(schemeContext->response, schemeContext->headers);
-        webkit_uri_scheme_request_finish_with_response(request, schemeContext->response);
-    }
-
-    void uriSchemeDestroyNotify(void*)
-    {
-        // Happens when everything else is already dead.
-    }
-}
+#    include "window_impl_linux.ipp"
+#elif defined(_WIN32)
+#    include "window_impl_win.ipp"
 #endif
 
 namespace Nui
 {
+    // #####################################################################################################################
+    std::optional<Url> CustomSchemeRequest::parseUrl() const
+    {
+        auto res = Url::fromString(uri);
+        if (!res)
+            return std::nullopt;
+        return res.value();
+    }
     // #####################################################################################################################
     Window::Window()
         : Window{WindowOptions{}}
@@ -565,31 +153,14 @@ namespace Nui
             impl_->callbacks[obj["id"].get<std::string>()](obj["args"]);
             return false;
         });
-        // TODO: SetCustomSchemeRegistrations
+
+        impl_->registerSchemeHandlers(options);
 
         if (options.title)
             setTitle(*options.title);
 
 #ifdef __APPLE__
 #elif defined(__linux__)
-        auto* linuxImpl = static_cast<LinuxImplementation*>(impl_.get());
-        std::lock_guard schemeResponseRegistryLock{linuxImpl->schemeResponseRegistryGuard};
-        const auto id =
-            linuxImpl->schemeResponseRegistry.emplace(std::make_unique<Window::LinuxImplementation::SchemeContext>());
-        auto& entry = linuxImpl->schemeResponseRegistry[id];
-        entry->id = id;
-        entry->impl = std::static_pointer_cast<Window::LinuxImplementation>(impl_);
-
-        linuxImpl->schemes.push_back(options.localScheme);
-
-        auto nativeWebView = WEBKIT_WEB_VIEW(getNativeWebView());
-        auto* webContext = webkit_web_view_get_context(nativeWebView);
-        webkit_web_context_register_uri_scheme(
-            webContext,
-            linuxImpl->schemes.back().c_str(),
-            &uriSchemeRequestCallback,
-            entry.get(),
-            &uriSchemeDestroyNotify);
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------
@@ -662,6 +233,7 @@ namespace Nui
     {
         std::scoped_lock lock{impl_->viewGuard};
 #if not defined(_WIN32)
+        (void)windowsServeThroughAuthority;
         impl_->view.set_html(std::string{html});
 #else
         if (html.size() < 1'572'834 && !windowsServeThroughAuthority)
@@ -919,7 +491,10 @@ namespace Nui
     void Window::eval(std::filesystem::path const& file)
     {
         std::scoped_lock lock{impl_->viewGuard};
-        impl_->view.eval(loadFile(file));
+        const auto script = loadFile(file);
+        if (!script)
+            throw std::runtime_error("Could not load file: " + file.string());
+        impl_->view.eval(*script);
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::init(std::string const& js)
@@ -931,7 +506,10 @@ namespace Nui
     void Window::init(std::filesystem::path const& file)
     {
         std::scoped_lock lock{impl_->viewGuard};
-        impl_->view.init(loadFile(file));
+        const auto script = loadFile(file);
+        if (!script)
+            throw std::runtime_error("Could not load file: " + file.string());
+        impl_->view.init(*script);
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::eval(char const* js)
