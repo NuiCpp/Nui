@@ -76,6 +76,14 @@ namespace Nui
         }
     }
 
+    std::optional<Url> CustomSchemeRequest::parseUrl() const
+    {
+        auto res = Url::fromString(uri);
+        if (!res)
+            return std::nullopt;
+        return res.value();
+    }
+
     // #####################################################################################################################
 #ifdef _WIN32
     Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions>
@@ -256,6 +264,8 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::WindowsImplementation::registerSchemeHandlers(WindowOptions const& options)
     {
+        using namespace std::string_literals;
+
         auto* webView = static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(view).webview());
 
         for (auto const& customScheme : options.customSchemes)
@@ -266,8 +276,9 @@ namespace Nui
                 filter.c_str(), static_cast<COREWEBVIEW2_WEB_RESOURCE_CONTEXT>(NuiCoreWebView2WebResourceContext::All));
 
             if (result != S_OK)
-                throw std::runtime_error("Could not register custom scheme: " + customScheme.scheme);
-            ;
+                throw std::runtime_error(
+                    "Could not AddWebResourceRequestedFilter: "s + std::to_string(result) +
+                    " for scheme: " + customScheme.scheme);
         }
 
         webView->add_WebResourceRequested(
@@ -313,10 +324,10 @@ namespace Nui
         }();
 
         if (!customScheme)
-            return E_NOTIMPL;
+            return S_OK;
 
         if (!customScheme->onRequest)
-            return E_NOTIMPL;
+            return S_OK;
 
         CustomSchemeRequest request =
             makeCustomSchemeRequest(*customScheme, uri, resourceContext, webViewRequest.Get());
@@ -346,8 +357,12 @@ namespace Nui
 
         std::wstring responseHeaders;
         for (auto const& [key, value] : responseData.headers)
-            responseHeaders += widenString(key) + L": " + widenString(value) + L"\n";
-        responseHeaders.pop_back();
+            responseHeaders += widenString(key) + L": " + widenString(value) + L"\r\n";
+        if (!responseHeaders.empty())
+        {
+            responseHeaders.pop_back();
+            responseHeaders.pop_back();
+        }
 
         Microsoft::WRL::ComPtr<IStream> stream;
         stream.Attach(SHCreateMemStream(
@@ -609,54 +624,130 @@ namespace Nui
         impl_->view.set_size(width, height, static_cast<int>(hint));
     }
     //---------------------------------------------------------------------------------------------------------------------
-    void Window::setHtml(std::string_view html, bool fromFilesystem, bool windowsForceNoFilesystem)
+    void Window::setHtmlThroughFilesystem(std::string_view html)
     {
         std::scoped_lock lock{impl_->viewGuard};
-#if defined(_WIN32)
-        // https://github.com/MicrosoftEdge/WebView2Feedback/issues/1355
-        // :((((
-        if (!windowsForceNoFilesystem)
-            fromFilesystem = true;
-#endif
-        if (fromFilesystem)
+        using namespace std::string_literals;
+        constexpr static auto fileNameSize = 25;
+        std::string_view alphanum =
+            "0123456789"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            "abcdefghijklmnopqrstuvwxyz";
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<std::size_t> dis(0, alphanum.size() - 1);
+        std::string fileName(fileNameSize, '\0');
+        for (std::size_t i = 0; i < fileNameSize; ++i)
+            fileName[i] = alphanum[dis(gen)];
+        const auto tempFile = resolvePath("%temp%/"s + fileName + ".html");
         {
-            using namespace std::string_literals;
-            constexpr static auto fileNameSize = 25;
-            std::string_view alphanum =
-                "0123456789"
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                "abcdefghijklmnopqrstuvwxyz";
-            std::random_device rd;
-            std::mt19937 gen(rd());
-            std::uniform_int_distribution<std::size_t> dis(0, alphanum.size() - 1);
-            std::string fileName(fileNameSize, '\0');
-            for (std::size_t i = 0; i < fileNameSize; ++i)
-                fileName[i] = alphanum[dis(gen)];
-            const auto tempFile = resolvePath("%temp%/"s + fileName + ".html");
-            {
-                std::ofstream temporary{tempFile, std::ios_base::binary};
-                temporary.write(html.data(), static_cast<std::streamsize>(html.size()));
-            }
+            std::ofstream temporary{tempFile, std::ios_base::binary};
+            temporary.write(html.data(), static_cast<std::streamsize>(html.size()));
+        }
 
-            impl_->view.navigate("file://"s + tempFile.string());
-            impl_->cleanupFiles.push_back(tempFile);
+        impl_->view.navigate("file://"s + tempFile.string());
+        impl_->cleanupFiles.push_back(tempFile);
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void
+    Window::setHtml(std::string_view html, bool fromFilesystem, std::optional<std::string> windowsServeThroughAuthority)
+    {
+        if (fromFilesystem)
+            return setHtmlThroughFilesystem(html);
+
+        setHtml(html, windowsServeThroughAuthority);
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void Window::setHtml(std::string_view html, std::optional<std::string> windowsServeThroughAuthority)
+    {
+        std::scoped_lock lock{impl_->viewGuard};
+#if not defined(_WIN32)
+        impl_->view.set_html(std::string{html});
+#else
+        if (html.size() < 1'572'834 && !windowsServeThroughAuthority)
+        {
+            impl_->view.set_html(std::string{html});
+            return;
         }
         else
         {
-#ifdef _WIN32
-            if (html.size() < 1'900'000)
+            using namespace std::string_literals;
+
+            auto* winImpl = static_cast<WindowsImplementation*>(impl_.get());
+            auto* webView = static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(impl_->view).webview());
+
+            if (winImpl->setHtmlWorkaroundToken)
             {
-                impl_->view.set_html(std::string{html});
-                return;
+                webView->remove_WebResourceRequested(*winImpl->setHtmlWorkaroundToken);
+                winImpl->setHtmlWorkaroundToken.reset();
             }
-            else
-            {
-                throw std::runtime_error("HTML size too large for WebView2.");
-            }
-#else
-            impl_->view.set_html(std::string{html});
-#endif
+            winImpl->setHtmlWorkaroundToken.emplace();
+
+            if (!windowsServeThroughAuthority)
+                windowsServeThroughAuthority = "nuilocal"s;
+            const auto authority = *windowsServeThroughAuthority;
+
+            const std::wstring filter = widenString("https://"s + authority + "/index.html");
+
+            auto result = webView->AddWebResourceRequestedFilter(
+                filter.c_str(), static_cast<COREWEBVIEW2_WEB_RESOURCE_CONTEXT>(NuiCoreWebView2WebResourceContext::All));
+
+            if (result != S_OK)
+                throw std::runtime_error("Could not AddWebResourceRequestedFilter: " + std::to_string(result));
+
+            result = webView->add_WebResourceRequested(
+                Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
+                    [authority,
+                     index = std::string{html},
+                     winImpl,
+                     compareUri = "https://" + authority +
+                         "/index.html"](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* args) -> HRESULT {
+                        Microsoft::WRL::ComPtr<ICoreWebView2WebResourceRequest> webViewRequest;
+                        args->get_Request(&webViewRequest);
+
+                        const auto uri = [&webViewRequest]() {
+                            LPWSTR uri;
+                            webViewRequest->get_Uri(&uri);
+                            std::wstring uriW{uri};
+                            CoTaskMemFree(uri);
+                            return shortenString(uriW);
+                        }();
+
+                        if (uri != compareUri)
+                            return S_OK;
+
+                        HRESULT result = 0;
+
+                        auto response = winImpl->makeResponse(
+                            CustomSchemeResponse{
+                                .statusCode = 200,
+                                .reasonPhrase = "OK",
+                                .headers =
+                                    {
+                                        {"Content-Type"s, "text/html"s},
+                                        {"Access-Control-Allow-Origin"s, "*"s},
+                                        {"Access-Control-Allow-Methods"s, "GET"s},
+                                        {"Access-Control-Allow-Headers"s, "*"s},
+                                    },
+                                .body = index,
+                            },
+                            result);
+
+                        if (result != S_OK)
+                            return result;
+
+                        result = args->put_Response(response.Get());
+                        return result;
+                    })
+                    .Get(),
+                &*winImpl->setHtmlWorkaroundToken);
+
+            if (result != S_OK)
+                throw std::runtime_error("Could not add_WebResourceRequested: " + std::to_string(result));
+
+            impl_->view.navigate("https://"s + authority + "/index.html");
         }
+#endif
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::navigate(char const* url)

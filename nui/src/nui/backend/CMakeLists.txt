@@ -1,10 +1,10 @@
 add_library(nui-backend
     STATIC
         window.cpp
+        rpc_hub.cpp
         filesystem/special_paths.cpp
         filesystem/file_dialog.cpp
         filesystem/file_dialog_options.cpp
-        rpc_hub.cpp
         rpc_addons/fetch.cpp
         rpc_addons/file.cpp
         rpc_addons/throttle.cpp

@@ -4,6 +4,7 @@
 #ifdef NUI_BACKEND
 #    include <nlohmann/json.hpp>
 #    include <boost/asio/any_io_executor.hpp>
+#    include <nui/backend/url.hpp>
 #    include <filesystem>
 #endif
 
@@ -52,6 +53,7 @@ namespace Nui
         Other,
     };
 
+#ifdef NUI_BACKEND
     struct CustomSchemeRequest
     {
         std::string scheme;
@@ -59,6 +61,8 @@ namespace Nui
         std::unordered_multimap<std::string, std::string> headers;
         std::string uri;
         std::string method;
+
+        std::optional<Url> parseUrl() const;
 
         // WINDOWS ONLY
         NuiCoreWebView2WebResourceContext resourceContext;
@@ -111,6 +115,10 @@ namespace Nui
         /// WEBKIT ONLY
         std::string localScheme = "assets";
     };
+#else
+    struct WindowOptions
+    {};
+#endif
 
     /**
      * @brief This class encapsulates the webview.
@@ -118,6 +126,8 @@ namespace Nui
     class Window
     {
       public:
+        constexpr static std::string_view windowsServeAuthority = "nuilocal";
+
         /**
          * @brief Construct a new Window object.
          */
@@ -266,10 +276,28 @@ namespace Nui
          * @brief Set page html from a string.
          *
          * @param html Page html.
-         * @param fromFilesystem If true, the html is loaded from the filesystem instead of from memory.
-         * @param windowsForceNoFilesystem If true, the html is loaded from memory even on windows.
+         * @param windowsServeThroughAuthority [WINDOWS ONLY] If set, the page will be served through the given
+         * authority via a custom webRequestHandler. This is useful for CORS on custom scheme handlers, which would get
+         * rejected otherwise.
          */
-        void setHtml(std::string_view html, bool fromFilesystem = false, bool windowsForceNoFilesystem = false);
+        void setHtml(
+            std::string_view html,
+            std::optional<std::string> windowsServeThroughAuthority = std::string{windowsServeAuthority});
+
+        /**
+         * @brief Deprecated. Use setHtml or setHtmlThroughFilesystem instead.
+         */
+        [[deprecated]] void setHtml(
+            std::string_view html,
+            bool fromFilesystem = false,
+            std::optional<std::string> windowsServeThroughAuthority = std::string{windowsServeAuthority});
+
+        /**
+         * @brief Dump the page into a temporary file and then load it from there.
+         *
+         * @param html A string containing the html.
+         */
+        void setHtmlThroughFilesystem(std::string_view html);
 
         /**
          * @brief Run javascript in the window.
