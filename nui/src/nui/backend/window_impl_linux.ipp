@@ -196,7 +196,7 @@ namespace Nui
         entry->schemeInfo = scheme;
 
         schemes.push_back(scheme.scheme);
-        auto nativeWebView = static_cast<webview::browser_engine&>(view).webview();
+        auto nativeWebView = static_cast<webview::browser_engine&>(*view).webview();
         auto* webContext = webkit_web_view_get_context(WEBKIT_WEB_VIEW(nativeWebView));
         webkit_web_context_register_uri_scheme(
             webContext, schemes.back().c_str(), &uriSchemeRequestCallback, entry.get(), &uriSchemeDestroyNotify);
