@@ -48,6 +48,7 @@ extern "C" {
         const auto responseObj = schemeInfo.onRequest(Nui::CustomSchemeRequest{
             .scheme = schemeInfo.scheme,
             .getContent = [request]() -> std::string {
+#if (WEBKIT_MAJOR_VERSION == 2 && WEBKIT_MINOR_VERSION >= 40) || WEBKIT_MAJOR_VERSION > 2
                 auto* stream = webkit_uri_scheme_request_get_http_body(request);
                 if (stream == nullptr)
                     return std::string{};
@@ -76,6 +77,10 @@ extern "C" {
 
                 freeError.disarm();
                 return std::string(data, length);
+#else
+                // Not implemented in earlier webkitgtk versions :(
+                return std::string{};
+#endif
             },
             .headers =
                 [request]() {
