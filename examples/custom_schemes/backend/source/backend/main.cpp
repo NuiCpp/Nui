@@ -10,7 +10,7 @@
 
 using namespace std::string_literals;
 
-int main(int argc, char** argv)
+int main(int, char** argv)
 {
     using namespace Nui;
 
