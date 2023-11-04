@@ -14,7 +14,7 @@ A template to get going can be found here: [Template](https://github.com/NuiCpp/
 ## Platforms & Compilers
 Tested on:
   - Ubuntu 20 (using clang15 and libstdc++10) ![example workflow](https://github.com/NuiCpp/Nui/actions/workflows/ubuntu_20.yml/badge.svg)
-  - Ubuntu 22 (using clang14 and libstdc++12) ![example workflow](https://github.com/NuiCpp/Nui/actions/workflows/ubuntu_22.yml/badge.svg)
+  - Ubuntu 22 (using clang14 and libc++) ![example workflow](https://github.com/NuiCpp/Nui/actions/workflows/ubuntu_22.yml/badge.svg)
   - Windows (using clang16 and current msys libstdc++) ![example workflow](https://github.com/NuiCpp/Nui/actions/workflows/windows.yml/badge.svg)
   - MacOS 13: (using clang16) ![example workflow](https://github.com/NuiCpp/Nui/actions/workflows/macos_13.yml/badge.svg)
 

@@ -1,0 +1,10 @@
+{
+    "name": "nui-template",
+    "dependencies": [
+        "boost",
+        "openssl",
+        "cryptopp",
+        "curl"
+    ],
+    "builtin-baseline": "c6592ce60ff394049905365865f59e3a4d93d35b"
+}

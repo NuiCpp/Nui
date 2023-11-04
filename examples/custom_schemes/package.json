@@ -1,0 +1,14 @@
+{
+    "description": "",
+    "name": "nui-template",
+    "version": "1.0.0",
+    "devDependencies": {
+        "parcel": "^2.9.1",
+        "parcel-reporter-static-files-copy": "^1.5.0"
+    },
+    "staticFiles": {
+        "staticPath": "static/assets",
+        "staticOutPath": "assets",
+        "distDir": "../bin"
+    }
+}

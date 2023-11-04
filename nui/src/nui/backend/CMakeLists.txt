@@ -1,10 +1,11 @@
 add_library(nui-backend
     STATIC
         window.cpp
+        rpc_hub.cpp
+        load_file.cpp
         filesystem/special_paths.cpp
         filesystem/file_dialog.cpp
         filesystem/file_dialog_options.cpp
-        rpc_hub.cpp
         rpc_addons/fetch.cpp
         rpc_addons/file.cpp
         rpc_addons/throttle.cpp
@@ -17,6 +18,7 @@ target_include_directories(
     nui-backend
     PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}/../../../include
+        ${CMAKE_CURRENT_LIST_DIR}/../../../windows
         ${CMAKE_BINARY_DIR}/include
 )
 nui_set_project_warnings(nui-backend)
