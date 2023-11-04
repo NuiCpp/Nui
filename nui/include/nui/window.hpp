@@ -65,7 +65,7 @@ namespace Nui
         std::optional<Url> parseUrl() const;
 
         /// WINDOWS ONLY
-        NuiCoreWebView2WebResourceContext resourceContext;
+        NuiCoreWebView2WebResourceContext resourceContext = NuiCoreWebView2WebResourceContext::All;
     };
 
     struct CustomSchemeResponse
@@ -115,7 +115,7 @@ namespace Nui
         /// WINDOWS ONLY
         std::optional<std::string> language = std::nullopt;
 
-        /// WEBKIT ONLY
+        /// WEBKIT ONLY (Linux & Mac)
         std::optional<std::string> folderMappingScheme = std::string{"assets"};
     };
 #else

@@ -9,8 +9,8 @@ namespace Nui
         EventRegistrationToken schemeHandlerToken;
         std::optional<EventRegistrationToken> setHtmlWorkaroundToken;
 
-        WindowsImplementation(WindowOptions const& options)
-            : Implementation{options}
+        WindowsImplementation()
+            : Implementation{}
             , windowThreadId{GetCurrentThreadId()}
             , toProcessOnWindowThread{}
             , schemeHandlerToken{}

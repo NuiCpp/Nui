@@ -1,11 +1,20 @@
-struct Window::MacOsImplementation : public Window::Implementation
+namespace Nui
 {
-    void registerSchemeHandlers(WindowOptions const& options) override
+    // #####################################################################################################################
+    struct Window::MacOsImplementation : public Window::Implementation
     {
-        // TODO:
-    }
+        HostNameMappingInfo hostNameMappingInfo;
 
-    MacOsImplementation(WindowOptions const& options)
-        : Implementation{options}
-    {}
-};
+        void registerSchemeHandlers(WindowOptions const& options) override;
+
+        MacOsImplementation()
+            : Implementation{}
+        {}
+    };
+    //---------------------------------------------------------------------------------------------------------------------
+    void Window::MacOsImplementation::registerSchemeHandlers(WindowOptions const& /*options*/)
+    {
+        // Done in intialization of the webview
+    }
+    // #####################################################################################################################
+}

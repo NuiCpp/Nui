@@ -1,5 +1,3 @@
-#include <roar/mime_type.hpp>
-
 namespace Nui::Impl::Linux
 {
     struct SchemeContext
@@ -7,12 +5,6 @@ namespace Nui::Impl::Linux
         std::size_t id;
         std::weak_ptr<Window::LinuxImplementation> impl;
         CustomScheme schemeInfo;
-    };
-
-    struct HostNameMappingInfo
-    {
-        std::unordered_map<std::string, std::filesystem::path> hostNameToFolderMapping{};
-        std::size_t hostNameMappingMax{0};
     };
 }
 
@@ -135,17 +127,11 @@ extern "C" {
         for (auto const& [key, value] : responseObj.headers)
             soup_message_headers_append(responseHeaders, key.c_str(), value.c_str());
 
-        if (responseObj.headers.find("Access-Control-Allow-Origin") == responseObj.headers.end())
+        if (responseObj.headers.find("Access-Control-Allow-Origin") == responseObj.headers.end() &&
+            !schemeInfo.allowedOrigins.empty())
         {
-            std::string allowedOriginsHeader;
-            for (auto origin : schemeInfo.allowedOrigins)
-            {
-                if (allowedOriginsHeader.empty())
-                    allowedOriginsHeader = origin;
-                else
-                    allowedOriginsHeader += ", " + origin;
-            }
-            soup_message_headers_append(responseHeaders, "Access-Control-Allow-Origin", allowedOriginsHeader.c_str());
+            auto const& front = schemeInfo.allowedOrigins.front();
+            soup_message_headers_append(responseHeaders, "Access-Control-Allow-Origin", front.c_str());
         }
 
         webkit_uri_scheme_response_set_http_headers(response, responseHeaders);
@@ -163,13 +149,13 @@ namespace Nui
     // #####################################################################################################################
     struct Window::LinuxImplementation : public Window::Implementation
     {
-        Nui::Impl::Linux::HostNameMappingInfo hostNameMappingInfo;
+        HostNameMappingInfo hostNameMappingInfo;
         std::recursive_mutex schemeResponseRegistryGuard;
         SelectablesRegistry<std::unique_ptr<Nui::Impl::Linux::SchemeContext>> schemeResponseRegistry;
         std::list<std::string> schemes{};
 
-        LinuxImplementation(WindowOptions const& options)
-            : Implementation{options}
+        LinuxImplementation()
+            : Implementation{}
             , hostNameMappingInfo{}
             , schemeResponseRegistryGuard{}
             , schemeResponseRegistry{}
@@ -186,48 +172,18 @@ namespace Nui
             registerSchemeHandler(scheme);
 
         if (options.folderMappingScheme)
-        {
-            registerSchemeHandler(
-                {.scheme = options.folderMappingScheme.value(),
-                 .allowedOrigins = {"*"},
-                 .onRequest = [weak = weak_from_base<LinuxImplementation>()](CustomSchemeRequest const& req) {
-                     auto shared = weak.lock();
-                     if (!shared)
-                         return CustomSchemeResponse{.statusCode = 500, .body = "Window is dead"};
+            registerSchemeHandler(CustomScheme{
+                .scheme = *options.folderMappingScheme,
+                .allowedOrigins = {"*"},
+                .onRequest =
+                    [weak = weak_from_base<Window::LinuxImplementation>()](CustomSchemeRequest const& req) {
+                        auto shared = weak.lock();
+                        if (!shared)
+                            return CustomSchemeResponse{.statusCode = 500, .body = "Window is dead"};
 
-                     const auto maybeUrl = req.parseUrl();
-                     if (!maybeUrl)
-                         return CustomSchemeResponse{.statusCode = 500, .body = "Could not parse url"};
-
-                     const auto& url = *maybeUrl;
-                     const auto hostName = url.hostAsString();
-
-                     auto it = shared->hostNameMappingInfo.hostNameToFolderMapping.find(hostName);
-                     if (it == shared->hostNameMappingInfo.hostNameToFolderMapping.end())
-                         return CustomSchemeResponse{.statusCode = 404, .body = "Host name not found for mapping"};
-
-                     const auto path = url.pathAsString();
-                     const auto filePath = it->second / std::string{path.data() + 1, path.size() - 1};
-                     const auto maybeMime = Roar::extensionToMime(filePath.extension().string());
-                     const auto mime = maybeMime ? *maybeMime : "application/octet-stream";
-
-                     const auto body = loadFile(filePath);
-
-                     return CustomSchemeResponse{
-                         .statusCode = body ? 200 : 404,
-                         .reasonPhrase = body ? "OK" : "Not Found",
-                         .headers =
-                             {
-                                 {"Content-Type"s, "text/plain"s},
-                                 {"Access-Control-Allow-Origin"s, "*"s},
-                                 {"Access-Control-Allow-Methods"s, "GET, POST, PUT, DELETE, OPTIONS"s},
-                                 {"Access-Control-Allow-Headers"s, "*"s},
-                                 {"Content-Type"s, mime},
-                             },
-                         .body = body ? *body : "File not found",
-                     };
-                 }});
-        }
+                        return folderMappingResponseFromRequest(req, shared->hostNameMappingInfo);
+                    },
+            });
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::LinuxImplementation::registerSchemeHandler(CustomScheme const& scheme)

@@ -10,6 +10,7 @@
 #include "load_file.hpp"
 
 #include <webview.h>
+#include <roar/mime_type.hpp>
 #include <fmt/format.h>
 #include <nlohmann/json.hpp>
 #include <boost/asio/any_io_executor.hpp>
@@ -40,16 +41,63 @@
 #include <array>
 #include <string>
 
-#ifdef _WIN32
+#ifndef _WIN32
+namespace Nui
+{
+    struct HostNameMappingInfo
+    {
+        std::unordered_map<std::string, std::filesystem::path> hostNameToFolderMapping{};
+        std::size_t hostNameMappingMax{0};
+    };
+
+    CustomSchemeResponse
+    folderMappingResponseFromRequest(CustomSchemeRequest const& req, HostNameMappingInfo const& hostNameMappingInfo)
+    {
+        using namespace std::string_literals;
+
+        const auto maybeUrl = req.parseUrl();
+        if (!maybeUrl)
+            return CustomSchemeResponse{.statusCode = 500, .body = "Could not parse url"};
+
+        const auto& url = *maybeUrl;
+        const auto hostName = url.hostAsString();
+
+        auto it = hostNameMappingInfo.hostNameToFolderMapping.find(hostName);
+        if (it == hostNameMappingInfo.hostNameToFolderMapping.end())
+            return CustomSchemeResponse{.statusCode = 404, .body = "Host name not found for mapping"};
+
+        const auto path = url.pathAsString();
+        const auto filePath = it->second / std::string{path.data() + 1, path.size() - 1};
+        const auto maybeMime = Roar::extensionToMime(filePath.extension().string());
+        const auto mime = maybeMime ? *maybeMime : "application/octet-stream";
+
+        const auto body = loadFile(filePath);
+
+        return CustomSchemeResponse{
+            .statusCode = body ? 200 : 404,
+            .reasonPhrase = body ? "OK" : "Not Found",
+            .headers =
+                {
+                    {"Content-Type"s, "text/plain"s},
+                    {"Access-Control-Allow-Origin"s, "*"s},
+                    {"Access-Control-Allow-Methods"s, "GET, POST, PUT, DELETE, OPTIONS"s},
+                    {"Access-Control-Allow-Headers"s, "*"s},
+                    {"Content-Type"s, mime},
+                },
+            .body = body ? *body : "File not found",
+        };
+    }
+}
+#endif
+
+#ifdef __APPLE__
+#    include "mac_webview_config_from_window_options.ipp"
+#elif defined(_WIN32)
 #    include <webview2_environment_options.hpp>
 #    include <webview2_iids.h>
 #    include <wrl/event.h>
-#endif
-
-#if defined(_WIN32)
-constexpr static auto wakeUpMessage = WM_APP + 1;
-
 #    include "environment_options_from_window_options.ipp"
+constexpr static auto wakeUpMessage = WM_APP + 1;
 #endif
 
 using namespace std::string_literals;
@@ -59,7 +107,7 @@ namespace Nui
 {
     struct Window::Implementation : public std::enable_shared_from_this<Implementation>
     {
-        webview::webview view;
+        std::unique_ptr<webview::webview> view;
         std::vector<std::filesystem::path> cleanupFiles;
         std::unordered_map<std::string, std::function<void(nlohmann::json const&)>> callbacks;
         boost::asio::thread_pool pool;
@@ -69,14 +117,8 @@ namespace Nui
 
         virtual void registerSchemeHandlers(WindowOptions const& options) = 0;
 
-        Implementation(WindowOptions const& options)
-            : view{[&options]() -> webview::webview {
-#ifdef _WIN32
-                return {options.debug, nullptr, webView2EnvironmentOptionsFromOptions(options).Get()};
-#else
-                return {options.debug, nullptr, nullptr};
-#endif
-            }()}
+        Implementation()
+            : view{}
             , cleanupFiles{}
             , callbacks{}
             , pool{4}
@@ -88,6 +130,11 @@ namespace Nui
         {
             pool.stop();
             pool.join();
+        }
+
+        void initialize(bool debug, void* options)
+        {
+            view = std::make_unique<webview::webview>(debug, nullptr, options);
         }
 
         template <class Derived>
@@ -142,14 +189,25 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     Window::Window(WindowOptions const& options)
 #ifdef __APPLE__
-        : impl_{std::make_shared<MacOsImplementation>(options)}
+        : impl_{std::make_shared<MacOsImplementation>()}
 #elif defined(__linux__)
-        : impl_{std::make_shared<LinuxImplementation>(options)}
+        : impl_{std::make_shared<LinuxImplementation>()}
 #elif defined(_WIN32)
-        : impl_{std::make_shared<WindowsImplementation>(options)}
+        : impl_{std::make_shared<WindowsImplementation>()}
 #endif
     {
-        impl_->view.install_message_hook([this](std::string const& msg) {
+#ifdef __APPLE__
+        impl_->initialize(
+            options.debug,
+            static_cast<void*>(MacOs::wkWebViewConfigurationFromOptions(
+                &static_cast<MacOsImplementation*>(impl_.get())->hostNameMappingInfo, options)));
+#elif defined(__linux__)
+        impl_->initialize(options.debug, nullptr);
+#elif defined(_WIN32)
+        impl_->initialize(options.debug, webView2EnvironmentOptionsFromOptions(options).Get());
+#endif
+
+        impl_->view->install_message_hook([this](std::string const& msg) {
             std::scoped_lock lock{impl_->viewGuard};
             const auto obj = nlohmann::json::parse(msg);
             impl_->callbacks[obj["id"].get<std::string>()](obj["args"]);
@@ -186,7 +244,7 @@ namespace Nui
     void Window::setTitle(std::string const& title)
     {
         std::scoped_lock lock{impl_->viewGuard};
-        impl_->view.set_title(title);
+        impl_->view->set_title(title);
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setSize(int width, int height, WebViewHint hint)
@@ -194,7 +252,7 @@ namespace Nui
         std::scoped_lock lock{impl_->viewGuard};
         impl_->width = width;
         impl_->height = height;
-        impl_->view.set_size(width, height, static_cast<int>(hint));
+        impl_->view->set_size(width, height, static_cast<int>(hint));
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setHtmlThroughFilesystem(std::string_view html)
@@ -218,7 +276,7 @@ namespace Nui
             temporary.write(html.data(), static_cast<std::streamsize>(html.size()));
         }
 
-        impl_->view.navigate("file://"s + tempFile.string());
+        impl_->view->navigate("file://"s + tempFile.string());
         impl_->cleanupFiles.push_back(tempFile);
     }
     //---------------------------------------------------------------------------------------------------------------------
@@ -227,11 +285,11 @@ namespace Nui
         std::scoped_lock lock{impl_->viewGuard};
 #if not defined(_WIN32)
         (void)windowsServeThroughAuthority;
-        impl_->view.set_html(std::string{html});
+        impl_->view->set_html(std::string{html});
 #else
         if (html.size() < 1'572'834 && !windowsServeThroughAuthority)
         {
-            impl_->view.set_html(std::string{html});
+            impl_->view->set_html(std::string{html});
             return;
         }
         else
@@ -310,7 +368,7 @@ namespace Nui
             if (result != S_OK)
                 throw std::runtime_error("Could not add_WebResourceRequested: " + std::to_string(result));
 
-            impl_->view.navigate("https://"s + authority + "/index.html");
+            impl_->view->navigate("https://"s + authority + "/index.html");
         }
 #endif
     }
@@ -323,14 +381,14 @@ namespace Nui
     void Window::navigate(const std::string& url)
     {
         std::scoped_lock lock{impl_->viewGuard};
-        impl_->view.navigate(url);
+        impl_->view->navigate(url);
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::navigate(const std::filesystem::path& file)
     {
         using namespace std::string_literals;
         std::scoped_lock lock{impl_->viewGuard};
-        impl_->view.navigate("file://"s + file.string());
+        impl_->view->navigate("file://"s + file.string());
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::run()
@@ -371,14 +429,14 @@ namespace Nui
                 return;
         }
 #else
-        impl_->view.run();
+        impl_->view->run();
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::terminate()
     {
         std::scoped_lock lock{impl_->viewGuard};
-        impl_->view.terminate();
+        impl_->view->terminate();
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setPosition(int x, int y, bool useFrameOrigin)
@@ -386,10 +444,10 @@ namespace Nui
         std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
         (void)useFrameOrigin;
-        SetWindowPos(reinterpret_cast<HWND>(impl_->view.window()), nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+        SetWindowPos(reinterpret_cast<HWND>(impl_->view->window()), nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 #elif defined(__APPLE__)
         using namespace webview::detail;
-        auto wnd = static_cast<id>(impl_->view.window());
+        auto wnd = static_cast<id>(impl_->view->window());
         if (useFrameOrigin)
         {
             objc::msg_send<void>(wnd, "setFrameOrigin:"_sel, CGPoint{static_cast<CGFloat>(x), static_cast<CGFloat>(y)});
@@ -401,7 +459,7 @@ namespace Nui
         }
 #else
         (void)useFrameOrigin;
-        gtk_window_move(static_cast<GtkWindow*>(impl_->view.window()), x, y);
+        gtk_window_move(static_cast<GtkWindow*>(impl_->view->window()), x, y);
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------
@@ -440,8 +498,8 @@ namespace Nui
                 name,
                 name);
 
-            impl_->view.init(script);
-            impl_->view.eval(script);
+            impl_->view->init(script);
+            impl_->view->eval(script);
         });
     }
     //--------------------------------------------------------------------------------------------------------------------
@@ -459,8 +517,8 @@ namespace Nui
                 name);
 
             impl_->callbacks.erase(name);
-            impl_->view.init(script);
-            impl_->view.eval(script);
+            impl_->view->init(script);
+            impl_->view->eval(script);
         });
     }
     //--------------------------------------------------------------------------------------------------------------------
@@ -487,13 +545,13 @@ namespace Nui
         const auto script = loadFile(file);
         if (!script)
             throw std::runtime_error("Could not load file: " + file.string());
-        impl_->view.eval(*script);
+        impl_->view->eval(*script);
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::init(std::string const& js)
     {
         std::scoped_lock lock{impl_->viewGuard};
-        impl_->view.init(js);
+        impl_->view->init(js);
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::init(std::filesystem::path const& file)
@@ -502,7 +560,7 @@ namespace Nui
         const auto script = loadFile(file);
         if (!script)
             throw std::runtime_error("Could not load file: " + file.string());
-        impl_->view.init(*script);
+        impl_->view->init(*script);
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::eval(char const* js)
@@ -527,20 +585,20 @@ namespace Nui
             PostThreadMessage(winImpl->windowThreadId, wakeUpMessage, 0, 0);
         }
 #elif defined(__APPLE__)
-        impl_->view.eval(js);
+        impl_->view->eval(js);
 #else
-        impl_->view.eval(js);
+        impl_->view->eval(js);
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------
     void* Window::getNativeWebView()
     {
-        return static_cast<webview::browser_engine&>(impl_->view).webview();
+        return static_cast<webview::browser_engine&>(*impl_->view).webview();
     }
     //---------------------------------------------------------------------------------------------------------------------
     void* Window::getNativeWindow()
     {
-        return impl_->view.window();
+        return impl_->view->window();
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::openDevTools()
@@ -597,27 +655,11 @@ namespace Nui
         const auto widePath = widenString(folderPath.string());
         wv23->SetVirtualHostNameToFolderMapping(wideHost.c_str(), widePath.c_str(), nativeAccessKind);
 #elif defined(__APPLE__)
-        throw std::runtime_error("Not implemented");
-        (void)hostName;
-        (void)folderPath;
         (void)accessKind;
-        // // setURLSchemeHandler
-        // Protocol* proto = objc_allocateProtocol("WKURLSchemeHandler");
-
-        // protocol_addMethodDescription(
-        //     proto,
-        //     sel_registerName("webView:startURLSchemeTask:"),
-        //     "v@:@@", // return type, self, selector, first argument
-        //     true,
-        //     true); // is required
-        // protocol_addMethodDescription(
-        //     proto,
-        //     sel_registerName("webView:stopURLSchemeTask:"),
-        //     "v@:@@", // return type, self, selector, first argument
-        //     true,
-        //     true); // is required
-
-        // objc_registerProtocol(proto);
+        auto* macImpl = static_cast<MacOsImplementation*>(impl_.get());
+        macImpl->hostNameMappingInfo.hostNameMappingMax =
+            std::max(macImpl->hostNameMappingInfo.hostNameMappingMax, hostName.size());
+        macImpl->hostNameMappingInfo.hostNameToFolderMapping[hostName] = folderPath;
 #else
         (void)accessKind;
         auto* linuxImpl = static_cast<LinuxImplementation*>(impl_.get());
