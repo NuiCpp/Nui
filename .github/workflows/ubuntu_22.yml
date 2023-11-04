@@ -35,10 +35,9 @@ jobs:
           platform_version: 22.04
 
       - name: Configure CMake
-        run: cmake -B ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}} -G"Ninja" -DNUI_ENABLE_TESTS=on -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DNUI_BUILD_EXAMPLES=on -DCMAKE_CXX_EXTENSIONS=on -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_LINKER=lld -DCMAKE_CXX_STANDARD=20
+        run: cmake -B ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}} -G"Ninja" -DNUI_ENABLE_TESTS=on -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DNUI_BUILD_EXAMPLES=on -DCMAKE_CXX_FLAGS="-stdlib=libc++" -DCMAKE_CXX_EXTENSIONS=on -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_LINKER=lld -DCMAKE_CXX_STANDARD=20
         env:
           BOOST_ROOT: ${{ steps.install-boost.outputs.BOOST_ROOT }}
-          CXX_FLAGS: "-stdlib=libc++"
 
       - name: Build
         run: cmake --build ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}} --config ${{env.BUILD_TYPE}}
