@@ -7,6 +7,7 @@
 #include <thread>
 
 #include <iostream>
+#include <regex>
 
 namespace
 {
@@ -123,6 +124,13 @@ bool InlineExtractor::parseInlineDirective(std::string const& line, Section& sec
     return true;
 }
 
+void InlineExtractor::postProcessImports(std::string& line)
+{
+    std::regex pattern(R"(^\s*js_import)");
+    std::string replacement = "import";
+    line = std::regex_replace(line, pattern, replacement);
+}
+
 void InlineExtractor::parseFileForSections(std::filesystem::path const& path)
 {
     std::ifstream reader{path, std::ios_base::binary};
@@ -148,6 +156,7 @@ void InlineExtractor::parseFileForSections(std::filesystem::path const& path)
         {
             line.resize(line.size() + 1);
             line.back() = '\n';
+            postProcessImports(line);
             currentSection.content.append(std::move(line));
         }
     };

@@ -307,7 +307,7 @@ namespace Nui
             winImpl->setHtmlWorkaroundToken.emplace();
 
             if (!windowsServeThroughAuthority)
-                windowsServeThroughAuthority = "nuilocal"s;
+                windowsServeThroughAuthority = std::string{windowsServeAuthority};
             const auto authority = *windowsServeThroughAuthority;
 
             const std::wstring filter = widenString("https://"s + authority + "/index.html");
