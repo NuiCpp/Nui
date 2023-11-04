@@ -4,6 +4,7 @@
 #ifdef NUI_BACKEND
 #    include <nlohmann/json.hpp>
 #    include <boost/asio/any_io_executor.hpp>
+#    include <nui/backend/url.hpp>
 #    include <filesystem>
 #endif
 
@@ -11,6 +12,7 @@
 #include <optional>
 #include <string>
 #include <functional>
+#include <unordered_map>
 
 namespace Nui
 {
@@ -30,6 +32,69 @@ namespace Nui
         DenyCors
     };
 
+    enum class NuiCoreWebView2WebResourceContext
+    {
+        All,
+        Document,
+        Stylesheet,
+        Image,
+        Media,
+        Font,
+        Script,
+        XmlHttpRequest,
+        Fetch,
+        TextTrack,
+        EventSource,
+        WebSocket,
+        Manifest,
+        SignedExchange,
+        Ping,
+        CspViolationReport,
+        Other,
+    };
+
+#ifdef NUI_BACKEND
+    struct CustomSchemeRequest
+    {
+        std::string scheme;
+        std::function<std::string const&()> getContent;
+        std::unordered_multimap<std::string, std::string> headers;
+        std::string uri;
+        std::string method;
+
+        std::optional<Url> parseUrl() const;
+
+        /// WINDOWS ONLY
+        NuiCoreWebView2WebResourceContext resourceContext = NuiCoreWebView2WebResourceContext::All;
+    };
+
+    struct CustomSchemeResponse
+    {
+        int statusCode;
+        /// WINDOWS ONLY
+        std::string reasonPhrase;
+        std::unordered_multimap<std::string, std::string> headers;
+        std::string body;
+    };
+
+    struct CustomScheme
+    {
+        std::string scheme;
+        /// You should probably allow some origin, or '*', or this will never do much.
+        std::vector<std::string> allowedOrigins = {};
+
+        std::function<CustomSchemeResponse(CustomSchemeRequest const&)> onRequest = {};
+
+        /// WINDOWS ONLY
+        NuiCoreWebView2WebResourceContext resourceContext = NuiCoreWebView2WebResourceContext::All;
+
+        /// WINDOWS ONLY - Whether the sites with this scheme will be treated as a Secure Context like an HTTPS site.
+        bool treatAsSecure = true;
+
+        /// WINDOWS ONLY - URI contains an authority. like "scheme://AUTHORITY_HERE/path".
+        bool hasAuthorityComponent = false;
+    };
+
     struct WindowOptions
     {
         /// The title of the window.
@@ -38,12 +103,25 @@ namespace Nui
         /// May open the dev tools?
         bool debug = false;
 
-        /// WINDOWS ONLY
-        // currently unimplemented: std::optional<std::string> browserArguments = std::nullopt;
+        /// Custom schemes to register.
+        std::vector<CustomScheme> customSchemes = {};
 
-        /// WEBKIT ONLY
-        std::string localScheme = "assets";
+        /// WINDOWS ONLY
+        std::optional<std::string> browserArguments = std::nullopt;
+
+        /// WINDOWS ONLY
+        bool enableTrackingPrevention = true;
+
+        /// WINDOWS ONLY
+        std::optional<std::string> language = std::nullopt;
+
+        /// WEBKIT ONLY (Linux & Mac)
+        std::optional<std::string> folderMappingScheme = std::string{"assets"};
     };
+#else
+    struct WindowOptions
+    {};
+#endif
 
     /**
      * @brief This class encapsulates the webview.
@@ -51,6 +129,8 @@ namespace Nui
     class Window
     {
       public:
+        constexpr static std::string_view windowsServeAuthority = "nuilocal";
+
         /**
          * @brief Construct a new Window object.
          */
@@ -131,6 +211,13 @@ namespace Nui
          */
         void navigate(const std::string& url);
 
+        /**
+         * @brief Navigate to url.
+         *
+         * @param url
+         */
+        void navigate(char const* url);
+
 #ifdef NUI_BACKEND
         /**
          * @brief Navigate to file.
@@ -172,7 +259,10 @@ namespace Nui
         boost::asio::any_io_executor getExecutor() const;
 
         /**
-         * @brief Map a host name under the assets:// scheme to a folder.
+         * @brief Map a host name under the assets:// scheme to a folder (https:// on windows).
+         *
+         * This is emulated on linux and macos, via the assets scheme. Prefer to use custom schemes instead.
+         * The scheme can be changed via folderMappingScheme in the WindowOptions.
          *
          * @param hostName The host name to map. like "assets://HOSTNAME/...".
          * @param folderPath The path to the directory to map into.
@@ -181,7 +271,7 @@ namespace Nui
         void setVirtualHostNameToFolderMapping(
             std::string const& hostName,
             std::filesystem::path const& folderPath,
-            HostResourceAccessKind accessKind);
+            HostResourceAccessKind accessKind = HostResourceAccessKind::Allow);
 
         /**
          * @brief Run the webview. This function blocks until the window is closed.
@@ -192,9 +282,20 @@ namespace Nui
          * @brief Set page html from a string.
          *
          * @param html Page html.
-         * @param fromFilesystem If true, the html is loaded from the filesystem instead of from memory.
+         * @param windowsServeThroughAuthority [WINDOWS ONLY] If set, the page will be served through the given
+         * authority via a custom webRequestHandler. This is useful for CORS on custom scheme handlers, which would get
+         * rejected otherwise.
          */
-        void setHtml(std::string_view html, bool fromFilesystem = false);
+        void setHtml(
+            std::string_view html,
+            std::optional<std::string> windowsServeThroughAuthority = std::string{windowsServeAuthority});
+
+        /**
+         * @brief Dump the page into a temporary file and then load it from there.
+         *
+         * @param html A string containing the html.
+         */
+        void setHtmlThroughFilesystem(std::string_view html);
 
         /**
          * @brief Run javascript in the window.

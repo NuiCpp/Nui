@@ -2,9 +2,9 @@ name: MacOS 13
 
 on:
   push:
-    branches: ["main", "devel", "macos"]
+    branches: ["main", "devel"]
   pull_request:
-    branches: ["main"]
+    branches: ["main", "devel"]
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)

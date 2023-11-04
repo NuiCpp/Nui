@@ -33,10 +33,10 @@ namespace Nui
             });
         }
 
-        constexpr void unattachEvent(auto eventId) const
+        constexpr void detachEvent(auto eventId) const
         {
             tupleForEach(observedValues_, [eventId](auto const& observed) {
-                observed.unattachEvent(eventId);
+                observed.detachEvent(eventId);
             });
         }
 

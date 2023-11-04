@@ -52,7 +52,7 @@ namespace Nui
         {
             attachedOneshotEvents_.emplace_back(eventId);
         }
-        void unattachEvent(EventContext::EventIdType eventId) const
+        void detachEvent(EventContext::EventIdType eventId) const
         {
             attachedEvents_.erase(
                 std::remove(std::begin(attachedEvents_), std::end(attachedEvents_), eventId),
@@ -1180,10 +1180,10 @@ namespace Nui
     namespace Detail
     {
         template <typename T>
-        struct CopiableObservedWrap // minimal wrapper to make Observed<T> copiable
+        struct CopyableObservedWrap // minimal wrapper to make Observed<T> copiable
         {
           public:
-            explicit constexpr CopiableObservedWrap(Observed<T> const& observed)
+            explicit constexpr CopyableObservedWrap(Observed<T> const& observed)
                 : observed_{&observed}
             {}
 
@@ -1197,9 +1197,9 @@ namespace Nui
                 observed_->attachEvent(eventId);
             }
 
-            inline void unattachEvent(auto eventId) const
+            inline void detachEvent(auto eventId) const
             {
-                observed_->unattachEvent(eventId);
+                observed_->detachEvent(eventId);
             }
 
           private:
