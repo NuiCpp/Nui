@@ -1180,10 +1180,10 @@ namespace Nui
     namespace Detail
     {
         template <typename T>
-        struct CopiableObservedWrap // minimal wrapper to make Observed<T> copiable
+        struct CopyableObservedWrap // minimal wrapper to make Observed<T> copiable
         {
           public:
-            explicit constexpr CopiableObservedWrap(Observed<T> const& observed)
+            explicit constexpr CopyableObservedWrap(Observed<T> const& observed)
                 : observed_{&observed}
             {}
 

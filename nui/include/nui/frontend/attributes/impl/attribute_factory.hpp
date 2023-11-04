@@ -104,7 +104,7 @@ namespace Nui::Attributes
                 },
                 [name = name(), &val](std::weak_ptr<Dom::ChildlessElement>&& element) {
                     return Detail::defaultPropertyEvent(
-                        std::move(element), Nui::Detail::CopiableObservedWrap{val}, name);
+                        std::move(element), Nui::Detail::CopyableObservedWrap{val}, name);
                 },
                 [&val](EventContext::EventIdType const& id) {
                     val.detachEvent(id);
@@ -215,7 +215,7 @@ namespace Nui::Attributes
                 },
                 [name = name(), &val](std::weak_ptr<Dom::ChildlessElement>&& element) {
                     return Detail::defaultAttributeEvent(
-                        std::move(element), Nui::Detail::CopiableObservedWrap{val}, name);
+                        std::move(element), Nui::Detail::CopyableObservedWrap{val}, name);
                 },
                 [&val](EventContext::EventIdType const& id) {
                     val.detachEvent(id);
@@ -233,7 +233,7 @@ namespace Nui::Attributes
                 },
                 [name = name(), p = prop.prop](std::weak_ptr<Dom::ChildlessElement>&& element) {
                     return Detail::defaultPropertyEvent(
-                        std::move(element), Nui::Detail::CopiableObservedWrap{*p}, name);
+                        std::move(element), Nui::Detail::CopyableObservedWrap{*p}, name);
                 },
                 [p = prop.prop](EventContext::EventIdType const& id) {
                     p->detachEvent(id);
