@@ -26,7 +26,7 @@ namespace Nui::Attributes
                     {
                         return onLock(shared);
                     }
-                    obs.unattachEvent(eventId);
+                    obs.detachEvent(eventId);
                     return false;
                 },
                 [element]() {
@@ -107,7 +107,7 @@ namespace Nui::Attributes
                         std::move(element), Nui::Detail::CopiableObservedWrap{val}, name);
                 },
                 [&val](EventContext::EventIdType const& id) {
-                    val.unattachEvent(id);
+                    val.detachEvent(id);
                 },
             };
         }
@@ -124,7 +124,7 @@ namespace Nui::Attributes
                     return Detail::defaultPropertyEvent(std::move(element), combinator, name);
                 },
                 [combinator](EventContext::EventIdType const& id) {
-                    combinator.unattachEvent(id);
+                    combinator.detachEvent(id);
                 },
             };
         }
@@ -141,7 +141,7 @@ namespace Nui::Attributes
                     return Detail::defaultPropertyEvent(std::move(element), combinator, name);
                 },
                 [combinator](EventContext::EventIdType const& id) {
-                    combinator.unattachEvent(id);
+                    combinator.detachEvent(id);
                 },
             };
         }
@@ -218,7 +218,7 @@ namespace Nui::Attributes
                         std::move(element), Nui::Detail::CopiableObservedWrap{val}, name);
                 },
                 [&val](EventContext::EventIdType const& id) {
-                    val.unattachEvent(id);
+                    val.detachEvent(id);
                 },
             };
         }
@@ -236,7 +236,7 @@ namespace Nui::Attributes
                         std::move(element), Nui::Detail::CopiableObservedWrap{*p}, name);
                 },
                 [p = prop.prop](EventContext::EventIdType const& id) {
-                    p->unattachEvent(id);
+                    p->detachEvent(id);
                 },
             };
         }
@@ -262,7 +262,7 @@ namespace Nui::Attributes
                     return Detail::defaultPropertyEvent(std::move(element), combinator, name);
                 },
                 [combinator](EventContext::EventIdType const& id) {
-                    combinator.unattachEvent(id);
+                    combinator.detachEvent(id);
                 },
             };
         }
@@ -279,7 +279,7 @@ namespace Nui::Attributes
                     return Detail::defaultAttributeEvent(std::move(element), combinator, name);
                 },
                 [combinator](EventContext::EventIdType const& id) {
-                    combinator.unattachEvent(id);
+                    combinator.detachEvent(id);
                 },
             };
         }

@@ -52,7 +52,7 @@ namespace Nui
         {
             attachedOneshotEvents_.emplace_back(eventId);
         }
-        void unattachEvent(EventContext::EventIdType eventId) const
+        void detachEvent(EventContext::EventIdType eventId) const
         {
             attachedEvents_.erase(
                 std::remove(std::begin(attachedEvents_), std::end(attachedEvents_), eventId),
@@ -1197,9 +1197,9 @@ namespace Nui
                 observed_->attachEvent(eventId);
             }
 
-            inline void unattachEvent(auto eventId) const
+            inline void detachEvent(auto eventId) const
             {
-                observed_->unattachEvent(eventId);
+                observed_->detachEvent(eventId);
             }
 
           private:

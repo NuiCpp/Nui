@@ -29,7 +29,7 @@ namespace Nui::Elements
                                       shared->setNodeValue(obs.value());
                                       return true;
                                   }
-                                  obs.unattachEvent(eventId);
+                                  obs.detachEvent(eventId);
                                   return false;
                               },
                               [element]() {
@@ -39,7 +39,7 @@ namespace Nui::Elements
                           return eventId;
                       },
                       [&obs](EventContext::EventIdType const& id) {
-                          obs.unattachEvent(id);
+                          obs.detachEvent(id);
                       },
                   },
               }
