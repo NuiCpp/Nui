@@ -297,7 +297,7 @@ namespace Nui
             using namespace std::string_literals;
 
             auto* winImpl = static_cast<WindowsImplementation*>(impl_.get());
-            auto* webView = static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(impl_->view).webview());
+            auto* webView = static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(*impl_->view).webview());
 
             if (winImpl->setHtmlWorkaroundToken)
             {
@@ -575,12 +575,12 @@ namespace Nui
         auto* winImpl = static_cast<WindowsImplementation*>(impl_.get());
         if (GetCurrentThreadId() == winImpl->windowThreadId)
         {
-            winImpl->view.eval(js);
+            winImpl->view->eval(js);
         }
         else
         {
             winImpl->toProcessOnWindowThread.push_back([js, winImpl]() {
-                winImpl->view.eval(js);
+                winImpl->view->eval(js);
             });
             PostThreadMessage(winImpl->windowThreadId, wakeUpMessage, 0, 0);
         }
