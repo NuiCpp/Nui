@@ -21,6 +21,7 @@ class InlineExtractor
 
   private:
     bool parseInlineDirective(std::string const& line, Section& section) const;
+    void postProcessImports(std::string& line);
 
   private:
     SectionCache sectionCache_;
