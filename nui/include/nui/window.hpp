@@ -129,7 +129,9 @@ namespace Nui
     class Window
     {
       public:
-        constexpr static std::string_view windowsServeAuthority = "nuilocal";
+        // Warning! app.example is intentional to avoid timeout issues.
+        // https://github.com/MicrosoftEdge/WebView2Feedback/issues/2381
+        constexpr static std::string_view windowsServeAuthority = "app.example";
 
         /**
          * @brief Construct a new Window object.
