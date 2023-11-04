@@ -100,7 +100,7 @@ function(nui_add_emscripten_target)
     endif()
 
     if (ENABLE_BIN2HPP AND ${ENABLE_BIN2HPP})
-        set(BIN2HPP_COMMAND COMMAND $<TARGET_FILE:bin2hpp> "on" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html" "${CMAKE_BINARY_DIR}/include/index.hpp" index)
+        set(BIN2HPP_COMMAND COMMAND $<TARGET_FILE:bin2hpp> "on" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/include/index.hpp" index)
     else()
         set(BIN2HPP_COMMAND COMMAND cmake -E true)
     endif()
@@ -155,8 +155,18 @@ function(nui_add_emscripten_target)
     )
 
     if (${TARGET_TYPE} STREQUAL "INTERFACE_LIBRARY")
-        target_include_directories(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} INTERFACE "${CMAKE_BINARY_DIR}/include")
+        target_include_directories(
+            ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}
+            INTERFACE
+                "${CMAKE_BINARY_DIR}/include"
+                "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/include"
+        )
     else()
-        target_include_directories(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} PRIVATE "${CMAKE_BINARY_DIR}/include")
+        target_include_directories(
+            ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}
+            PRIVATE
+                "${CMAKE_BINARY_DIR}/include"
+                "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/include"
+        )
     endif()
 endfunction()
