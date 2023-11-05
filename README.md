@@ -27,7 +27,13 @@ Planed:
   - Android if this gets more traction here: https://github.com/webview/webview/issues/871
 
 ## Examples
-![Example Ui](https://nuicpp.org/assets/example.png)
+Using SAPUI5 Components
+![Example SAPUI5](https://user-images.githubusercontent.com/6238896/280534443-090023ca-8831-4423-83bf-e9d16c4a9b53.png)
+
+To use them, see this repo: https://github.com/NuiCpp/ui5
+
+Using Bootstrap and some custom CSS
+![Example Bootstrap](https://nuicpp.org/assets/example.png)
 
 Plenty found on https://nuicpp.org
 
