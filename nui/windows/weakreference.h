@@ -29,8 +29,11 @@
 #ifndef __weakreference_h__
 #define __weakreference_h__
 
-#if defined(_MSC_VER) && (_MSC_VER >= 1020)
-#    pragma once
+#pragma once
+
+#if defined(_MSC_VER) && defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wlanguage-extension-token"
 #endif
 
 /* Forward Declarations */
@@ -81,6 +84,8 @@ extern "C" {
                 /* [in] */ __RPC__in REFIID riid,
                 /* [iid_is][out] */ __RPC__deref_out IInspectable * *objectReference) = 0;
 
+            virtual ~IWeakReference() = default;
+
             template <typename T>
             _At_(*objectReference, _When_(FAILED(return), _Null_))
                 _At_(*objectReference, _When_(SUCCEEDED(return), _Maybenull_)) HRESULT
@@ -89,7 +94,7 @@ extern "C" {
                 static_assert(
                     __is_base_of(IInspectable, T), "Only Windows Runtime interfaces can be resolved by weak reference");
                 return Resolve(__uuidof(T), (IInspectable**)objectReference);
-            }
+            }   
         };
     } // extern C++
 #    else
@@ -236,6 +241,10 @@ extern "C" {
 
 #ifdef __cplusplus
 }
+#endif
+
+#if defined(_MSC_VER) && defined(__clang__)
+#        pragma clang diagnostic pop
 #endif
 
 #endif

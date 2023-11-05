@@ -7,6 +7,13 @@
 #ifndef _WRL_CLIENT_H_
 #define _WRL_CLIENT_H_
 
+#pragma once
+
+#if defined(_MSC_VER) && defined(__clang__)
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wlanguage-extension-token"
+#endif
+
 #include <stddef.h>
 #include <unknwn.h>
 #include <weakreference.h>
@@ -379,5 +386,10 @@ namespace ABI
         }
     }
 }
+
+#if defined(_MSC_VER) && defined(__clang__)
+#    pragma clang diagnostic pop
+#endif
+
 
 #endif

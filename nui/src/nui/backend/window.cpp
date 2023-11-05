@@ -25,6 +25,10 @@
 #    include <gtk/gtk.h>
 #    include <libsoup/soup.h>
 #elif defined(_WIN32)
+#    if defined(_MSC_VER) && defined(__clang__)
+#        pragma clang diagnostic push
+#        pragma clang diagnostic ignored "-Wlanguage-extension-token"
+#    endif
 #endif
 
 #include <random>
@@ -94,7 +98,9 @@ namespace Nui
 #    include "mac_webview_config_from_window_options.ipp"
 #elif defined(_WIN32)
 #    include <webview2_environment_options.hpp>
+#ifndef _MSC_VER
 #    include <webview2_iids.h>
+#endif
 #    include <wrl/event.h>
 #    include "environment_options_from_window_options.ipp"
 constexpr static auto wakeUpMessage = WM_APP + 1;
@@ -688,3 +694,7 @@ namespace Nui
     }
     // #####################################################################################################################
 }
+
+#if defined(_MSC_VER) && defined(__clang__)
+#    pragma clang diagnostic pop
+#endif

@@ -71,9 +71,7 @@ namespace Microsoft
         template <typename T>
         struct CloakedIid : T
         {
-#ifndef _MSC_VER
             virtual ~CloakedIid() = default;
-#endif
         };
 
         enum RuntimeClassType
@@ -212,11 +210,10 @@ namespace Microsoft
                             reinterpret_cast<void* volatile*>(&module_), this, nullptr) == nullptr &&
                         "The module was already instantiated");
 
-                    SRWLOCK initSRWLOCK = SRWLOCK_INIT;
+                    [[maybe_unused]] SRWLOCK initSRWLOCK = SRWLOCK_INIT;
                     __WRL_ASSERT__(
                         reinterpret_cast<SRWLOCK*>(&moduleLock_)->Ptr == initSRWLOCK.Ptr &&
                         "Different value for moduleLock_ than SRWLOCK_INIT");
-                    (initSRWLOCK);
 #else
                     module_ = this;
 #endif
@@ -923,9 +920,7 @@ namespace Microsoft
                         riid, ppv, pRefDelegated);
                 }
 
-#ifndef _MSC_VER
                 virtual ~ImplementsHelper() = default;
-#endif
 
                 IUnknown* CastToUnknown() throw()
                 {
