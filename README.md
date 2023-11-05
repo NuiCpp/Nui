@@ -19,6 +19,7 @@ Tested on:
   - MacOS 13: (using clang16) ![example workflow](https://github.com/NuiCpp/Nui/actions/workflows/macos_13.yml/badge.svg)
 
 Not automatically tested but should work:
+  - Windows with Visual Studio, vcpkg and clang_cl
   - Arch Linux
   - MacOS 14+
   - Other Linux Distributions with new enough packages for C++20
