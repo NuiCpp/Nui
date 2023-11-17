@@ -44,6 +44,7 @@
 #include <list>
 #include <array>
 #include <string>
+#include <iostream>
 
 #ifndef _WIN32
 namespace Nui
@@ -98,9 +99,9 @@ namespace Nui
 #    include "mac_webview_config_from_window_options.ipp"
 #elif defined(_WIN32)
 #    include <webview2_environment_options.hpp>
-#ifndef _MSC_VER
-#    include <webview2_iids.h>
-#endif
+#    ifndef _MSC_VER
+#        include <webview2_iids.h>
+#    endif
 #    include <wrl/event.h>
 #    include "environment_options_from_window_options.ipp"
 constexpr static auto wakeUpMessage = WM_APP + 1;
@@ -120,6 +121,7 @@ namespace Nui
         std::recursive_mutex viewGuard;
         int width;
         int height;
+        std::function<void(std::string_view)> onRpcError;
 
         virtual void registerSchemeHandlers(WindowOptions const& options) = 0;
 
@@ -131,6 +133,7 @@ namespace Nui
             , viewGuard{}
             , width{0}
             , height{0}
+            , onRpcError{}
         {}
         virtual ~Implementation()
         {
@@ -202,6 +205,15 @@ namespace Nui
         : impl_{std::make_shared<WindowsImplementation>()}
 #endif
     {
+        if (!options.onRpcError)
+        {
+            impl_->onRpcError = [](std::string_view msg) {
+                std::cerr << "NUI RPC Error: " << msg << std::endl;
+            };
+        }
+        else
+            impl_->onRpcError = options.onRpcError;
+
 #ifdef __APPLE__
         impl_->initialize(
             options.debug,
@@ -215,8 +227,27 @@ namespace Nui
 
         impl_->view->install_message_hook([this](std::string const& msg) {
             std::scoped_lock lock{impl_->viewGuard};
-            const auto obj = nlohmann::json::parse(msg);
-            impl_->callbacks[obj["id"].get<std::string>()](obj["args"]);
+            try
+            {
+                const auto obj = nlohmann::json::parse(msg);
+                if (!obj.contains("id"))
+                    return impl_->onRpcError("Message does not contain a callback id!"), false;
+
+                const auto id = obj["id"].get<std::string>();
+                auto callbackIter = impl_->callbacks.find(id);
+                if (callbackIter == impl_->callbacks.end())
+                    return impl_->onRpcError("Callback with id " + id + " does not exist!"), false;
+
+                if (!obj.contains("args"))
+                    callbackIter->second(nlohmann::json{});
+                else
+                    callbackIter->second(obj["args"]);
+            }
+            catch (std::exception const& exc)
+            {
+                impl_->onRpcError(
+                    "Exception in webview message handler for message: " + msg + "\nException: " + exc.what());
+            }
             return false;
         });
 
@@ -481,6 +512,9 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::bind(std::string const& name, std::function<void(nlohmann::json const&)> const& callback)
     {
+        if (!callback)
+            throw std::runtime_error("Callback must be valid.");
+
         runInJavascriptThread([this, name, callback]() {
             std::scoped_lock lock{impl_->viewGuard};
             impl_->callbacks[name] = callback;

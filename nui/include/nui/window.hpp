@@ -117,6 +117,9 @@ namespace Nui
 
         /// WEBKIT ONLY (Linux & Mac)
         std::optional<std::string> folderMappingScheme = std::string{"assets"};
+
+        // Called when a message from the view cannot be parsed or references an invalid function or has no id.
+        std::function<void(std::string_view)> onRpcError = {};
     };
 #else
     struct WindowOptions
