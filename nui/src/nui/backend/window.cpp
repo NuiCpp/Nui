@@ -114,11 +114,11 @@ namespace Nui
 {
     struct Window::Implementation : public std::enable_shared_from_this<Implementation>
     {
+        std::recursive_mutex viewGuard;
+        boost::asio::thread_pool pool;
         std::unique_ptr<webview::webview> view;
         std::vector<std::filesystem::path> cleanupFiles;
         std::unordered_map<std::string, std::function<void(nlohmann::json const&)>> callbacks;
-        boost::asio::thread_pool pool;
-        std::recursive_mutex viewGuard;
         int width;
         int height;
         std::function<void(std::string_view)> onRpcError;
@@ -126,11 +126,11 @@ namespace Nui
         virtual void registerSchemeHandlers(WindowOptions const& options) = 0;
 
         Implementation()
-            : view{}
+            : viewGuard{}
+            , pool{4}
+            , view{}
             , cleanupFiles{}
             , callbacks{}
-            , pool{4}
-            , viewGuard{}
             , width{0}
             , height{0}
             , onRpcError{}
@@ -270,6 +270,7 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     Window::~Window()
     {
+        impl_.reset();
         for (auto const& file : impl_->cleanupFiles)
             std::filesystem::remove(file);
     }
