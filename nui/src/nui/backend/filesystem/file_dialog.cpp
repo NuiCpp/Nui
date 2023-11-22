@@ -12,14 +12,14 @@
 
 namespace Nui::FileDialog
 {
-    //#####################################################################################################################
+    // #####################################################################################################################
     namespace
     {
         //---------------------------------------------------------------------------------------------------------------------
         std::vector<std::string> flattenFilters(std::vector<Filter> const& filters)
         {
             std::vector<std::string> flattenedFilters;
-            if (flattenedFilters.empty())
+            if (filters.empty())
             {
                 flattenedFilters.push_back("All files");
                 flattenedFilters.push_back("*");
@@ -76,6 +76,7 @@ namespace Nui::FileDialog
             if (result.empty())
                 return std::nullopt;
             std::vector<std::filesystem::path> paths;
+            paths.resize(result.size());
             std::transform(result.begin(), result.end(), paths.begin(), [](std::string const& path) {
                 return std::filesystem::path(path);
             });
@@ -115,5 +116,5 @@ namespace Nui::FileDialog
             return std::nullopt;
         return std::filesystem::path(result);
     }
-    //#####################################################################################################################
+    // #####################################################################################################################
 }
