@@ -21,10 +21,10 @@ namespace Nui::FileDialog
             opts.set("filters", Nui::val::array());
             for (auto const& filter : options.filters)
             {
-                Nui::val filterVal;
+                Nui::val filterVal = Nui::val::object();
                 filterVal.set("name", convertToVal(filter.name));
                 filterVal.set("masks", convertToVal(filter.masks));
-                opts["filter"].call<void>("push", filterVal);
+                opts["filters"].call<void>("push", filterVal);
             }
             opts.set("forcePath", convertToVal(options.forcePath));
         }
