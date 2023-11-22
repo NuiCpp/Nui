@@ -270,7 +270,6 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     Window::~Window()
     {
-        impl_.reset();
         for (auto const& file : impl_->cleanupFiles)
             std::filesystem::remove(file);
     }
