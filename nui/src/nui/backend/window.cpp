@@ -428,6 +428,12 @@ namespace Nui
         impl_->view->navigate("file://"s + file.string());
     }
     //---------------------------------------------------------------------------------------------------------------------
+    void Window::dispatch(std::function<void()> func)
+    {
+        std::scoped_lock lock{impl_->viewGuard};
+        impl_->view->dispatch(std::move(func));
+    }
+    //---------------------------------------------------------------------------------------------------------------------
     void Window::run()
     {
 #ifdef _WIN32

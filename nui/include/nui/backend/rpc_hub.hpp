@@ -40,7 +40,7 @@ namespace Nui
             template <typename FunctionT>
             constexpr static auto wrapFunction(FunctionT&& func)
             {
-                return [func = std::move(func)](nlohmann::json const& args) {
+                return [func = std::move(func)](nlohmann::json const& args) mutable {
                     func(args);
                 };
             }
@@ -52,7 +52,7 @@ namespace Nui
             template <typename FunctionT>
             constexpr static auto wrapFunction(FunctionT&& func)
             {
-                return [func = std::move(func)](nlohmann::json const& args) {
+                return [func = std::move(func)](nlohmann::json const& args) mutable {
                     func(extractJsonMember<ArgsTypes>(args[Is])...);
                 };
             }
