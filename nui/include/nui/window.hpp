@@ -284,6 +284,13 @@ namespace Nui
         void run();
 
         /**
+         * @brief Run a function on the main thread
+         *
+         * @param func
+         */
+        void dispatch(std::function<void()> func);
+
+        /**
          * @brief Set page html from a string.
          *
          * @param html Page html.
