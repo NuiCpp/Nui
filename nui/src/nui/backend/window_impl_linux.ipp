@@ -1,10 +1,39 @@
+#include "gobject.hpp"
+
 namespace Nui::Impl::Linux
 {
+    struct AsyncResponse
+    {
+        GObjectReference<GInputStream> stream;
+        GObjectReference<WebKitURISchemeResponse> response;
+        std::string data;
+    };
+
     struct SchemeContext
     {
         std::size_t id;
         std::weak_ptr<Window::LinuxImplementation> impl;
         CustomScheme schemeInfo;
+        std::mutex asyncResponsesGuard;
+        std::map<int, AsyncResponse> asyncResponses;
+        int asyncResponseCounter = 0;
+
+        void gcResponses()
+        {
+            std::lock_guard<std::mutex> asyncResponsesGuard{this->asyncResponsesGuard};
+            std::vector<int> removals{};
+            for (auto it = asyncResponses.begin(); it != asyncResponses.end(); ++it)
+            {
+                GInputStream* stream = it->second.stream.get();
+                if (g_input_stream_is_closed(stream))
+                {
+                    removals.push_back(it->first);
+                    break;
+                }
+            }
+            for (auto const& removal : removals)
+                asyncResponses.erase(removal);
+        }
     };
 }
 
@@ -19,7 +48,10 @@ std::size_t strlenLimited(char const* str, std::size_t limit)
 extern "C" {
     void uriSchemeRequestCallback(WebKitURISchemeRequest* request, gpointer userData)
     {
+        using namespace std::string_literals;
+
         auto* schemeContext = static_cast<Nui::Impl::Linux::SchemeContext*>(userData);
+        schemeContext->gcResponses();
 
         // const auto path = std::string_view{webkit_uri_scheme_request_get_path(request)};
         // const auto scheme = std::string_view{webkit_uri_scheme_request_get_scheme(request)};
@@ -102,50 +134,59 @@ extern "C" {
             .method = std::string{cmethod},
         });
 
-        GInputStream* stream;
-        stream = g_memory_input_stream_new_from_data(
-            responseObj.body.c_str(), static_cast<gssize>(responseObj.body.size()), nullptr);
-        auto deleteStream = Nui::ScopeExit{[stream] {
-            g_object_unref(stream);
-        }};
+        using Nui::GObjectReference;
 
-        WebKitURISchemeResponse* response;
-        response = webkit_uri_scheme_response_new(stream, static_cast<gint64>(responseObj.body.size()));
+        std::lock_guard<std::mutex> asyncResponsesGuard{schemeContext->asyncResponsesGuard};
+        ++schemeContext->asyncResponseCounter;
+        schemeContext->asyncResponses[schemeContext->asyncResponseCounter] = Nui::Impl::Linux::AsyncResponse{};
+        auto& asyncResponse = schemeContext->asyncResponses[schemeContext->asyncResponseCounter];
+        asyncResponse.data = std::move(responseObj.body);
 
-        std::string contentType;
-        if (responseObj.headers.find("Content-Type") != responseObj.headers.end())
-        {
-            auto range = responseObj.headers.equal_range("Content-Type");
-            for (auto it = range.first; it != range.second; ++it)
-                contentType += it->second + "; ";
-        }
-        else
-            contentType = "application/octet-stream";
+        asyncResponse.stream = Nui::GObjectReference<GInputStream>::adoptReference(g_memory_input_stream_new_from_data(
+            asyncResponse.data.data(), static_cast<gssize>(asyncResponse.data.size()), nullptr));
 
-        webkit_uri_scheme_response_set_content_type(response, contentType.c_str());
-        webkit_uri_scheme_response_set_status(response, static_cast<guint>(responseObj.statusCode), nullptr);
+        asyncResponse.response = Nui::GObjectReference<WebKitURISchemeResponse>::adoptReference(
+            webkit_uri_scheme_response_new(asyncResponse.stream.get(), static_cast<gint64>(asyncResponse.data.size())));
 
-        auto* responseHeaders = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
-        auto deleteResponseHeaders = Nui::ScopeExit{[responseHeaders] {
-            g_object_unref(responseHeaders);
-        }};
-        for (auto const& [key, value] : responseObj.headers)
-            soup_message_headers_append(responseHeaders, key.c_str(), value.c_str());
+        const std::string contentType = [&]() {
+            if (responseObj.headers.find("Content-Type") != responseObj.headers.end())
+            {
+                std::string contentType;
+                auto range = responseObj.headers.equal_range("Content-Type");
+                for (auto it = range.first; it != range.second; ++it)
+                    contentType += it->second + "; ";
+                contentType.pop_back();
+                contentType.pop_back();
+                return contentType;
+            }
+            return "application/octet-stream"s;
+        }();
 
-        if (responseObj.headers.find("Access-Control-Allow-Origin") == responseObj.headers.end() &&
-            !schemeInfo.allowedOrigins.empty())
-        {
-            auto const& front = schemeInfo.allowedOrigins.front();
-            soup_message_headers_append(responseHeaders, "Access-Control-Allow-Origin", front.c_str());
-        }
+        webkit_uri_scheme_response_set_content_type(asyncResponse.response.get(), contentType.c_str());
+        webkit_uri_scheme_response_set_status(
+            asyncResponse.response.get(), static_cast<guint>(responseObj.statusCode), nullptr);
 
-        webkit_uri_scheme_response_set_http_headers(response, responseHeaders);
-        webkit_uri_scheme_request_finish_with_response(request, response);
+        auto setHeaders = [&]() {
+            auto* responseHeaders = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
+            for (auto const& [key, value] : responseObj.headers)
+                soup_message_headers_append(responseHeaders, key.c_str(), value.c_str());
+
+            if (responseObj.headers.find("Access-Control-Allow-Origin") == responseObj.headers.end() &&
+                !schemeInfo.allowedOrigins.empty())
+            {
+                auto const& front = schemeInfo.allowedOrigins.front();
+                soup_message_headers_append(responseHeaders, "Access-Control-Allow-Origin", front.c_str());
+            }
+            webkit_uri_scheme_response_set_http_headers(asyncResponse.response.get(), responseHeaders);
+        };
+
+        setHeaders();
+        webkit_uri_scheme_request_finish_with_response(request, asyncResponse.response.get());
     }
 
-    void uriSchemeDestroyNotify(void*)
+    void uriSchemeDestroyNotify(void* userData)
     {
-        // Happens when everything else is already dead.
+        // Useless, because called when everything is already destroyed
     }
 }
 
