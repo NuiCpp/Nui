@@ -1,10 +1,5 @@
 #include "gobject.hpp"
 
-<<<<<<< HEAD
-#include <iostream>
-
-=======
->>>>>>> dfe851c (Fixed segfault on linux with large custom scheme data.)
 namespace Nui::Impl::Linux
 {
     struct AsyncResponse
@@ -12,15 +7,6 @@ namespace Nui::Impl::Linux
         GObjectReference<GInputStream> stream;
         GObjectReference<WebKitURISchemeResponse> response;
         std::string data;
-<<<<<<< HEAD
-        ~AsyncResponse()
-        {
-            std::cout << "AsyncResponse dtor" << std::endl;
-            if (stream)
-                g_input_stream_close(stream.get(), nullptr, nullptr);
-        }
-=======
->>>>>>> dfe851c (Fixed segfault on linux with large custom scheme data.)
     };
 
     struct SchemeContext
@@ -200,17 +186,7 @@ extern "C" {
 
     void uriSchemeDestroyNotify(void* userData)
     {
-<<<<<<< HEAD
-        auto* schemeContext = static_cast<Nui::Impl::Linux::SchemeContext*>(userData);
-        auto impl = schemeContext->impl.lock();
-        if (!impl)
-            return;
-
-        std::lock_guard<std::mutex> asyncResponsesGuard{schemeContext->asyncResponsesGuard};
-        schemeContext->asyncResponses.clear();
-=======
         // Useless, because called when everything is already destroyed
->>>>>>> dfe851c (Fixed segfault on linux with large custom scheme data.)
     }
 }
 
