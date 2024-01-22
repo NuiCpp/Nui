@@ -47,4 +47,12 @@ namespace Nui
       private:
         ContainerT* container_;
     };
+
+    // Deduction guide for const ContainerT
+    template <typename ContainerT>
+    IteratorAccessor(ContainerT const&) -> IteratorAccessor<const ContainerT>;
+
+    // Deduction guide for non-const ContainerT
+    template <typename ContainerT>
+    IteratorAccessor(ContainerT&) -> IteratorAccessor<ContainerT>;
 }

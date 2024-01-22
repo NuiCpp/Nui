@@ -138,10 +138,10 @@ namespace Nui
     }
 
     template <typename ContainerT>
-    UnoptimizedRange<IteratorAccessor<ContainerT>> range(ContainerT const& container)
+    UnoptimizedRange<IteratorAccessor<ContainerT const>> range(ContainerT const& container)
     {
-        return UnoptimizedRange<IteratorAccessor<ContainerT>>{
-            IteratorAccessor<ContainerT>{container},
+        return UnoptimizedRange<IteratorAccessor<ContainerT const>>{
+            IteratorAccessor<ContainerT const>{container},
         };
     }
 
