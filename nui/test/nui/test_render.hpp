@@ -68,8 +68,7 @@ namespace Nui::Tests
         using Nui::Elements::span;
         render(div{}(span{}("Hello World")));
         ASSERT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
-        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["textContent"].as<std::string>(), "Hello
-        World");
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["textContent"].as<std::string>(), "Hello World");
     }
 
     TEST_F(TestRender, TextBodyCanBeObservedVariable)
@@ -407,8 +406,7 @@ namespace Nui::Tests
         globalEventContext.executeActiveEventsImmediately();
 
         EXPECT_EQ(
-            Nui::val::global("document")["body"]["children"][0]["attributes"]["id"].as<std::string>(), "changed
-            again");
+            Nui::val::global("document")["body"]["children"][0]["attributes"]["id"].as<std::string>(), "changed again");
     }
 
     TEST_F(TestRender, StableFragmentCreatesPhantomDiv)
@@ -549,8 +547,7 @@ namespace Nui::Tests
         render(div{}(text{"Hello World"}()));
 
         ASSERT_EQ(Nui::val::global("document")["body"]["childNodes"]["length"].as<long long>(), 1);
-        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][0]["nodeValue"].as<std::string>(), "Hello
-        World");
+        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][0]["nodeValue"].as<std::string>(), "Hello World");
     }
 
     TEST_F(TestRender, PlainTextCanBeUpdated)
@@ -562,8 +559,7 @@ namespace Nui::Tests
         render(div{}(text{textContent}()));
 
         ASSERT_EQ(Nui::val::global("document")["body"]["childNodes"]["length"].as<long long>(), 1);
-        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][0]["nodeValue"].as<std::string>(), "Hello
-        World");
+        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][0]["nodeValue"].as<std::string>(), "Hello World");
 
         textContent = "Changed";
         globalEventContext.executeActiveEventsImmediately();
@@ -580,13 +576,11 @@ namespace Nui::Tests
         render(div{}(text{textContent}()));
 
         ASSERT_EQ(Nui::val::global("document")["body"]["childNodes"]["length"].as<long long>(), 1);
-        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][0]["nodeValue"].as<std::string>(), "Hello
-        World");
+        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][0]["nodeValue"].as<std::string>(), "Hello World");
 
         textContent = "Changed";
 
-        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][0]["nodeValue"].as<std::string>(), "Hello
-        World");
+        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][0]["nodeValue"].as<std::string>(), "Hello World");
     }
 
     TEST_F(TestRender, PlainTextCanAppearAnywhereBetweenRegularElements)
@@ -597,12 +591,8 @@ namespace Nui::Tests
 
         ASSERT_EQ(Nui::val::global("document")["body"]["childNodes"]["length"].as<long long>(), 3);
         EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][0]["tagName"].as<std::string>(), "span");
-        EXPECT_EQ(
-            Nui::val::global("document")["body"]["childNodes"][1]["nodeValue"].as<std::string>(),
-            "Hello
-            World "); EXPECT_EQ(Nui::val::global(" document ")[" body "][" childNodes "][2][" tagName
-            "].as<std::string>(),
-            "div");
+        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][1]["nodeValue"].as<std::string>(), "Hello World");
+        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][2]["tagName"].as<std::string>(), "div");
     }
 
     TEST_F(TestRender, PlainTextCanBeChangedAlongsideRegularElements)
@@ -615,12 +605,8 @@ namespace Nui::Tests
 
         ASSERT_EQ(Nui::val::global("document")["body"]["childNodes"]["length"].as<long long>(), 3);
         EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][0]["tagName"].as<std::string>(), "span");
-        EXPECT_EQ(
-            Nui::val::global("document")["body"]["childNodes"][1]["nodeValue"].as<std::string>(),
-            "Hello
-            World "); EXPECT_EQ(Nui::val::global(" document ")[" body "][" childNodes "][2][" tagName
-            "].as<std::string>(),
-            "div");
+        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][1]["nodeValue"].as<std::string>(), "Hello World");
+        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][2]["tagName"].as<std::string>(), "div");
 
         textContent = "Changed";
         globalEventContext.executeActiveEventsImmediately();
@@ -639,12 +625,8 @@ namespace Nui::Tests
 
         ASSERT_EQ(Nui::val::global("document")["body"]["childNodes"]["length"].as<long long>(), 3);
         EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][0]["tagName"].as<std::string>(), "span");
-        EXPECT_EQ(
-            Nui::val::global("document")["body"]["childNodes"][1]["nodeValue"].as<std::string>(),
-            "Hello
-            World "); EXPECT_EQ(Nui::val::global(" document ")[" body "][" childNodes "][2][" tagName
-            "].as<std::string>(),
-            "div");
+        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][1]["nodeValue"].as<std::string>(), "Hello World");
+        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][2]["tagName"].as<std::string>(), "div");
 
         textContent = "Changed";
         globalEventContext.executeActiveEventsImmediately();
@@ -659,8 +641,7 @@ namespace Nui::Tests
         render(div{}(fragment(text{"Hello World"}())));
 
         ASSERT_EQ(Nui::val::global("document")["body"]["childNodes"]["length"].as<long long>(), 1);
-        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][0]["nodeValue"].as<std::string>(), "Hello
-        World");
+        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][0]["nodeValue"].as<std::string>(), "Hello World");
     }
 
     TEST_F(TestRender, PlainTextCanBeUpdatedInsideFragment)
@@ -672,8 +653,7 @@ namespace Nui::Tests
         render(div{}(fragment(text{textContent}())));
 
         ASSERT_EQ(Nui::val::global("document")["body"]["childNodes"]["length"].as<long long>(), 1);
-        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][0]["nodeValue"].as<std::string>(), "Hello
-        World");
+        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][0]["nodeValue"].as<std::string>(), "Hello World");
 
         textContent = "Changed";
         globalEventContext.executeActiveEventsImmediately();
@@ -691,12 +671,8 @@ namespace Nui::Tests
 
         ASSERT_EQ(Nui::val::global("document")["body"]["childNodes"]["length"].as<long long>(), 3);
         EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][0]["tagName"].as<std::string>(), "span");
-        EXPECT_EQ(
-            Nui::val::global("document")["body"]["childNodes"][1]["nodeValue"].as<std::string>(),
-            "Hello
-            World "); EXPECT_EQ(Nui::val::global(" document ")[" body "][" childNodes "][2][" tagName
-            "].as<std::string>(),
-            "div");
+        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][1]["nodeValue"].as<std::string>(), "Hello World");
+        EXPECT_EQ(Nui::val::global("document")["body"]["childNodes"][2]["tagName"].as<std::string>(), "div");
 
         textContent = "Changed";
         globalEventContext.executeActiveEventsImmediately();
