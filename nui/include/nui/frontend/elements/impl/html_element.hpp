@@ -267,18 +267,22 @@ namespace Nui
         requires(!InvocableReturns<GeneratorT, std::string>)
         auto operator()(GeneratorT&& elementRenderer) &&
         {
-            return [self = this->clone(),
-                    elementRenderer = std::forward<GeneratorT>(elementRenderer)](auto& parentElement, Renderer const&) {
-                return elementRenderer()(parentElement, Renderer{.type = RendererType::Append});
+            return [self = this->clone(), elementRenderer = std::forward<GeneratorT>(elementRenderer)](
+                       auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                elementRenderer()(*materialized, Renderer{.type = RendererType::Append});
+                return materialized;
             };
         }
         template <typename T, std::invocable<T&, Renderer const&> GeneratorT>
         requires InvocableReturns<GeneratorT, std::string>
         auto operator()(GeneratorT&& elementRenderer) &&
         {
-            return [self = this->clone(),
-                    elementRenderer = std::forward<GeneratorT>(elementRenderer)](auto& parentElement, Renderer const&) {
-                return elementRenderer(parentElement, Renderer{.type = RendererType::Append});
+            return [self = this->clone(), elementRenderer = std::forward<GeneratorT>(elementRenderer)](
+                       auto& parentElement, Renderer const& gen) {
+                auto materialized = renderElement(gen, parentElement, self);
+                materialized->setTextContent(elementRenderer(*materialized, Renderer{.type = RendererType::Append}));
+                return materialized;
             };
         }
 
