@@ -484,7 +484,7 @@ namespace Nui::Tests
                 else
                 {
                     const auto s = stabilize(
-                        stable, 
+                        stable,
                         span{id = once}(button{class_ = onceClass}())
                     );
                     once = "X";
@@ -732,5 +732,57 @@ namespace Nui::Tests
         ASSERT_EQ(Nui::val::global("document")["body"]["children"][0]["children"]["length"].as<long long>(), 1);
         EXPECT_EQ(
             Nui::val::global("document")["body"]["children"][0]["children"][0]["attributes"]["cx"].as<long long>(), 10);
+    }
+
+    TEST_F(TestRender, CanUseUnconditionalRendererFunction)
+    {
+        using namespace Nui::Elements;
+        using namespace Nui::Attributes;
+        using div = Nui::Elements::div;
+
+        render(body{id = "body"}([]() -> Nui::ElementRenderer {
+            return div{
+                id = "inner",
+            }();
+        }));
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"]["length"].as<long long>(), 1);
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["attributes"]["id"].as<std::string>(), "inner");
+    }
+
+    TEST_F(TestRender, AttributesArePresentOnRangeChildWithRendererFunctionChildren)
+    {
+        using namespace Nui::Elements;
+        using namespace Nui::Attributes;
+        using div = Nui::Elements::div;
+        using span = Nui::Elements::span;
+
+        Nui::Observed<std::vector<std::string>> range{std::vector<std::string>{"A", "B", "C", "D"}};
+
+        render(body{
+            class_ = "range-parent",
+        }(range.map([](long long, auto const& element) {
+            return div{
+                class_ = "range-child",
+                id = element,
+            }([]() -> Nui::ElementRenderer {
+                return span{
+                    class_ = "range-child-child",
+                }();
+            });
+        })));
+
+        auto children = Nui::val::global("document")["body"]["children"].as<Nui::Tests::Engine::Array>();
+        ASSERT_EQ(children.size(), range.value().size());
+
+        for (size_t i = 0; i < children.size(); ++i)
+        {
+            auto& child = children[i];
+            std::string expectedId = range.value()[i];
+            std::string expectedClass = "range-child";
+
+            EXPECT_EQ(child["attributes"]["id"].as<std::string>(), expectedId);
+            EXPECT_EQ(child["attributes"]["class"].as<std::string>(), expectedClass);
+        }
     }
 }
