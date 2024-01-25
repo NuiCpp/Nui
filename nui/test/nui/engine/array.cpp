@@ -107,8 +107,9 @@ namespace Nui::Tests::Engine
             printIndent(indent + 1);
             allValues[(*it)->uid()].print(indent + 1, referenceStack);
         }
+        std::cout << "\n";
         printIndent(indent);
-        std::cout << "\n]";
+        std::cout << "]";
     }
 
     void Array::updateArrayObject()

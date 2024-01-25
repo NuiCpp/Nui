@@ -55,6 +55,8 @@ namespace Nui::Tests::Engine
             auto elem = createBasicElement(tag);
             elem.set("nodeType", int{1});
             elem.set("appendChild", Function{[self = elem](Nui::val value) -> Nui::val {
+                         if (value.hasOwnProperty("parentNode"))
+                             value["parentNode"].call<void>("removeChild", value);
                          value.set("parentNode", self);
                          self["childNodes"].template as<Array&>().push_back(value.handle());
                          return self["children"].template as<Array&>().push_back(value.handle());
