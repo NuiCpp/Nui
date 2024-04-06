@@ -156,24 +156,24 @@ namespace Nui::Attributes
         auto operator=(char const* value)
         {
             return StylePropertyImpl{
-                [name = std::string{name}, value = std::string{value}]() {
-                    return name + ":" + value;
+                [name_ = std::string{name}, value = std::string{value}]() {
+                    return name_ + ":" + value;
                 },
                 nullptr};
         }
         auto operator=(std::string value)
         {
             return StylePropertyImpl{
-                [name = std::string{name}, value = std::move(value)]() {
-                    return name + ":" + value;
+                [name_ = std::string{name}, value = std::move(value)]() {
+                    return name_ + ":" + value;
                 },
                 nullptr};
         }
         auto operator=(Observed<std::string>& observedValue)
         {
             return StylePropertyImpl{
-                [name = std::string{name}, &observedValue]() {
-                    return name + ":" + observedValue.value();
+                [name_ = std::string{name}, &observedValue]() {
+                    return name_ + ":" + observedValue.value();
                 },
                 observedValue};
         }
@@ -181,8 +181,8 @@ namespace Nui::Attributes
         auto operator=(ObservedValueCombinatorWithGenerator<FunctionT, ArgsT...>&& combinator)
         {
             return StylePropertyImpl{
-                [name = std::string{name}, gen = combinator.generator()]() {
-                    return name + ":" + gen();
+                [name_ = std::string{name}, gen = combinator.generator()]() {
+                    return name_ + ":" + gen();
                 },
                 std::move(combinator)};
         }

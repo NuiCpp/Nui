@@ -44,8 +44,8 @@ namespace Nui
     };
     struct Renderer
     {
-        RendererType type;
-        std::size_t metadata;
+        RendererType type{RendererType::Append};
+        std::size_t metadata{0};
     };
     auto renderElement(Renderer const& gen, auto& element, auto const& htmlElement)
     {
