@@ -39,7 +39,7 @@ function(nui_add_emscripten_target)
 
     cmake_parse_arguments(
         NUI_ADD_EMSCRIPTEN_TARGET_ARGS
-        "DISABLE_BIN2HPP;DISABLE_PARCEL_ADAPTER"
+        "DISABLE_BIN2HPP;DISABLE_PARCEL_ADAPTER;ENABLE_TAILWIND;ENABLE_DOTENV"
         "TARGET;PREJS;SOURCE_DIR"
         "CMAKE_OPTIONS"
         ${ARGN}
@@ -105,6 +105,25 @@ function(nui_add_emscripten_target)
         set(BIN2HPP_COMMAND COMMAND cmake -E true)
     endif()
 
+    if (NUI_ADD_EMSCRIPTEN_TARGET_ARGS_ENABLE_DOTENV)
+        set(ENABLE_DOTENV on)
+    else()
+        set(ENABLE_DOTENV off)
+    endif()
+
+    if (NUI_ADD_EMSCRIPTEN_TARGET_ARGS_ENABLE_TAILWIND)
+        set(COPY_TAILWIND_CONFIG_COMMAND COMMAND cmake -E copy "${SOURCE_DIR}/tailwind.config.js" "${SOURCE_DIR}/.postcssrc" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}")
+        set(ENABLE_DOTENV on)
+    else()
+        set(COPY_TAILWIND_CONFIG_COMMAND COMMAND cmake -E true)
+    endif()
+
+    if (ENABLE_DOTENV AND ${ENABLE_DOTENV})
+        set(PATCH_DOTENV_COMMAND COMMAND $<TARGET_FILE:patch-dotenv> "${SOURCE_DIR}/.env" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/.env" "${SOURCE_DIR}")
+    else()
+        set(PATCH_DOTENV_COMMAND COMMAND cmake -E true)
+    endif()
+
     include(ExternalProject)
     ExternalProject_Add(
         "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten"
@@ -121,6 +140,10 @@ function(nui_add_emscripten_target)
                 "${SOURCE_DIR}"
         # copy over package.json and fill parcel options that do not exist on it
         ${BUILD_COMMAND}
+        # patch .env file if needed
+        ${PATCH_DOTENV_COMMAND}
+        # copy tailwind config if needed
+        ${COPY_TAILWIND_CONFIG_COMMAND}
         # emscripten make
         COMMAND cmake --build "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}" --target ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
         # convert result to header file containing the page

@@ -44,7 +44,7 @@ void createPackageJsonIfMissing(std::filesystem::path const& where, std::string 
     }
 }
 
-void copyParcelRc(std::filesystem::path const& from, std::filesystem::path const& to)
+void copyIfNotExists(std::filesystem::path const& from, std::filesystem::path const& to)
 {
     if (std::filesystem::exists(from))
         std::filesystem::copy_file(from, to, std::filesystem::copy_options::overwrite_existing);
@@ -58,15 +58,16 @@ int main(int argc, char** argv)
     {
         std::cout << "Expected 3 argument: <package_in.json> <package_out.json> <target-name>, but got " << argc - 1
                   << "\n";
-        std::cout << "Usage: " << argv[0] << " <package_in.json> <package_out.json> <target-name>"
-                  << "\n";
+        std::cout << "Usage: " << argv[0] << " <package_in.json> <package_out.json> <target-name>" << "\n";
         return 1;
     }
 
     createPackageJsonIfMissing(argv[1], argv[3]);
-    copyParcelRc(
+
+    copyIfNotExists(
         std::filesystem::path{argv[1]}.parent_path() / ".parcelrc",
         std::filesystem::path{argv[2]}.parent_path() / ".parcelrc");
+
     std::ifstream ifs(argv[1], std::ios_base::binary);
     if (!ifs.is_open())
     {
