@@ -169,6 +169,13 @@ namespace Nui
             callRemoteImpl(name);
         }
 
+        // alias for callRemote
+        template <typename... Args>
+        void call(std::string const& name, Args&&... args) const
+        {
+            callRemote(name, std::forward<Args>(args)...);
+        }
+
         /**
          * @brief Enables file dialog functionality
          */
