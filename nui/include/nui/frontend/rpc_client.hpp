@@ -179,6 +179,34 @@ namespace Nui
         }
 
         /**
+         * @brief Get a callable remote function and call it immediately.
+         *
+         * @param name Name of the function.
+         * @param args Arguments to pass to the function.
+         * @return auto The result of the function.
+         */
+        template <typename... ArgsT>
+        static auto call(std::string name, ArgsT&&... args)
+        {
+            return getRemoteCallable(std::move(name))(std::forward<ArgsT>(args)...);
+        }
+
+        /**
+         * @brief Get a callable remote function and call it immediately with a callback.
+         *
+         * @param name Name of the function.
+         * @param cb The callback function.
+         * @param args Arguments to pass to the function.
+         * @return auto The result of the function.
+         */
+        template <typename FunctionT, typename... ArgsT>
+        static auto callWithBackChannel(std::string name, FunctionT&& cb, ArgsT&&... args)
+        {
+            return getRemoteCallableWithBackChannel(std::move(name), std::forward<FunctionT>(cb))(
+                std::forward<ArgsT>(args)...);
+        }
+
+        /**
          * @brief Get a callable remote function and register a temporary callable for a response.
          */
         template <typename FunctionT>
