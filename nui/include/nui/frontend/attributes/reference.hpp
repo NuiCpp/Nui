@@ -19,7 +19,7 @@ namespace Nui::Attributes
         requires std::invocable<T, Nui::val&&>
         Attribute onMaterialize(T&& func) const
         {
-            return operator=([&func](std::weak_ptr<Dom::BasicElement>&& element) {
+            return operator=([func = std::forward<T>(func)](std::weak_ptr<Dom::BasicElement>&& element) {
                 func(element.lock()->val());
             });
         }
