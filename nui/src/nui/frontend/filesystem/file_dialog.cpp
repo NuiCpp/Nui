@@ -62,7 +62,6 @@ namespace Nui::FileDialog
         Nui::val opts = Nui::val::object();
         convertOptions(opts, options);
         const auto id = RpcClient::registerFunctionOnce([onResult = std::move(onResult)](Nui::val const& param) {
-            Console::log(param);
             if (param.typeOf().as<std::string>() == "null")
                 onResult(std::nullopt);
             else

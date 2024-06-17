@@ -31,6 +31,14 @@ namespace Nui
             if (!wasMoved_ && onDestroy_)
                 onDestroy_();
         }
+        void trigger()
+        {
+            if (!wasMoved_ && onDestroy_)
+            {
+                onDestroy_();
+                onDestroy_ = nullptr;
+            }
+        }
 
       private:
         bool wasMoved_;
