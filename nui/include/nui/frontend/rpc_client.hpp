@@ -288,11 +288,31 @@ namespace Nui
 
         struct AutoUnregister : public OnDestroy
         {
+            AutoUnregister()
+                : OnDestroy{[]() {}}
+            {}
             AutoUnregister(std::string name)
                 : OnDestroy{[name = std::move(name)]() {
                     unregisterFunction(name);
                 }}
             {}
+            ~AutoUnregister() = default;
+
+            AutoUnregister(AutoUnregister const&) = delete;
+            AutoUnregister(AutoUnregister&& other)
+                : OnDestroy{std::move(other)}
+            {}
+            AutoUnregister& operator=(AutoUnregister const&) = delete;
+            AutoUnregister& operator=(AutoUnregister&& other)
+            {
+                OnDestroy::operator=(std::move(other));
+                return *this;
+            }
+
+            void reset()
+            {
+                trigger();
+            }
         };
 
         template <typename FunctionT>

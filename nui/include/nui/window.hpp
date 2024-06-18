@@ -363,7 +363,6 @@ namespace Nui
         void setConsoleOutput(bool active);
 #endif
 
-      private:
         void runInJavascriptThread(std::function<void()>&& func);
 
       public:

@@ -64,7 +64,7 @@ namespace Nui::Elements
                         Nui::ElementRenderer renderer;
                         return !((cases.value == observed.value() ? (renderer = cases.renderer, true) : false) || ...)
                         ? [](auto&, auto const&) -> std::shared_ptr<Dom::Element> {
-                            Console::log("Nui::switch_ error! No case matched and no default case was provided!");
+                            Console::warn("Nui::switch_ error! No case matched and no default case was provided!");
                             return nullptr;
                         } : renderer;
                     });
