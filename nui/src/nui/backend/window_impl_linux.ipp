@@ -20,7 +20,7 @@ namespace Nui::Impl::Linux
 
         void gcResponses()
         {
-            std::lock_guard<std::mutex> asyncResponsesGuard{this->asyncResponsesGuard};
+            std::lock_guard<std::mutex> lock{this->asyncResponsesGuard};
             std::vector<int> removals{};
             for (auto it = asyncResponses.begin(); it != asyncResponses.end(); ++it)
             {
@@ -184,7 +184,7 @@ extern "C" {
         webkit_uri_scheme_request_finish_with_response(request, asyncResponse.response.get());
     }
 
-    void uriSchemeDestroyNotify(void* userData)
+    void uriSchemeDestroyNotify(void*)
     {
         // Useless, because called when everything is already destroyed
     }

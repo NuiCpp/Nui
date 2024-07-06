@@ -56,11 +56,11 @@ namespace Nui
 #ifdef NUI_BACKEND
     struct CustomSchemeRequest
     {
-        std::string scheme;
-        std::function<std::string const&()> getContent;
-        std::unordered_multimap<std::string, std::string> headers;
-        std::string uri;
-        std::string method;
+        std::string scheme{};
+        std::function<std::string const&()> getContent{};
+        std::unordered_multimap<std::string, std::string> headers{};
+        std::string uri{};
+        std::string method{};
 
         std::optional<Url> parseUrl() const;
 
@@ -72,9 +72,9 @@ namespace Nui
     {
         int statusCode;
         /// WINDOWS ONLY
-        std::string reasonPhrase;
-        std::unordered_multimap<std::string, std::string> headers;
-        std::string body;
+        std::string reasonPhrase{};
+        std::unordered_multimap<std::string, std::string> headers{};
+        std::string body{};
     };
 
     struct CustomScheme
