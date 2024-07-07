@@ -33,7 +33,7 @@ target_link_libraries(
         fmt
         webview-iface
         portable_file_dialogs
-        nlohmann_json
+        nlohmann_json::nlohmann_json
         roar
         Boost::boost
 )

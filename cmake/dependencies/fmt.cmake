@@ -1,14 +1,14 @@
-option(NUI_FETCH_FMT "Fetch fmt" ON)
+option(NUI_FIND_FMT "Find fmt first before fetch content" ON)
+option(NUI_FETCH_FMT "Try FetchContent for fmt" ON)
 set(NUI_FMT_GIT_REPOSITORY "https://github.com/fmtlib/fmt.git" CACHE STRING "fmt git repository")
-set(NUI_FMT_GIT_TAG "4e8640ed90ac8751d4a8ca500b893cc8c4bb9668" CACHE STRING "fmt git tag")
+set(NUI_FMT_GIT_TAG "7a8b54a0ef7ca1791b0a5491b6e0593e1cf2dd5e" CACHE STRING "fmt git tag")
 
-if (NUI_FETCH_FMT)
-    include(FetchContent)
-    FetchContent_Declare(
-        fmt
-        GIT_REPOSITORY ${NUI_FMT_GIT_REPOSITORY}
-        GIT_TAG        ${NUI_FMT_GIT_TAG}
-    )
+include("${CMAKE_CURRENT_LIST_DIR}/../fetcher.cmake")
 
-    FetchContent_MakeAvailable(fmt)
-endif()
+nui_fetch_dependency(
+    LIBRARY_NAME fmt
+    FIND ${NUI_FIND_FMT}
+    FETCH ${NUI_FETCH_FMT}
+    GIT_REPOSITORY ${NUI_FMT_GIT_REPOSITORY}
+    GIT_TAG ${NUI_FMT_GIT_TAG}
+)
