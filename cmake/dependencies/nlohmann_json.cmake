@@ -1,6 +1,6 @@
 option(NUI_FETCH_NLOHMANN_JSON "Fetch nlohmann_json" ON)
 set(NUI_NLOHMANN_JSON_GIT_REPOSITORY "https://github.com/nlohmann/json.git" CACHE STRING "nlohmann_json git repository")
-set(NUI_NLOHMANN_JSON_GIT_TAG "9dfa7226693012ed5bcf5ab3bc5d8e69d58006ab" CACHE STRING "nlohmann_json git tag")
+set(NUI_NLOHMANN_JSON_GIT_TAG "8c391e04fe4195d8be862c97f38cfe10e2a3472e" CACHE STRING "nlohmann_json git tag")
 
 if(NUI_FETCH_NLOHMANN_JSON)
     include(FetchContent)

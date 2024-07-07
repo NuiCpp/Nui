@@ -13,9 +13,5 @@ if (NUI_FETCH_BINARYEN)
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         URL "${NUI_BINARYEN_URL}"
     )
-    FetchContent_GetProperties(binaryen_release)
-    if (binaryen_release_POPULATED)
-    else()
-        FetchContent_Populate(binaryen_release)
-    endif()
+    FetchContent_MakeAvailable(binaryen_release)
 endif()

@@ -4,7 +4,7 @@ add_library(Nui::frontend ALIAS nui-frontend)
 target_include_directories(
     nui-frontend
     PUBLIC
-        ${CMAKE_CURRENT_LIST_DIR}/../../../include
+        "${CMAKE_CURRENT_LIST_DIR}/../../../include"
 )
 target_link_libraries(
     nui-frontend
