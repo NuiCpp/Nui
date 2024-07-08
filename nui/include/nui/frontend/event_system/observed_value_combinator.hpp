@@ -141,6 +141,7 @@ namespace Nui
     ObservedValueCombinator(ObservedValues const&...) -> ObservedValueCombinator<ObservedValues...>;
 
     template <typename... ObservedValues>
+    requires(Detail::IsObserved<ObservedValues>::value && ...)
     ObservedValueCombinator<ObservedValues...> observe(ObservedValues const&... observedValues)
     {
         return ObservedValueCombinator(observedValues...);
