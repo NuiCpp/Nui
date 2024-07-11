@@ -99,11 +99,16 @@ function(nui_enable_inline)
         set(nui_enable_inline_ARGS_UNPACKED_MODE off)
     endif()
 
+    set(NUI_DEFER_INLINE_SCRIPTS_TAG "nodefer")
+    if (NUI_DEFER_INLINE_SCRIPTS)
+        set(NUI_DEFER_INLINE_SCRIPTS_TAG "defer")
+    endif()
+
     if (NOT ${nui_enable_inline_ARGS_UNPACKED_MODE})
         add_custom_command(
             OUTPUT
                 "${CMAKE_BINARY_DIR}/index_inserts.html"
-            COMMAND ${NUI_INLINE_INJECTOR_TARGET_FILE} "${CMAKE_BINARY_DIR}/module_${nui_enable_inline_ARGS_TARGET}/bin/index.html" ${INLINE_IMPORTS_SCRIPTS} ${INLINE_IMPORTS_STYLES}
+            COMMAND ${NUI_INLINE_INJECTOR_TARGET_FILE} "${CMAKE_BINARY_DIR}/module_${nui_enable_inline_ARGS_TARGET}/bin/index.html" ${INLINE_IMPORTS_SCRIPTS} ${INLINE_IMPORTS_STYLES} ${NUI_DEFER_INLINE_SCRIPTS_TAG}
             DEPENDS
                 ${INLINE_IMPORTS_SCRIPTS}
                 ${INLINE_IMPORTS_STYLES}
