@@ -18,11 +18,16 @@ function(nui_prepare_emscripten_target)
         set(NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_UNPACKED_MODE off)
     endif()
 
+    set(NUI_DEFER_INLINE_SCRIPTS_TAG "nodefer")
+    if (NUI_DEFER_INLINE_SCRIPTS)
+        set(NUI_DEFER_INLINE_SCRIPTS_TAG "defer")
+    endif()
+
     set(INLINER_COMMAND "")
     if (NOT NO_INLINE)
         nui_enable_inline(TARGET ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET} RELATIVE_TO ${CMAKE_CURRENT_SOURCE_DIR})
         if (NOT NO_INLINE_INJECT)
-            set(INLINER_COMMAND COMMAND ${NUI_INLINE_INJECTOR_TARGET_FILE} "${CMAKE_BINARY_DIR}/static/index.html" "${CMAKE_BINARY_DIR}/nui-inline/inline_imports.js" "${CMAKE_BINARY_DIR}/nui-inline/inline_imports.css")
+            set(INLINER_COMMAND COMMAND ${NUI_INLINE_INJECTOR_TARGET_FILE} "${CMAKE_BINARY_DIR}/static/index.html" "${CMAKE_BINARY_DIR}/nui-inline/inline_imports.js" "${CMAKE_BINARY_DIR}/nui-inline/inline_imports.css" ${NUI_DEFER_INLINE_SCRIPTS_TAG})
         endif()
     endif()
 

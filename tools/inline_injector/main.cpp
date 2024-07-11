@@ -21,15 +21,18 @@ std::string readFile(const std::filesystem::path& path)
 
 int main(int argc, char** argv)
 {
-    if (argc != 4)
+    if (argc != 5)
     {
-        std::cout << "Expected 3 argument: <index.html> <import_scripts> <import_styles>, but got " << argc - 1 << "\n";
+        std::cout
+            << "Expected 4 argument: <index.html> <import_scripts> <import_styles> <import_scripts_defer>, but got "
+            << argc - 1 << "\n";
         return 1;
     }
 
     const auto index = std::filesystem::path{argv[1]};
     const auto importScripts = std::filesystem::path{argv[2]};
     const auto importStyles = std::filesystem::path{argv[3]};
+    const auto importScriptsDefer = std::string{argv[4]} == "defer" ? true : false;
 
     std::string indexHtml;
     try
@@ -48,7 +51,9 @@ int main(int argc, char** argv)
     const auto binIndex =
         std::filesystem::relative(index.parent_path() / ".." / "bin" / "index.js", index.parent_path());
 
-    const std::string importScriptsHtml = "\t<script type=\"module\" defer>\n\t\timport \"" +
+    const std::string deferTag = importScriptsDefer ? " defer" : "";
+
+    const std::string importScriptsHtml = "\t<script type=\"module\" " + deferTag + ">\n\t\timport \"" +
         relativeImportScriptsFile.generic_string() + "\";\n\t</script>\n";
     const std::string importStylesHtml =
         "\t<style>\n\t\t@import \"" + relativeImportStylesFile.generic_string() + "\";\n\t</style>\n";
@@ -63,13 +68,30 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    const auto headBegin = indexHtml.find("<head>");
+    if (headBegin == std::string::npos)
+    {
+        std::cout << "Could not find <head> in " << index << "\n";
+        return 1;
+    }
+
+    auto insertPoint = headEnd;
+
+    const std::string insertionHint = "<!-- Nui Inline Insertion Slot -->";
+    const auto insertHintPos = indexHtml.find(insertionHint);
+    if (insertHintPos != std::string::npos)
+    {
+        // insert after the hint:
+        insertPoint = insertHintPos + insertionHint.size();
+    }
+
     // insert importScriptsHtml before headEnd:
-    indexHtml.insert(headEnd, importScriptsHtml);
+    indexHtml.insert(insertPoint, importScriptsHtml);
 
     // insert importStylesHtml before headEnd:
-    indexHtml.insert(headEnd, importStylesHtml);
+    indexHtml.insert(insertPoint, importStylesHtml);
 
-    // insert importBinIndexHtml before headEnd:
+    // insert importBinIndexHtml before headEnd (always):
     if (indexHtml.find(binIndex.generic_string()) == std::string::npos)
         indexHtml.insert(headEnd, importBinIndexHtml);
 

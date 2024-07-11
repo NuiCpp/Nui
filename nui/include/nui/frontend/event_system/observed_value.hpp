@@ -1114,6 +1114,38 @@ namespace Nui
             return *this;
         }
     };
+    template <typename... Parameters>
+    class Observed<std::list<Parameters...>> : public ObservedContainer<std::list<Parameters...>>
+    {
+      public:
+        using ObservedContainer<std::list<Parameters...>>::ObservedContainer;
+        using ObservedContainer<std::list<Parameters...>>::operator=;
+        using ObservedContainer<std::list<Parameters...>>::operator->;
+        static constexpr auto isRandomAccess = false;
+
+      public:
+        Observed()
+            : ObservedContainer<std::list<Parameters...>>{RangeEventContext{0, true}}
+        {}
+        template <typename T = std::list<Parameters...>>
+        explicit Observed(T&& t)
+            : ObservedContainer<std::list<Parameters...>>{
+                  std::forward<T>(t),
+                  RangeEventContext{static_cast<long>(t.size()), true}}
+        {}
+
+        Observed<std::list<Parameters...>>& operator=(std::list<Parameters...> const& contained)
+        {
+            ObservedContainer<std::list<Parameters...>>::operator=(contained);
+            return *this;
+        }
+        Observed<std::list<Parameters...>>& operator=(std::list<Parameters...>&& contained)
+        {
+            ObservedContainer<std::list<Parameters...>>::operator=(std::move(contained));
+            return *this;
+        }
+    };
+
     template <>
     class Observed<void> : public ObservedBase
     {
@@ -1165,8 +1197,8 @@ namespace Nui
         return observedValue;
     }
     template <typename T>
-    inline auto operator--(ModifiableObserved<T>& observedValue, int)
-        -> Detail::PickFirst_t<T, decltype(std::declval<T>()--)>
+    inline auto
+    operator--(ModifiableObserved<T>& observedValue, int) -> Detail::PickFirst_t<T, decltype(std::declval<T>()--)>
     {
         auto tmp = observedValue.value();
         --observedValue.value();
