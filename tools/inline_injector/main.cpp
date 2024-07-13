@@ -61,7 +61,7 @@ int main(int argc, char** argv)
         "\t<script type=\"module\" defer>\n\t\timport \"" + binIndex.generic_string() + "\";\n\t</script>\n";
 
     // find end of header </head> from behind in indexHtml:
-    const auto headEnd = indexHtml.rfind("</head>");
+    auto headEnd = indexHtml.rfind("</head>");
     if (headEnd == std::string::npos)
     {
         std::cout << "Could not find </head> in " << index << "\n";
@@ -90,6 +90,13 @@ int main(int argc, char** argv)
 
     // insert importStylesHtml before headEnd:
     indexHtml.insert(insertPoint, importStylesHtml);
+
+    headEnd = indexHtml.rfind("</head>");
+    if (headEnd == std::string::npos)
+    {
+        std::cout << "Could not find </head> in " << index << "\n";
+        return 1;
+    }
 
     // insert importBinIndexHtml before headEnd (always):
     if (indexHtml.find(binIndex.generic_string()) == std::string::npos)
