@@ -233,4 +233,38 @@ namespace Nui::Tests
         eventContext.executeActiveEventsImmediately();
         EXPECT_EQ(calledWith, 42);
     }
+
+    TEST_F(TestEvents, ModifyNowIncludesEventExecution)
+    {
+        Observed<int> obs;
+
+        int calledWith = 77;
+        listen(globalEventContext, obs, [&calledWith](int const& value) -> bool {
+            calledWith = value;
+            return true;
+        });
+
+        obs.value() = 42;
+        obs.modifyNow();
+
+        EXPECT_EQ(calledWith, 42);
+    }
+
+    TEST_F(TestEvents, ModifyNowIncludesEventExecutionWithCustomContext)
+    {
+        EventContext eventContext;
+
+        Observed<int> obs{&eventContext};
+
+        int calledWith = 77;
+        listen(eventContext, obs, [&calledWith](int const& value) -> bool {
+            calledWith = value;
+            return true;
+        });
+
+        obs.value() = 42;
+        obs.modifyNow();
+
+        EXPECT_EQ(calledWith, 42);
+    }
 }
