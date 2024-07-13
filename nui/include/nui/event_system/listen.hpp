@@ -72,4 +72,16 @@ namespace Nui
     {
         return listen(eventContext, obs, std::function(std::move(onEvent)));
     }
+
+    template <typename ValueT, typename FunctionT>
+    void listen(std::shared_ptr<Observed<ValueT>> const& obs, FunctionT onEvent)
+    {
+        return listen(globalEventContext, obs, std::function(std::move(onEvent)));
+    }
+
+    template <typename ValueT, typename FunctionT>
+    void listen(Observed<ValueT> const& obs, FunctionT onEvent)
+    {
+        return listen(globalEventContext, obs, std::function(std::move(onEvent)));
+    }
 }
