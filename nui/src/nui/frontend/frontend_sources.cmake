@@ -5,7 +5,7 @@ set(NUI_FRONTEND_SOURCES_RELATIVE
     attributes/impl/attribute.cpp
     components/dialog.cpp
     dom/dom.cpp
-    event_system/event_context.cpp
+    ../event_system/event_context.cpp
     extensions/make_resizeable.cpp
     filesystem/file_dialog.cpp
     filesystem/file.cpp
