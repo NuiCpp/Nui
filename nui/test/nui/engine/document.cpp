@@ -7,6 +7,7 @@
 #include "global_object.hpp"
 
 #include <iostream>
+#include <algorithm>
 
 namespace Nui::Tests::Engine
 {

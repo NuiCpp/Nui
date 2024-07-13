@@ -9,6 +9,7 @@ target_include_directories(
 target_link_libraries(
     nui-frontend
     PUBLIC
+        nui-events
         boost_preprocessor
         libcpppre
         mplex

@@ -12,6 +12,7 @@ add_library(nui-backend
         rpc_addons/timer.cpp
         rpc_addons/screen.cpp
         rpc_addons/environment_variables.cpp
+        ../event_system/event_context.cpp
 )
 add_library(Nui::backend ALIAS nui-backend)
 target_include_directories(

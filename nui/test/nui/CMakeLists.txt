@@ -12,6 +12,7 @@ target_link_libraries(nui-frontend-mocked PUBLIC
     mplex
     interval-tree
     Boost::boost
+    nui-events
 )
 target_compile_definitions(nui-frontend-mocked PRIVATE __EMSCRIPTEN__)
 target_compile_features(nui-frontend-mocked PUBLIC cxx_std_20)
