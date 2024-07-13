@@ -32,4 +32,50 @@ Checks: '-*,
         -hicpp-vararg,
         -hicpp-member-init,
     misc-*,
-        -misc-non-private-member-variables-in-classes,
+        -misc-non-private-member-variables-in-classes'
+
+# Disabled Options Explanation:
+# CppCoreGuidelines:
+#   cppcoreguidelines-pro-bounds-constant-array-index: requires use of guideline support library
+#   cppcoreguidelines-pro-type-vararg: Mostly triggers for functions we didn't write in acceptable
+#       situations.
+#   cppcoreguidelines-pro-type-member-init: Even though this rule is useful, it cannot be uphold in
+#       some cases with generated constructors and would break a lot of code.
+#   cppcoreguidelines-non-private-member-variables-in-classes: This rule cannot be followed because
+#       of testing requirements to make some members protected.
+
+# Llvm:
+#   llvm-header-guard: pragma once allowed
+#   llvm-include-order: Clang format sorts the includes, should maybe fixed in clang-format file.
+
+# Modernize:
+#   modernize-use-nodiscard: wants nodiscard for every function.
+#   modernize-avoid-c-arrays: duplicate rule.
+#   modernize-use-using: Cannot apply to SDK.
+
+# Performance:
+#   performance-noexcept-move-constructor: This is cannot be generally applied and is
+#       potentially dangerous if applied wrongly.
+#       Performance improvement from this is questionable and less relevant.
+
+# Readability:
+#   readability-redundant-member-init: Initializing all members of a class even if unnecessary is
+#       not bad style
+#   readability-uppercase-literal-suffix
+#   readability-else-after-return: Rule cannot be followed
+#   readability-named-parameter: Breaks builds with unused variables
+#   readability-redundant-access-specifiers: Redundant access specifiers (public, private) can
+#       actually increase readability by introducing visual barriers
+#   readability-magic-numbers: cppcoreguidelines has a rule for it, no duplicate needed.
+
+# Hicpp:
+#   hicpp-uppercase-literal-suffix
+#   hicpp-noexcept-move: This cannot be generally applied and is potentially dangerous if applied
+#       wrongly. Performance improvement from this is questionable and less relevant.
+#   hicpp-vararg: Mostly triggers for functions we didn't write in acceptable situations.
+#   hicpp-member-init: Even though this rule is useful, it cannot be uphold in some cases with
+#       generated constructors and would break a lot of code.
+#   hicpp-avoid-c-arrays: duplicate rule.
+
+# Misc:
+#   misc-non-private-member-variables-in-classes: Public members should be allowed in structs

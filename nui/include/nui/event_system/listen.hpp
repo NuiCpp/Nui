@@ -1,38 +1,75 @@
 #pragma once
 
+#include <nui/event_system/event_context.hpp>
+#include <nui/event_system/observed_value.hpp>
+
 #include <utility>
 #include <memory>
 #include <functional>
 
-template <typename EventContextT, typename ValueT>
-void listenUnsafe(
-    EventContextT& eventContext,
-    Nui::ObservedValue<ValueT> const& obs,
-    std::function<bool(ValueT const&)> onEvent)
+namespace Nui
 {
-    const auto eventId = eventContext.registerEvent(Nui::Event{
-        [obs = Nui::Detail::CopyableObservedWrap{obs}, onEvent = std::move(onEvent)](auto eventId) {
-            return onEvent(obs.get());
-        },
-        []() {
-            return true;
-        }});
-    obs.attachEvent(eventId);
-}
+    template <typename ValueT>
+    void listen(EventContext& eventContext, Observed<ValueT> const& obs, std::function<bool(ValueT const&)> onEvent)
+    {
+        const auto eventId = eventContext.registerEvent(Event{
+            [obs = Detail::CopyableObservedWrap{obs}, onEvent = std::move(onEvent)](auto) {
+                return onEvent(obs.value());
+            },
+            []() {
+                return true;
+            }});
+        obs.attachEvent(eventId);
+    }
 
-template <typename EventContextT, typename ValueT>
-void listen(
-    EventContextT& eventContext,
-    std::shared_ptr<Nui::ObservedValue<ValueT>> const& obs,
-    std::function<bool(ValueT const&)> onEvent)
-{
-    const auto id = eventContext.registerEvent(Nui::Event{
-        [weak = std::weak_ptr<Nui::ObservedValue<ValueT>>{obs}, onEvent = std::move(onEvent)](auto eventId) {
-            if (auto obs = weak.lock(); obs)
-                return onEvent(obs->get());
-            return false;
-        },
-        [weak = std::weak_ptr<Nui::ObservedValue<ValueT>>{obs}]() {
-            return !weak.expired();
-        }});
+    template <typename ValueT>
+    void listen(EventContext& eventContext, Observed<ValueT> const& obs, std::function<void(ValueT const&)> onEvent)
+    {
+        return listen(eventContext, obs, [onEvent = std::move(onEvent)](ValueT const& value) {
+            onEvent(value);
+            return true;
+        });
+    }
+
+    template <typename ValueT, typename FunctionT>
+    void listen(EventContext& eventContext, Observed<ValueT> const& obs, FunctionT onEvent)
+    {
+        return listen(eventContext, obs, std::function(std::move(onEvent)));
+    }
+
+    template <typename ValueT>
+    void listen(
+        EventContext& eventContext,
+        std::shared_ptr<Observed<ValueT>> const& obs,
+        std::function<bool(ValueT const&)> onEvent)
+    {
+        const auto eventId = eventContext.registerEvent(Event{
+            [weak = std::weak_ptr<Observed<ValueT>>{obs}, onEvent = std::move(onEvent)](auto) {
+                if (auto obs = weak.lock(); obs)
+                    return onEvent(obs->value());
+                return false;
+            },
+            [weak = std::weak_ptr<Observed<ValueT>>{obs}]() {
+                return !weak.expired();
+            }});
+        obs->attachEvent(eventId);
+    }
+
+    template <typename ValueT>
+    void listen(
+        EventContext& eventContext,
+        std::shared_ptr<Observed<ValueT>> const& obs,
+        std::function<void(ValueT const&)> onEvent)
+    {
+        return listen(eventContext, obs, [onEvent = std::move(onEvent)](ValueT const& value) {
+            onEvent(value);
+            return true;
+        });
+    }
+
+    template <typename ValueT, typename FunctionT>
+    void listen(EventContext& eventContext, std::shared_ptr<Observed<ValueT>> const& obs, FunctionT onEvent)
+    {
+        return listen(eventContext, obs, std::function(std::move(onEvent)));
+    }
 }

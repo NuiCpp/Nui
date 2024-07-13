@@ -14,17 +14,27 @@
 #include <utility>
 #include <deque>
 #include <string>
+#include <cassert>
 
 namespace Nui
 {
+    struct CustomEventContextFlag_t
+    {};
+    inline constexpr CustomEventContextFlag_t CustomEventContextFlag{};
+
     class ObservedBase
     {
       public:
-        ObservedBase() = default;
+        explicit ObservedBase(EventContext* ctx)
+            : eventContext_{ctx}
+            , attachedEvents_{}
+            , attachedOneshotEvents_{}
+        {}
         virtual ~ObservedBase() = default;
         ObservedBase(ObservedBase const&) = delete;
         ObservedBase(ObservedBase&& other)
-            : attachedEvents_{}
+            : eventContext_{other.eventContext_}
+            , attachedEvents_{}
             , attachedOneshotEvents_{}
         {
             // events are outside the value logic of the observed class. the contained value is moved, but the events
@@ -37,6 +47,8 @@ namespace Nui
         ObservedBase& operator=(ObservedBase const&) = delete;
         ObservedBase& operator=(ObservedBase&& other)
         {
+            eventContext_ = other.eventContext_;
+            other.eventContext_ = nullptr;
             for (auto& event : other.attachedEvents_)
                 attachedEvents_.push_back(std::move(event));
             for (auto& event : other.attachedOneshotEvents_)
@@ -83,27 +95,32 @@ namespace Nui
 
         virtual void update(bool /*force*/ = false) const
         {
+            assert(eventContext_ != nullptr);
+
             for (auto& event : attachedEvents_)
             {
-                auto activationResult = globalEventContext.activateEvent(event);
+                auto activationResult = eventContext_->activateEvent(event);
                 if (activationResult.found == false)
                     event = EventRegistry::invalidEventId;
             }
             for (auto& event : attachedOneshotEvents_)
-                globalEventContext.activateEvent(event);
+                eventContext_->activateEvent(event);
             attachedOneshotEvents_.clear();
             attachedEvents_.erase(
                 std::remove(std::begin(attachedEvents_), std::end(attachedEvents_), EventRegistry::invalidEventId),
                 std::end(attachedEvents_));
         }
 
-        void update(EventContext& ctx, bool force = false)
+        void updateNow(bool force = false) const
         {
+            assert(eventContext_ != nullptr);
+
             update(force);
-            ctx.executeActiveEventsImmediately();
+            eventContext_->executeActiveEventsImmediately();
         }
 
       protected:
+        EventContext* eventContext_;
         mutable std::vector<EventContext::EventIdType> attachedEvents_;
         mutable std::vector<EventContext::EventIdType> attachedOneshotEvents_;
     };
@@ -120,12 +137,20 @@ namespace Nui
           public:
             explicit ModificationProxy(ModifiableObserved& observed)
                 : observed_{observed}
+                , now_{false}
+            {}
+            explicit ModificationProxy(ModifiableObserved& observed, bool now)
+                : observed_{observed}
+                , now_{now}
             {}
             ~ModificationProxy()
             {
                 try
                 {
-                    observed_.update(true);
+                    if (now_)
+                        observed_.updateNow(true);
+                    else
+                        observed_.update(true);
                 }
                 catch (...)
                 {
@@ -151,10 +176,14 @@ namespace Nui
 
           private:
             ModifiableObserved& observed_;
+            bool now_;
         };
 
       public:
-        ModifiableObserved() = default;
+        ModifiableObserved()
+            : ObservedBase{&globalEventContext}
+            , contained_{}
+        {}
         ModifiableObserved(const ModifiableObserved&) = delete;
         ModifiableObserved(ModifiableObserved&& other)
             : ObservedBase{std::move(other)}
@@ -189,7 +218,13 @@ namespace Nui
 
         template <typename T = ContainedT>
         explicit ModifiableObserved(T&& t)
-            : contained_{std::forward<T>(t)}
+            : ObservedBase{&globalEventContext}
+            , contained_{std::forward<T>(t)}
+        {}
+
+        explicit ModifiableObserved(EventContext* ctx)
+            : ObservedBase{ctx}
+            , contained_{}
         {}
 
         /**
@@ -249,6 +284,11 @@ namespace Nui
         ModificationProxy modify()
         {
             return ModificationProxy{*this};
+        }
+
+        ModificationProxy modifyNow()
+        {
+            return ModificationProxy{*this, true};
         }
 
         ContainedT& value()
@@ -543,7 +583,12 @@ namespace Nui
         using ModifiableObserved<ContainerT>::update;
 
       public:
-        ObservedContainer()
+        explicit ObservedContainer(EventContext* ctx)
+            : ModifiableObserved<ContainerT>{ctx}
+            , rangeContext_{0}
+            , afterEffectId_{registerAfterEffect()}
+        {}
+        explicit ObservedContainer()
             : ModifiableObserved<ContainerT>{}
             , rangeContext_{0}
             , afterEffectId_{registerAfterEffect()}
@@ -739,10 +784,12 @@ namespace Nui
             decltype(std::declval<U>().insert(std::declval<const value_type&>()))>
         insert(const value_type& value)
         {
+            assert(ObservedBase::eventContext_ != nullptr);
+
             const auto result = contained_.insert(value);
             rangeContext_.performFullRangeUpdate();
             update();
-            globalEventContext.executeActiveEventsImmediately();
+            ObservedBase::eventContext_->executeActiveEventsImmediately();
             return result;
         }
         template <typename U = ContainerT>
@@ -751,10 +798,12 @@ namespace Nui
             decltype(std::declval<U>().insert(std::declval<value_type&&>()))>
         insert(value_type&& value)
         {
+            assert(ObservedBase::eventContext_ != nullptr);
+
             const auto result = contained_.insert(std::move(value));
             rangeContext_.performFullRangeUpdate();
             update();
-            globalEventContext.executeActiveEventsImmediately();
+            ObservedBase::eventContext_->executeActiveEventsImmediately();
             return result;
         }
         iterator insert(iterator pos, const value_type& value)
@@ -964,11 +1013,13 @@ namespace Nui
         {
             std::function<void(int)> doInsert;
             doInsert = [&](int retries) {
+                assert(ObservedBase::eventContext_ != nullptr);
+
                 const auto result = rangeContext_.insertModificationRange(contained_.size(), low, high, type);
                 if (result == RangeEventContext::InsertResult::Final)
                 {
                     update();
-                    globalEventContext.executeActiveEventsImmediately();
+                    ObservedBase::eventContext_->executeActiveEventsImmediately();
                 }
                 else if (result == RangeEventContext::InsertResult::Retry)
                 {
@@ -978,7 +1029,7 @@ namespace Nui
                     {
                         rangeContext_.reset(static_cast<long>(contained_.size()), true);
                         update();
-                        globalEventContext.executeActiveEventsImmediately();
+                        ObservedBase::eventContext_->executeActiveEventsImmediately();
                         return;
                     }
                 }
@@ -991,7 +1042,8 @@ namespace Nui
 
         auto registerAfterEffect()
         {
-            return globalEventContext.registerAfterEffect(Event{[this](EventContext::EventIdType) {
+            assert(ObservedBase::eventContext_ != nullptr);
+            return ObservedBase::eventContext_->registerAfterEffect(Event{[this](EventContext::EventIdType) {
                 rangeContext_.reset(static_cast<long>(contained_.size()), true);
                 return true;
             }});
@@ -1155,9 +1207,18 @@ namespace Nui
     template <>
     class Observed<void> : public ObservedBase
     {
+      public:
+        using ObservedBase::ObservedBase;
+        using ObservedBase::operator=;
+
         void modify() const
         {
             update();
+        };
+
+        void modifyNow() const
+        {
+            updateNow();
         };
     };
 
