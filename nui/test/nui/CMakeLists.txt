@@ -5,7 +5,7 @@ add_library(nui-frontend-mocked STATIC ${NUI_FRONTEND_SOURCES})
 
 target_include_directories(nui-frontend-mocked PUBLIC emscripten_mock ${CMAKE_CURRENT_LIST_DIR}/../../include)
 
-find_package(Boost REQUIRED)
+find_package(Boost CONFIG REQUIRED)
 
 target_link_libraries(nui-frontend-mocked PUBLIC
     libcpppre
