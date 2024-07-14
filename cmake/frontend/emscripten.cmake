@@ -1,7 +1,7 @@
 function(nui_prepare_emscripten_target)
     cmake_parse_arguments(
         NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS
-        "NO_INLINE;NO_INLINE_INJECT"
+        "NO_INLINE;NO_INLINE_INJECT;LEAN_INDEX_HTML"
         "TARGET;PREJS;STATIC;UNPACKED_MODE"
         "EMSCRIPTEN_LINK_OPTIONS;EMSCRIPTEN_COMPILE_OPTIONS;PARCEL_ARGS;NPM_INSTALL_ARGS"
         ${ARGN}
@@ -23,11 +23,16 @@ function(nui_prepare_emscripten_target)
         set(NUI_DEFER_INLINE_SCRIPTS_TAG "defer")
     endif()
 
+    set(NUI_LEAN_HTML "nolean")
+    if (NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_LEAN_INDEX_HTML)
+        set(NUI_LEAN_HTML "lean")
+    endif()
+
     set(INLINER_COMMAND "")
-    if (NOT NO_INLINE)
+    if (NOT NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_NO_INLINE)
         nui_enable_inline(TARGET ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET} RELATIVE_TO ${CMAKE_CURRENT_SOURCE_DIR})
-        if (NOT NO_INLINE_INJECT)
-            set(INLINER_COMMAND COMMAND ${NUI_INLINE_INJECTOR_TARGET_FILE} "${CMAKE_BINARY_DIR}/static/index.html" "${CMAKE_BINARY_DIR}/nui-inline/inline_imports.js" "${CMAKE_BINARY_DIR}/nui-inline/inline_imports.css" ${NUI_DEFER_INLINE_SCRIPTS_TAG})
+        if (NOT NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_NO_INLINE_INJECT)
+            set(INLINER_COMMAND COMMAND ${NUI_INLINE_INJECTOR_TARGET_FILE} "${CMAKE_BINARY_DIR}/static/index.html" "${CMAKE_BINARY_DIR}/nui-inline/inline_imports.js" "${CMAKE_BINARY_DIR}/nui-inline/inline_imports.css" ${NUI_DEFER_INLINE_SCRIPTS_TAG} ${NUI_LEAN_HTML})
         endif()
     endif()
 
