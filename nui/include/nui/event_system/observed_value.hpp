@@ -15,6 +15,7 @@
 #include <deque>
 #include <string>
 #include <cassert>
+#include <set>
 
 namespace Nui
 {
@@ -1286,7 +1287,7 @@ namespace Nui
                 : observed_{&observed}
             {}
 
-            inline T value() const
+            inline T const& value() const
             {
                 return observed_->value();
             }
