@@ -66,10 +66,24 @@ namespace Nui
 
         bool isRegular() const;
         bool isStringData() const;
+        bool defer() const;
+        void defer(bool doDefer) &;
+        Attribute&& defer(bool doDefer) &&
+        {
+            defer(doDefer);
+            return std::move(*this);
+        }
 
       private:
         std::variant<std::monostate, RegularAttribute, StringDataAttribute> attributeImpl_{};
         std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent_{};
         std::function<void(EventContext::EventIdType const&)> clearEvent_{};
+        bool defer_{false};
     };
+
+    inline Attribute&& operator!(Attribute&& attribute)
+    {
+        attribute.defer(!attribute.defer());
+        return std::move(attribute);
+    }
 }
