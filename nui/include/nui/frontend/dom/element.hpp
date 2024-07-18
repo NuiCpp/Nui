@@ -53,8 +53,21 @@ namespace Nui::Dom
             , deferredSetup_{}
         {}
 
+        /**
+         * @brief This constructor takes ownership of a val.
+         * This val must not be managed by any other element.
+         *
+         * @param val
+         */
         explicit Element(Nui::val val)
             : ChildlessElement{std::move(val)}
+            , children_{}
+            , unsetup_{}
+            , deferredSetup_{}
+        {}
+
+        explicit Element()
+            : ChildlessElement{}
             , children_{}
             , unsetup_{}
             , deferredSetup_{}
@@ -126,6 +139,22 @@ namespace Nui::Dom
         auto replaceElement(HtmlElement const& element)
         {
             replaceElementImpl(element);
+            return shared_from_base<Element>();
+        }
+        auto emplaceElement(HtmlElement const& element)
+        {
+            if (!element_.isUndefined())
+                throw std::runtime_error("Element is not empty, cannot emplace");
+
+            element_ = createElement(element);
+            setup(element);
+            if (deferredSetup_)
+                deferredSetup_(element);
+            return shared_from_base<Element>();
+        }
+        auto emplaceElement(std::invocable<Element&, Renderer const&> auto&& fn)
+        {
+            fn(*this, Renderer{.type = RendererType::Emplace});
             return shared_from_base<Element>();
         }
 
@@ -275,6 +304,11 @@ namespace Nui::Dom
             return children_.size();
         }
 
+        std::string tagName() const
+        {
+            return element_["tagName"].as<std::string>();
+        }
+
       private:
         void replaceElementImpl(HtmlElement const& element)
         {
@@ -282,6 +316,11 @@ namespace Nui::Dom
             if (unsetup_)
                 unsetup_();
             unsetup_ = {};
+
+#ifndef NDEBUG
+            if (element_.isUndefined())
+                throw std::runtime_error("Element is undefined");
+#endif
 
             auto replacement = createElement(element);
             element_.call<Nui::val>("replaceWith", replacement);
@@ -298,6 +337,13 @@ namespace Nui::Dom
         std::function<void()> unsetup_;
         std::function<void(HtmlElement const& element)> deferredSetup_;
     };
+
+    inline std::shared_ptr<Element> makeStandaloneElement(std::invocable<Element&, Renderer const&> auto&& fn)
+    {
+        auto elem = std::make_shared<Element>();
+        fn(*elem, Renderer{.type = RendererType::Emplace});
+        return elem;
+    }
 }
 
 #include <nui/frontend/elements/impl/html_element.tpp>

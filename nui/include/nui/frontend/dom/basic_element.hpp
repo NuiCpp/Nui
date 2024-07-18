@@ -65,6 +65,10 @@ namespace Nui::Dom
         }
 
       protected:
+        explicit BasicElement()
+            : element_{Nui::val::undefined()}
+        {}
+
         Nui::val element_;
     };
 }

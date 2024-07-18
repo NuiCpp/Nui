@@ -70,9 +70,12 @@ namespace Nui::Attributes
             : name_{name}
         {}
 
-        // Dont use this class like a value
-        PropertyFactory(PropertyFactory const&) = delete;
-        PropertyFactory(PropertyFactory&&) = delete;
+        explicit constexpr PropertyFactory(PropertyFactory const& other)
+            : name_{other.name_}
+        {}
+        explicit constexpr PropertyFactory(PropertyFactory&& other)
+            : name_{other.name_}
+        {}
         PropertyFactory& operator=(PropertyFactory const&) = delete;
         PropertyFactory& operator=(PropertyFactory&&) = delete;
 
@@ -181,9 +184,12 @@ namespace Nui::Attributes
             : name_{name}
         {}
 
-        // Dont use this class like a value
-        AttributeFactory(AttributeFactory const&) = delete;
-        AttributeFactory(AttributeFactory&&) = delete;
+        explicit constexpr AttributeFactory(AttributeFactory const& other)
+            : name_{other.name_}
+        {}
+        explicit constexpr AttributeFactory(AttributeFactory&& other)
+            : name_{other.name_}
+        {}
         AttributeFactory& operator=(AttributeFactory const&) = delete;
         AttributeFactory& operator=(AttributeFactory&&) = delete;
 
@@ -343,9 +349,12 @@ namespace Nui::Attributes
             : name_{name}
         {}
 
-        // Dont use this class like a value
-        EventFactory(EventFactory const&) = delete;
-        EventFactory(EventFactory&&) = delete;
+        explicit constexpr EventFactory(EventFactory const& other)
+            : name_{other.name_}
+        {}
+        explicit constexpr EventFactory(EventFactory&& other)
+            : name_{other.name_}
+        {}
         EventFactory& operator=(EventFactory const&) = delete;
         EventFactory& operator=(EventFactory&&) = delete;
 
@@ -396,6 +405,31 @@ namespace Nui::Attributes
         {
             return EventFactory{name};
         }
+    }
+
+    namespace Detail
+    {
+        template <typename T>
+        struct DeferWrap
+        {
+            T factory;
+
+            template <typename... Args>
+            Attribute operator=(Args&&... args) const
+            {
+                auto attr = factory.operator=(std::forward<Args>(args)...);
+                attr.defer(true);
+                return attr;
+            };
+        };
+    }
+
+    template <typename T>
+    requires(
+        std::is_same_v<T, AttributeFactory> || std::is_same_v<T, PropertyFactory> || std::is_same_v<T, EventFactory>)
+    Detail::DeferWrap<T> operator!(T const& factory)
+    {
+        return Detail::DeferWrap<T>{.factory = T{std::move(factory)}};
     }
 }
 

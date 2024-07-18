@@ -539,4 +539,14 @@ namespace Nui::Tests
 
         EXPECT_FALSE(Nui::val::global("document")["body"]["attributes"].hasOwnProperty("id"));
     }
+
+    TEST_F(TestAttributes, CanSetDeferredAttribute)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        render(div{!id = "hi"}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "hi");
+    }
 }

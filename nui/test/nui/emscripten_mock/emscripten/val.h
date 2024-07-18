@@ -291,7 +291,7 @@ namespace emscripten
 #ifdef NUI_TEST_DEBUG_PRINT
             std::cout << "val::undefined()\n";
 #endif
-            return {};
+            return Nui::Tests::Engine::createValue();
         }
 
         static val null()
