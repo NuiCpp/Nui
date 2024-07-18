@@ -144,7 +144,7 @@ namespace Nui::Tests
     {
         EventContext eventContext;
 
-        Observed<int> obs{&eventContext};
+        Observed<int> obs{CustomEventContextFlag, &eventContext};
 
         int calledWith = 77;
         listen(eventContext, obs, [&calledWith](int const& value) -> bool {
@@ -162,7 +162,7 @@ namespace Nui::Tests
     {
         EventContext eventContext;
 
-        Observed<int> obs{&eventContext};
+        Observed<int> obs{CustomEventContextFlag, &eventContext};
 
         int calledWith = 77;
         listen(eventContext, obs, [&calledWith](int const& value) -> void {
@@ -179,7 +179,7 @@ namespace Nui::Tests
     {
         EventContext eventContext;
 
-        std::shared_ptr<Observed<int>> obs = std::make_shared<Observed<int>>(&eventContext);
+        std::shared_ptr<Observed<int>> obs = std::make_shared<Observed<int>>(CustomEventContextFlag, &eventContext);
 
         int calledWith = 77;
         listen(eventContext, obs, [&calledWith](int const& value) -> void {
@@ -196,7 +196,7 @@ namespace Nui::Tests
     {
         EventContext eventContext;
 
-        std::shared_ptr<Observed<int>> obs = std::make_shared<Observed<int>>(&eventContext);
+        std::shared_ptr<Observed<int>> obs = std::make_shared<Observed<int>>(CustomEventContextFlag, &eventContext);
 
         int calledWith = 77;
         listen(eventContext, obs, [&calledWith](int const& value) -> bool {
@@ -217,7 +217,7 @@ namespace Nui::Tests
     {
         EventContext eventContext;
 
-        std::shared_ptr<Observed<int>> obs = std::make_shared<Observed<int>>(&eventContext);
+        std::shared_ptr<Observed<int>> obs = std::make_shared<Observed<int>>(CustomEventContextFlag, &eventContext);
 
         int calledWith = 77;
         listen(eventContext, obs, [&calledWith](int const& value) -> bool {
@@ -254,7 +254,7 @@ namespace Nui::Tests
     {
         EventContext eventContext;
 
-        Observed<int> obs{&eventContext};
+        Observed<int> obs{CustomEventContextFlag, &eventContext};
 
         int calledWith = 77;
         listen(eventContext, obs, [&calledWith](int const& value) -> bool {
