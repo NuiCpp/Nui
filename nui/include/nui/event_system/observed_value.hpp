@@ -4,6 +4,7 @@
 #include <nui/concepts.hpp>
 #include <nui/frontend/event_system/range_event_context.hpp>
 #include <nui/frontend/event_system/event_context.hpp>
+#include <nui/utility/assert.hpp>
 #include <nui/utility/meta/pick_first.hpp>
 
 #include <memory>
@@ -26,7 +27,7 @@ namespace Nui
     class ObservedBase
     {
       public:
-        explicit ObservedBase(EventContext* ctx)
+        explicit ObservedBase(CustomEventContextFlag_t, EventContext* ctx)
             : eventContext_{ctx}
             , attachedEvents_{}
             , attachedOneshotEvents_{}
@@ -49,7 +50,6 @@ namespace Nui
         ObservedBase& operator=(ObservedBase&& other)
         {
             eventContext_ = other.eventContext_;
-            other.eventContext_ = nullptr;
             for (auto& event : other.attachedEvents_)
                 attachedEvents_.push_back(std::move(event));
             for (auto& event : other.attachedOneshotEvents_)
@@ -96,7 +96,7 @@ namespace Nui
 
         virtual void update(bool /*force*/ = false) const
         {
-            assert(eventContext_ != nullptr);
+            NUI_ASSERT(eventContext_ != nullptr, "Event context must never be null.");
 
             for (auto& event : attachedEvents_)
             {
@@ -114,7 +114,7 @@ namespace Nui
 
         void updateNow(bool force = false) const
         {
-            assert(eventContext_ != nullptr);
+            NUI_ASSERT(eventContext_ != nullptr, "Event context must never be null.");
 
             update(force);
             eventContext_->executeActiveEventsImmediately();
@@ -182,7 +182,7 @@ namespace Nui
 
       public:
         ModifiableObserved()
-            : ObservedBase{&globalEventContext}
+            : ObservedBase{CustomEventContextFlag, &globalEventContext}
             , contained_{}
         {}
         ModifiableObserved(const ModifiableObserved&) = delete;
@@ -219,13 +219,19 @@ namespace Nui
 
         template <typename T = ContainedT>
         explicit ModifiableObserved(T&& t)
-            : ObservedBase{&globalEventContext}
+            : ObservedBase{CustomEventContextFlag, &globalEventContext}
             , contained_{std::forward<T>(t)}
         {}
 
-        explicit ModifiableObserved(EventContext* ctx)
-            : ObservedBase{ctx}
+        explicit ModifiableObserved(CustomEventContextFlag_t, EventContext* ctx)
+            : ObservedBase{CustomEventContextFlag, ctx}
             , contained_{}
+        {}
+
+        template <typename T = ContainedT>
+        explicit ModifiableObserved(CustomEventContextFlag_t, EventContext* ctx, T&& t)
+            : ObservedBase{CustomEventContextFlag, ctx}
+            , contained_{std::forward<T>(t)}
         {}
 
         /**
@@ -584,14 +590,20 @@ namespace Nui
         using ModifiableObserved<ContainerT>::update;
 
       public:
-        explicit ObservedContainer(EventContext* ctx)
-            : ModifiableObserved<ContainerT>{ctx}
+        explicit ObservedContainer(CustomEventContextFlag_t, EventContext* ctx)
+            : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx}
             , rangeContext_{0}
             , afterEffectId_{registerAfterEffect()}
         {}
         explicit ObservedContainer()
             : ModifiableObserved<ContainerT>{}
             , rangeContext_{0}
+            , afterEffectId_{registerAfterEffect()}
+        {}
+        template <typename T = ContainerT>
+        explicit ObservedContainer(CustomEventContextFlag_t, EventContext* ctx, T&& t)
+            : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx, std::forward<T>(t)}
+            , rangeContext_{static_cast<long>(contained_.size())}
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
@@ -605,9 +617,20 @@ namespace Nui
             , rangeContext_{std::move(rangeContext)}
             , afterEffectId_{registerAfterEffect()}
         {}
+        explicit ObservedContainer(CustomEventContextFlag_t, EventContext* ctx, RangeEventContext&& rangeContext)
+            : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx}
+            , rangeContext_{std::move(rangeContext)}
+            , afterEffectId_{registerAfterEffect()}
+        {}
         template <typename T = ContainerT>
         ObservedContainer(T&& t, RangeEventContext&& rangeContext)
             : ModifiableObserved<ContainerT>{std::forward<T>(t)}
+            , rangeContext_{std::move(rangeContext)}
+            , afterEffectId_{registerAfterEffect()}
+        {}
+        template <typename T = ContainerT>
+        ObservedContainer(CustomEventContextFlag_t, EventContext* ctx, T&& t, RangeEventContext&& rangeContext)
+            : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx, std::forward<T>(t)}
             , rangeContext_{std::move(rangeContext)}
             , afterEffectId_{registerAfterEffect()}
         {}
@@ -785,7 +808,7 @@ namespace Nui
             decltype(std::declval<U>().insert(std::declval<const value_type&>()))>
         insert(const value_type& value)
         {
-            assert(ObservedBase::eventContext_ != nullptr);
+            NUI_ASSERT(ObservedBase::eventContext_ != nullptr, "Event context must never be null.");
 
             const auto result = contained_.insert(value);
             rangeContext_.performFullRangeUpdate();
@@ -799,7 +822,7 @@ namespace Nui
             decltype(std::declval<U>().insert(std::declval<value_type&&>()))>
         insert(value_type&& value)
         {
-            assert(ObservedBase::eventContext_ != nullptr);
+            NUI_ASSERT(ObservedBase::eventContext_ != nullptr, "Event context must never be null.");
 
             const auto result = contained_.insert(std::move(value));
             rangeContext_.performFullRangeUpdate();
@@ -1014,7 +1037,7 @@ namespace Nui
         {
             std::function<void(int)> doInsert;
             doInsert = [&](int retries) {
-                assert(ObservedBase::eventContext_ != nullptr);
+                NUI_ASSERT(ObservedBase::eventContext_ != nullptr, "Event context must never be null.");
 
                 const auto result = rangeContext_.insertModificationRange(contained_.size(), low, high, type);
                 if (result == RangeEventContext::InsertResult::Final)
@@ -1043,7 +1066,7 @@ namespace Nui
 
         auto registerAfterEffect()
         {
-            assert(ObservedBase::eventContext_ != nullptr);
+            NUI_ASSERT(ObservedBase::eventContext_ != nullptr, "Event context must never be null.");
             return ObservedBase::eventContext_->registerAfterEffect(Event{[this](EventContext::EventIdType) {
                 rangeContext_.reset(static_cast<long>(contained_.size()), true);
                 return true;
