@@ -50,12 +50,14 @@ namespace Nui::Dom
             : ChildlessElement{elem}
             , children_{}
             , unsetup_{}
+            , deferredSetup_{}
         {}
 
         explicit Element(Nui::val val)
             : ChildlessElement{std::move(val)}
             , children_{}
             , unsetup_{}
+            , deferredSetup_{}
         {}
 
         Element(Element const&) = delete;
@@ -69,7 +71,6 @@ namespace Nui::Dom
             destroy_(element_);
         }
 
-        template <typename... Attributes>
         static std::shared_ptr<Element> makeElement(HtmlElement const& element)
         {
             auto elem = std::make_shared<Element>(element);
@@ -102,6 +103,8 @@ namespace Nui::Dom
         {
             auto elem = makeElement(element);
             element_.call<Nui::val>("appendChild", elem->element_);
+            if (elem->deferredSetup_)
+                elem->deferredSetup_(element);
             return children_.emplace_back(std::move(elem));
         }
         auto slotFor(value_type const& value)
@@ -152,6 +155,8 @@ namespace Nui::Dom
                 return appendElement(element);
             auto elem = makeElement(element);
             element_.call<Nui::val>("insertBefore", elem->element_, (*where)->element_);
+            if (elem->deferredSetup_)
+                elem->deferredSetup_(element);
             return *children_.insert(where, std::move(elem));
         }
 
@@ -162,8 +167,17 @@ namespace Nui::Dom
         {
             std::vector<std::function<void()>> eventClearers;
             eventClearers.reserve(element.attributes().size());
-            for (auto const& attribute : element.attributes())
+            std::vector<std::size_t> deferredIndices;
+
+            for (std::size_t i = 0; i != element.attributes().size(); ++i)
             {
+                auto const& attribute = element.attributes()[i];
+
+                if (attribute.defer())
+                {
+                    deferredIndices.push_back(i);
+                    continue;
+                }
                 if (attribute.isRegular())
                     attribute.setOn(*this);
 
@@ -187,6 +201,40 @@ namespace Nui::Dom
             else
             {
                 unsetup_ = []() {};
+            }
+
+            if (!deferredIndices.empty())
+            {
+                deferredSetup_ = [this, deferredIndices = std::move(deferredIndices)](HtmlElement const& element) {
+                    std::vector<std::function<void()>> eventClearers;
+                    eventClearers.reserve(deferredIndices.size());
+
+                    for (auto index : deferredIndices)
+                    {
+                        auto const& attribute = element.attributes()[index];
+
+                        if (attribute.isRegular())
+                            attribute.setOn(*this);
+
+                        auto clear = attribute.getEventClear();
+                        if (clear)
+                        {
+                            eventClearers.push_back(
+                                [clear = std::move(clear), id = attribute.createEvent(weak_from_base<Element>())]() {
+                                    clear(id);
+                                });
+                        }
+                    }
+                    if (!eventClearers.empty())
+                    {
+                        eventClearers.shrink_to_fit();
+                        unsetup_ = [unsetup1 = std::move(unsetup_), eventClearers = std::move(eventClearers)]() {
+                            unsetup1();
+                            for (auto const& clear : eventClearers)
+                                clear();
+                        };
+                    }
+                };
             }
         }
 
@@ -239,6 +287,8 @@ namespace Nui::Dom
             element_.call<Nui::val>("replaceWith", replacement);
             element_ = std::move(replacement);
             setup(element);
+            if (deferredSetup_)
+                deferredSetup_(element);
         }
 
       private:
@@ -246,6 +296,7 @@ namespace Nui::Dom
         destroy_fn destroy_ = Detail::destroyByRemove;
         collection_type children_;
         std::function<void()> unsetup_;
+        std::function<void(HtmlElement const& element)> deferredSetup_;
     };
 }
 
