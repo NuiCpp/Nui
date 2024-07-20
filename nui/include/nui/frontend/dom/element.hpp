@@ -213,10 +213,13 @@ namespace Nui::Dom
                 auto clear = attribute.getEventClear();
                 if (clear)
                 {
-                    eventClearers.push_back(
-                        [clear = std::move(clear), id = attribute.createEvent(weak_from_base<Element>())]() {
+                    const auto id = attribute.createEvent(weak_from_base<Element>());
+                    if (id != EventContext::invalidEventId)
+                    {
+                        eventClearers.push_back([clear = std::move(clear), id]() {
                             clear(id);
                         });
+                    }
                 }
             }
             if (!eventClearers.empty())
@@ -248,10 +251,13 @@ namespace Nui::Dom
                         auto clear = attribute.getEventClear();
                         if (clear)
                         {
-                            eventClearers.push_back(
-                                [clear = std::move(clear), id = attribute.createEvent(weak_from_base<Element>())]() {
+                            const auto id = attribute.createEvent(weak_from_base<Element>());
+                            if (id != EventContext::invalidEventId)
+                            {
+                                eventClearers.push_back([clear = std::move(clear), id]() {
                                     clear(id);
                                 });
+                            }
                         }
                     }
                     if (!eventClearers.empty())

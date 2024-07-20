@@ -92,39 +92,21 @@ namespace Nui
 
     template <typename ContainerT, typename... Observed>
     UnoptimizedRange<IteratorAccessor<ContainerT const>, Observed...>
-    range(ContainerT const& container, Observed const&... observed)
+    range(ContainerT const& container, Observed&&... observed)
     {
         return UnoptimizedRange<IteratorAccessor<ContainerT const>, Observed...>{
-            ObservedValueCombinator{observed...},
+            ObservedValueCombinator<Detail::ObservedAddReference_t<Observed>...>{
+                std::forward<Detail::ObservedAddReference_t<Observed>>(observed)...},
             IteratorAccessor<ContainerT const>{container},
         };
     }
 
     template <typename ContainerT, typename... Observed>
-    UnoptimizedRange<IteratorAccessor<ContainerT>, Observed...>
-    range(ContainerT& container, Observed const&... observed)
+    UnoptimizedRange<IteratorAccessor<ContainerT>, Observed...> range(ContainerT& container, Observed&&... observed)
     {
         return UnoptimizedRange<IteratorAccessor<ContainerT>, Observed...>{
-            ObservedValueCombinator{observed...},
-            IteratorAccessor<ContainerT>{container},
-        };
-    }
-
-    template <typename ContainerT, typename... Observed>
-    UnoptimizedRange<IteratorAccessor<ContainerT const>, Observed...>
-    range(ContainerT const& container, Observed&... observed)
-    {
-        return UnoptimizedRange<IteratorAccessor<ContainerT const>, Observed...>{
-            ObservedValueCombinator{observed...},
-            IteratorAccessor<ContainerT const>{container},
-        };
-    }
-
-    template <typename ContainerT, typename... Observed>
-    UnoptimizedRange<IteratorAccessor<ContainerT>, Observed...> range(ContainerT& container, Observed&... observed)
-    {
-        return UnoptimizedRange<IteratorAccessor<ContainerT>, Observed...>{
-            ObservedValueCombinator{observed...},
+            ObservedValueCombinator<Detail::ObservedAddReference_t<Observed>...>{
+                std::forward<Detail::ObservedAddReference_t<Observed>>(observed)...},
             IteratorAccessor<ContainerT>{container},
         };
     }
@@ -148,10 +130,11 @@ namespace Nui
 #ifdef NUI_HAS_STD_RANGES
     template <typename T, typename... Observed>
     UnoptimizedRange<std::ranges::subrange<std::ranges::iterator_t<T const>>, Observed...>
-    range(T const& container, Observed const&... observed)
+    range(T const& container, Observed&&... observed)
     {
         return UnoptimizedRange<std::ranges::subrange<std::ranges::iterator_t<T const>>, Observed...>{
-            ObservedValueCombinator{observed...},
+            ObservedValueCombinator<Detail::ObservedAddReference_t<Observed>...>{
+                std::forward<Detail::ObservedAddReference_t<Observed>>(observed)...},
             std::ranges::subrange<std::ranges::iterator_t<T const>>{
                 std::ranges::begin(container), std::ranges::end(container)},
         };

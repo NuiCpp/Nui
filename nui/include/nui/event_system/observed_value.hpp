@@ -17,6 +17,7 @@
 #include <string>
 #include <cassert>
 #include <set>
+#include <memory>
 
 namespace Nui
 {
@@ -1259,6 +1260,37 @@ namespace Nui
         {
             static constexpr bool value = true;
         };
+
+        template <typename T>
+        struct IsWeakObserved
+        {
+            static constexpr bool value = false;
+        };
+
+        template <typename T>
+        struct IsWeakObserved<std::weak_ptr<Observed<T>>>
+        {
+            static constexpr bool value = true;
+        };
+
+        template <typename T>
+        struct IsSharedObserved
+        {
+            static constexpr bool value = false;
+        };
+
+        template <typename T>
+        struct IsSharedObserved<std::shared_ptr<Observed<T>>>
+        {
+            static constexpr bool value = true;
+        };
+
+        template <typename T>
+        struct IsObservedLike
+        {
+            static constexpr bool value =
+                IsObserved<T>::value || IsWeakObserved<T>::value || IsSharedObserved<T>::value;
+        };
     }
 
     template <typename T>
@@ -1299,6 +1331,12 @@ namespace Nui
 
     template <typename T>
     concept IsObserved = Detail::IsObserved<std::decay_t<T>>::value;
+    template <typename T>
+    concept IsSharedObserved = Detail::IsSharedObserved<std::decay_t<T>>::value;
+    template <typename T>
+    concept IsWeakObserved = Detail::IsWeakObserved<std::decay_t<T>>::value;
+    template <typename T>
+    concept IsObservedLike = Detail::IsObservedLike<std::decay_t<T>>::value;
 
     namespace Detail
     {
@@ -1328,5 +1366,71 @@ namespace Nui
           private:
             Observed<T> const* observed_;
         };
+
+        template <typename T>
+        struct ObservedAddReference
+        {
+            using type = T const&;
+        };
+        template <>
+        struct ObservedAddReference<void>
+        {
+            using type = void;
+        };
+        template <typename T>
+        struct ObservedAddReference<std::weak_ptr<Observed<T>>>
+        {
+            using type = std::weak_ptr<Observed<T>>;
+        };
+        template <typename T>
+        struct ObservedAddReference<std::shared_ptr<Observed<T>>>
+        {
+            using type = std::weak_ptr<Observed<T>>;
+        };
+        template <typename T>
+        struct ObservedAddReference<std::weak_ptr<const Observed<T>>>
+        {
+            using type = std::weak_ptr<const Observed<T>>;
+        };
+        template <typename T>
+        struct ObservedAddReference<std::shared_ptr<const Observed<T>>>
+        {
+            using type = std::weak_ptr<const Observed<T>>;
+        };
+        template <typename T>
+        using ObservedAddReference_t = typename ObservedAddReference<T>::type;
     }
+
+    template <typename T>
+    struct UnpackObserved
+    {
+        using type = T;
+    };
+    template <typename T>
+    struct UnpackObserved<Observed<T>>
+    {
+        using type = T;
+    };
+    template <typename T>
+    struct UnpackObserved<std::weak_ptr<Observed<T>>>
+    {
+        using type = T;
+    };
+    template <typename T>
+    struct UnpackObserved<std::shared_ptr<Observed<T>>>
+    {
+        using type = T;
+    };
+    template <typename T>
+    struct UnpackObserved<std::weak_ptr<const Observed<T>>>
+    {
+        using type = T;
+    };
+    template <typename T>
+    struct UnpackObserved<std::shared_ptr<const Observed<T>>>
+    {
+        using type = T;
+    };
+    template <typename T>
+    using UnpackObserved_t = typename UnpackObserved<T>::type;
 }

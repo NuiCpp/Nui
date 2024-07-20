@@ -549,4 +549,152 @@ namespace Nui::Tests
 
         EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "hi");
     }
+
+    TEST_F(TestAttributes, CanUseSharedPointerObserved)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        auto idValue = std::make_shared<Observed<std::string>>("A");
+
+        render(div{id = idValue}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "A");
+
+        *idValue = "B";
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "B");
+    }
+
+    TEST_F(TestAttributes, CanUseWeakPointerObserved)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        auto idValue = std::make_shared<Observed<std::string>>("A");
+        auto weakIdValue = std::weak_ptr{idValue};
+
+        render(div{id = weakIdValue}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "A");
+
+        *idValue = "B";
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "B");
+    }
+
+    TEST_F(TestAttributes, CanUseSharedPointerObservedWithDeferred)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        auto idValue = std::make_shared<Observed<std::string>>("A");
+
+        render(div{!id = idValue}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "A");
+
+        *idValue = "B";
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "B");
+    }
+
+    TEST_F(TestAttributes, CanUseWeakPointerObservedWithDeferred)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        auto idValue = std::make_shared<Observed<std::string>>("A");
+        auto weakIdValue = std::weak_ptr{idValue};
+
+        render(div{!id = weakIdValue}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "A");
+
+        *idValue = "B";
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "B");
+    }
+
+    TEST_F(TestAttributes, WeakPointerAttributeDoesNotFailOnExpired)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        auto idValue = std::make_shared<Observed<std::string>>("A");
+        auto weakIdValue = std::weak_ptr{idValue};
+
+        render(div{id = weakIdValue}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "A");
+
+        {
+            *idValue = "B";
+        }
+        idValue = nullptr;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "A");
+    }
+
+    TEST_F(TestAttributes, SharedPointerAttributeDoesNotFailOnExpired)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        auto idValue = std::make_shared<Observed<std::string>>("A");
+
+        render(div{id = idValue}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "A");
+
+        {
+            *idValue = "B";
+        }
+        idValue = nullptr;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "A");
+    }
+
+    TEST_F(TestAttributes, SharedPointerMayExpireBeforeDetach)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        Nui::Observed<bool> other{true};
+        auto idValue = std::make_shared<Observed<std::string>>("A");
+
+        render(div{}(observe(other), [&idValue]() -> Nui::ElementRenderer {
+            return div{id = idValue}();
+        }));
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["attributes"]["id"].as<std::string>(), "A");
+
+        other = false;
+        EXPECT_NO_FATAL_FAILURE(globalEventContext.executeActiveEventsImmediately());
+    }
+
+    TEST_F(TestAttributes, WeakPointerMayExpireBeforeDetach)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        Nui::Observed<bool> other{true};
+        auto idValue = std::make_shared<Observed<std::string>>("A");
+        auto weakIdValue = std::weak_ptr{idValue};
+
+        render(div{}(observe(other), [&weakIdValue]() -> Nui::ElementRenderer {
+            return div{id = weakIdValue}();
+        }));
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["children"][0]["attributes"]["id"].as<std::string>(), "A");
+
+        other = false;
+        EXPECT_NO_FATAL_FAILURE(globalEventContext.executeActiveEventsImmediately());
+    }
 }

@@ -38,6 +38,7 @@ namespace Nui
     {
       public:
         using EventIdType = EventRegistry::EventIdType;
+        constexpr static auto invalidEventId = EventRegistry::invalidEventId;
 
         EventContext()
             : impl_{std::make_shared<DefaultEventEngine>()}
