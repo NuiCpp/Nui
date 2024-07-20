@@ -358,6 +358,73 @@ namespace Nui::Tests
             "color:green;background-color:yellow");
     }
 
+    TEST_F(TestAttributes, StyleAttributeCanUseWeakObserved)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::Style;
+        using Nui::Attributes::style;
+        using namespace Nui::Attributes::Literals;
+
+        auto color = std::make_shared<Observed<std::string>>("red");
+
+        render(
+            div{style = Style{
+                    "color"_style = std::weak_ptr{color},
+                    "background-color"_style = "blue",
+                }}());
+
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
+            "color:red;background-color:blue");
+    }
+
+    TEST_F(TestAttributes, StyleAttributeCanUseSharedObserved)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::Style;
+        using Nui::Attributes::style;
+        using namespace Nui::Attributes::Literals;
+
+        auto color = std::make_shared<Observed<std::string>>("red");
+
+        render(
+            div{style = Style{
+                    "color"_style = color,
+                    "background-color"_style = "blue",
+                }}());
+
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
+            "color:red;background-color:blue");
+    }
+
+    TEST_F(TestAttributes, StyleAttributeSharedObservedMayExpire)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::Style;
+        using Nui::Attributes::style;
+        using namespace Nui::Attributes::Literals;
+
+        auto color = std::make_shared<Observed<std::string>>("red");
+
+        render(
+            div{style = Style{
+                    "color"_style = color,
+                    "background-color"_style = "blue",
+                }}());
+
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(),
+            "color:red;background-color:blue");
+
+        *color = "blue";
+        color = nullptr;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(), "background-color:blue");
+    }
+
     TEST_F(TestAttributes, EventIsCallable)
     {
         using Nui::Elements::div;

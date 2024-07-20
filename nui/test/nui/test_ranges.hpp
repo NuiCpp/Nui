@@ -738,4 +738,251 @@ namespace Nui::Tests
             ++i;
         }
     }
+
+    TEST_F(TestRanges, CanUseStaticRangeSharedPointer)
+    {
+        std::shared_ptr<std::vector<char>> characters =
+            std::make_shared<std::vector<char>>(std::vector<char>{'A', 'B', 'C', 'D'});
+        Nui::val parent;
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(characters), [&characters](long long i, auto const& element) {
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters->size()));
+        for (int i = 0; i != characters->size(); ++i)
+        {
+            EXPECT_EQ(
+                parent["children"][i]["textContent"].as<std::string>(),
+                std::string{(*characters)[i]} + ":" + std::to_string(i));
+        }
+    }
+
+    TEST_F(TestRanges, CanUseStaticRangeSharedPointerToConst)
+    {
+        std::shared_ptr<const std::vector<char>> characters =
+            std::make_shared<const std::vector<char>>(std::vector<char>{'A', 'B', 'C', 'D'});
+        Nui::val parent;
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(characters), [&characters](long long i, auto const& element) {
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters->size()));
+        for (int i = 0; i != characters->size(); ++i)
+        {
+            EXPECT_EQ(
+                parent["children"][i]["textContent"].as<std::string>(),
+                std::string{(*characters)[i]} + ":" + std::to_string(i));
+        }
+    }
+
+    TEST_F(TestRanges, CanUseStaticRangeWeakPointer)
+    {
+        std::shared_ptr<std::vector<char>> characters =
+            std::make_shared<std::vector<char>>(std::vector<char>{'A', 'B', 'C', 'D'});
+        Nui::val parent;
+        std::weak_ptr<std::vector<char>> weakCharacters{characters};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(weakCharacters), [&characters](long long i, auto const& element) {
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters->size()));
+        for (int i = 0; i != characters->size(); ++i)
+        {
+            EXPECT_EQ(
+                parent["children"][i]["textContent"].as<std::string>(),
+                std::string{(*characters)[i]} + ":" + std::to_string(i));
+        }
+    }
+
+    TEST_F(TestRanges, CanUseStaticRangeWeakPointerToConst)
+    {
+        std::shared_ptr<const std::vector<char>> characters =
+            std::make_shared<const std::vector<char>>(std::vector<char>{'A', 'B', 'C', 'D'});
+        Nui::val parent;
+        std::weak_ptr<const std::vector<char>> weakCharacters{characters};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(weakCharacters), [&characters](long long i, auto const& element) {
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters->size()));
+        for (int i = 0; i != characters->size(); ++i)
+        {
+            EXPECT_EQ(
+                parent["children"][i]["textContent"].as<std::string>(),
+                std::string{(*characters)[i]} + ":" + std::to_string(i));
+        }
+    }
+
+    TEST_F(TestRanges, CanUseSharedStaticRendererTakingNonConst)
+    {
+        std::shared_ptr<std::vector<char>> characters =
+            std::make_shared<std::vector<char>>(std::vector<char>{'A', 'B', 'C', 'D'});
+        Nui::val parent;
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(characters), [&characters](long long i, auto& element) {
+            element = 'X';
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters->size()));
+        for (int i = 0; i != characters->size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i]["textContent"].as<std::string>(), "X:" + std::to_string(i));
+        }
+    }
+
+    TEST_F(TestRanges, CanUseWeakStaticRendererTakingNonConst)
+    {
+        std::shared_ptr<std::vector<char>> characters =
+            std::make_shared<std::vector<char>>(std::vector<char>{'A', 'B', 'C', 'D'});
+        Nui::val parent;
+        std::weak_ptr<std::vector<char>> weakCharacters{characters};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(weakCharacters), [&characters](long long i, auto& element) {
+            element = 'X';
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters->size()));
+        for (int i = 0; i != characters->size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i]["textContent"].as<std::string>(), "X:" + std::to_string(i));
+        }
+    }
+
+    TEST_F(TestRanges, CanUseObservedRangeSharedPointer)
+    {
+        auto characters = std::make_shared<Observed<std::vector<char>>>(std::vector<char>{'A', 'B', 'C', 'D'});
+        Nui::val parent;
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(characters), [&characters](long long i, auto const& element) {
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters->value().size()));
+        for (int i = 0; i != characters->value().size(); ++i)
+        {
+            EXPECT_EQ(
+                parent["children"][i]["textContent"].as<std::string>(),
+                std::string{characters->value()[i]} + ":" + std::to_string(i));
+        }
+    }
+
+    TEST_F(TestRanges, CanUseObservedRangeWeakPointer)
+    {
+        auto characters = std::make_shared<Observed<std::vector<char>>>(std::vector<char>{'A', 'B', 'C', 'D'});
+        Nui::val parent;
+        std::weak_ptr<Observed<std::vector<char>>> weakCharacters{characters};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(weakCharacters), [&characters](long long i, auto const& element) {
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters->value().size()));
+        for (int i = 0; i != characters->value().size(); ++i)
+        {
+            EXPECT_EQ(
+                parent["children"][i]["textContent"].as<std::string>(),
+                std::string{characters->value()[i]} + ":" + std::to_string(i));
+        }
+    }
+
+    TEST_F(TestRanges, CanUseObservedRangeSharedPointerRendererTakingNonConst)
+    {
+        auto characters = std::make_shared<Observed<std::vector<char>>>(std::vector<char>{'A', 'B', 'C', 'D'});
+        Nui::val parent;
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(characters), [&characters](long long i, auto& element) {
+            element = 'X';
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters->value().size()));
+        for (int i = 0; i != characters->value().size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i]["textContent"].as<std::string>(), "X:" + std::to_string(i));
+        }
+    }
+
+    TEST_F(TestRanges, CanUseObservedRangeWeakPointerRendererTakingNonConst)
+    {
+        auto characters = std::make_shared<Observed<std::vector<char>>>(std::vector<char>{'A', 'B', 'C', 'D'});
+        Nui::val parent;
+        std::weak_ptr<Observed<std::vector<char>>> weakCharacters{characters};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(weakCharacters), [&characters](long long i, auto& element) {
+            element = 'X';
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(characters->value().size()));
+        for (int i = 0; i != characters->value().size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i]["textContent"].as<std::string>(), "X:" + std::to_string(i));
+        }
+    }
+
+    TEST_F(TestRanges, WeakObservedMayExpireErrorlessly)
+    {
+        auto characters = std::make_shared<Observed<std::vector<char>>>(std::vector<char>{'A', 'B', 'C', 'D'});
+        Nui::val parent;
+        std::weak_ptr<Observed<std::vector<char>>> weakCharacters{characters};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(weakCharacters), [&characters](long long i, auto const& element) {
+            return div{}(std::string{element} + ":" + std::to_string(i));
+        }));
+
+        // activates an event
+        characters->push_back('E');
+        characters.reset();
+        EXPECT_NO_FATAL_FAILURE(globalEventContext.executeActiveEventsImmediately());
+    }
 }

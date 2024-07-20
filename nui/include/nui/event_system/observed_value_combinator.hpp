@@ -1,6 +1,7 @@
 #pragma once
 
-#include <nui/frontend/event_system/event_context.hpp>
+#include <nui/event_system/event_context.hpp>
+#include <nui/event_system/observed_value.hpp>
 #include <nui/utility/tuple_for_each.hpp>
 #include <nui/utility/overloaded.hpp>
 #include <nui/concepts.hpp>
@@ -78,15 +79,27 @@ namespace Nui
                 const_cast<std::tuple<Detail::ObservedAddReference_t<ObservedValues>...>&>(observedValues_));
         }
 
+        bool isAnyExpired() const
+        {
+            const auto isExpired = Nui::overloaded{
+                [](IsObserved auto const& observed) {
+                    return false;
+                },
+                [](IsWeakObserved auto const& observed) {
+                    return observed.expired();
+                },
+            };
+
+            return std::apply(
+                [isExpired](auto const&... observed) {
+                    return (isExpired(observed) || ...);
+                },
+                observedValues_);
+        }
+
       protected:
         const std::tuple<Detail::ObservedAddReference_t<ObservedValues>...> observedValues_;
     };
-    template <typename... ObservedValues>
-    ObservedValueCombinatorBase(std::tuple<Detail::ObservedAddReference_t<ObservedValues>...>)
-        -> ObservedValueCombinatorBase<ObservedValues...>;
-    template <typename... ObservedValues>
-    ObservedValueCombinatorBase(Detail::ObservedAddReference_t<ObservedValues>...)
-        -> ObservedValueCombinatorBase<ObservedValues...>;
 
     template <typename... ObservedValues>
     class ObservedValueCombinator;
@@ -168,14 +181,18 @@ namespace Nui
         }
     };
     template <typename... ObservedValues>
-    ObservedValueCombinator(Detail::ObservedAddReference_t<ObservedValues>...)
-        -> ObservedValueCombinator<ObservedValues...>;
+    ObservedValueCombinator(ObservedValues&&...)
+        -> ObservedValueCombinator<std::decay_t<Detail::ObservedAddReference_t<ObservedValues>>...>;
+    template <typename... ObservedValues>
+    ObservedValueCombinator(std::tuple<Detail::ObservedAddReference_t<ObservedValues>...>)
+        -> ObservedValueCombinator<std::decay_t<Detail::ObservedAddReference_t<ObservedValues>>...>;
 
     template <typename... ObservedValues>
     requires(IsObservedLike<ObservedValues> && ...)
-    ObservedValueCombinator<ObservedValues...> observe(ObservedValues&&... observedValues)
+    ObservedValueCombinator<std::decay_t<Detail::ObservedAddReference_t<ObservedValues>>...>
+    observe(ObservedValues&&... observedValues)
     {
-        return ObservedValueCombinator<ObservedValues...>{
+        return ObservedValueCombinator<std::decay_t<Detail::ObservedAddReference_t<ObservedValues>>...>{
             std::forward<Detail::ObservedAddReference_t<ObservedValues>>(observedValues)...};
     }
 }

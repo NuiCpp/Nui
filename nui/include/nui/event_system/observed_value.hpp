@@ -2,8 +2,8 @@
 
 #include <iterator>
 #include <nui/concepts.hpp>
-#include <nui/frontend/event_system/range_event_context.hpp>
-#include <nui/frontend/event_system/event_context.hpp>
+#include <nui/event_system/range_event_context.hpp>
+#include <nui/event_system/event_context.hpp>
 #include <nui/utility/assert.hpp>
 #include <nui/utility/meta/pick_first.hpp>
 
@@ -299,6 +299,12 @@ namespace Nui
             return ModificationProxy{*this, true};
         }
 
+        explicit operator bool() const
+        requires std::convertible_to<ContainedT, bool>
+        {
+            return static_cast<bool>(contained_);
+        }
+
         ContainedT& value()
         {
             return contained_;
@@ -397,6 +403,26 @@ namespace Nui
             std::size_t pos_;
             T& ref_;
         };
+
+        template <typename T, typename ContainerT>
+        auto& unwrapReferenceWrapper(ReferenceWrapper<T, ContainerT>& wrapper)
+        {
+            return wrapper.get();
+        }
+        template <typename T, typename ContainerT>
+        auto const& unwrapReferenceWrapper(ReferenceWrapper<T, ContainerT> const& wrapper)
+        {
+            return wrapper.get();
+        }
+        auto& unwrapReferenceWrapper(auto& ref)
+        {
+            return ref;
+        }
+        auto const& unwrapReferenceWrapper(auto const& ref)
+        {
+            return ref;
+        }
+
         template <typename T, typename ContainerT>
         class PointerWrapper
         {
@@ -1397,8 +1423,32 @@ namespace Nui
         {
             using type = std::weak_ptr<const Observed<T>>;
         };
+
         template <typename T>
-        using ObservedAddReference_t = typename ObservedAddReference<T>::type;
+        struct ObservedAddMutableReference
+        {
+            using type = T&;
+        };
+        template <>
+        struct ObservedAddMutableReference<void>
+        {
+            using type = void;
+        };
+        template <typename T>
+        struct ObservedAddMutableReference<std::weak_ptr<Observed<T>>>
+        {
+            using type = std::weak_ptr<Observed<T>>;
+        };
+        template <typename T>
+        struct ObservedAddMutableReference<std::shared_ptr<Observed<T>>>
+        {
+            using type = std::weak_ptr<Observed<T>>;
+        };
+
+        template <typename T>
+        using ObservedAddReference_t = typename ObservedAddReference<std::decay_t<T>>::type;
+        template <typename T>
+        using ObservedAddMutableReference_t = typename ObservedAddMutableReference<std::remove_reference_t<T>>::type;
     }
 
     template <typename T>

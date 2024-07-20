@@ -201,8 +201,7 @@ namespace Nui::Attributes
                 [name_ = std::string{name}, observedValue = std::weak_ptr{observedValue.lock()}]() {
                     if (auto shared = observedValue.lock(); shared)
                         return name_ + ":" + shared->value();
-                    // What to do here?
-                    return name_ + ":DEAD_OBSERVED";
+                    return std::string{};
                 },
                 std::move(observedValue)};
         }
@@ -212,8 +211,7 @@ namespace Nui::Attributes
                 [name_ = std::string{name}, observedValue = std::weak_ptr{observedValue}]() {
                     if (auto shared = observedValue.lock(); shared)
                         return name_ + ":" + shared->value();
-                    // What to do here?
-                    return name_ + ":DEAD_OBSERVED";
+                    return std::string{};
                 },
                 std::move(observedValue)};
         }
@@ -246,8 +244,9 @@ namespace Nui::Attributes
                 std::stringstream sstr;
                 [&sstr](auto const& head, auto const&... tail) {
                     using expander = int[];
-                    sstr << head();
-                    (void)expander{0, (sstr << ";" << tail(), void(), 0)...};
+                    const auto headStr = head();
+                    sstr << headStr;
+                    (void)expander{0, (sstr << (headStr.empty() ? "" : ";") << tail(), void(), 0)...};
                 }(props...);
                 return sstr.str();
             };
@@ -328,9 +327,9 @@ namespace Nui::Attributes
             else
             {
                 return std::apply(
-                    [&style]<typename... ObservedValueTypes>(ObservedValueTypes&... obs) {
+                    [&style]<typename... ObservedValueTypes>(ObservedValueTypes&&... obs) {
                         return AttributeFactory{"style"}.operator=(
-                            ObservedValueCombinator<ObservedValueTypes...>{obs...}.generate(
+                            ObservedValueCombinator{std::forward<ObservedValueTypes>(obs)...}.generate(
                                 std::move(style).ejectGenerator()));
                     },
                     std::move(style).ejectObservedValues());

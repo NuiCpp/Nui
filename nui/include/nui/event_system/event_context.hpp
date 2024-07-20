@@ -1,6 +1,6 @@
 #pragma once
 
-#include <nui/frontend/event_system/event_registry.hpp>
+#include <nui/event_system/event_registry.hpp>
 
 #include <memory>
 

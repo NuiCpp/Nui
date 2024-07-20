@@ -183,9 +183,10 @@ namespace Nui::Detail
             materialized->clearChildren();
 
             long long counter = 0;
-            for (auto& element : unoptimizedRange_)
+            for (auto&& element : unoptimizedRange_)
             {
-                elementRenderer_(counter++, element)(*materialized, Renderer{.type = RendererType::Append});
+                elementRenderer_(counter++, ContainerWrapUtility::unwrapReferenceWrapper(element))(
+                    *materialized, Renderer{.type = RendererType::Append});
             }
 
             return KeepRange;

@@ -2,7 +2,7 @@
 
 #include <nui/feature_test.hpp>
 #include <nui/utility/iterator_accessor.hpp>
-#include <nui/frontend/event_system/observed_value.hpp>
+#include <nui/event_system/observed_value.hpp>
 
 #include <iterator>
 #include <utility>
@@ -21,22 +21,24 @@ namespace Nui
 
         static constexpr bool isRandomAccess = ObservedType::isRandomAccess;
 
-        explicit constexpr ObservedRange(ObservedValue& observedValues)
-            : observedValue_{observedValues}
+        template <typename ObservedValueT>
+        requires std::is_same_v<std::decay_t<ObservedValueT>, std::decay_t<ObservedValueT>>
+        explicit constexpr ObservedRange(ObservedValueT&& observedValues)
+            : observedValue_{std::forward<Detail::ObservedAddMutableReference_t<ObservedValue>>(observedValues)}
         {}
 
-        ObservedValue const& underlying() const
+        Detail::ObservedAddReference_t<ObservedValue> underlying() const
         {
             return observedValue_;
         }
-        ObservedValue& underlying()
+        Detail::ObservedAddMutableReference_t<ObservedValue> underlying()
         requires(!std::is_const_v<ObservedValue>)
         {
             return observedValue_;
         }
 
       private:
-        ObservedValue& observedValue_;
+        Detail::ObservedAddMutableReference_t<ObservedValue> observedValue_;
     };
 
     template <typename CopyableRangeLike, typename... ObservedValues>
@@ -91,22 +93,25 @@ namespace Nui
     }
 
     template <typename ContainerT, typename... Observed>
-    UnoptimizedRange<IteratorAccessor<ContainerT const>, Observed...>
+    UnoptimizedRange<IteratorAccessor<ContainerT const>, std::decay_t<Detail::ObservedAddReference_t<Observed>>...>
     range(ContainerT const& container, Observed&&... observed)
     {
-        return UnoptimizedRange<IteratorAccessor<ContainerT const>, Observed...>{
-            ObservedValueCombinator<Detail::ObservedAddReference_t<Observed>...>{
-                std::forward<Detail::ObservedAddReference_t<Observed>>(observed)...},
+        return UnoptimizedRange<
+            IteratorAccessor<ContainerT const>,
+            std::decay_t<Detail::ObservedAddReference_t<Observed>>...>{
+            ObservedValueCombinator{std::forward<Detail::ObservedAddReference_t<Observed>>(observed)...},
             IteratorAccessor<ContainerT const>{container},
         };
     }
 
     template <typename ContainerT, typename... Observed>
-    UnoptimizedRange<IteratorAccessor<ContainerT>, Observed...> range(ContainerT& container, Observed&&... observed)
+    UnoptimizedRange<IteratorAccessor<ContainerT>, std::decay_t<Detail::ObservedAddReference_t<Observed>>...>
+    range(ContainerT& container, Observed&&... observed)
     {
-        return UnoptimizedRange<IteratorAccessor<ContainerT>, Observed...>{
-            ObservedValueCombinator<Detail::ObservedAddReference_t<Observed>...>{
-                std::forward<Detail::ObservedAddReference_t<Observed>>(observed)...},
+        return UnoptimizedRange<
+            IteratorAccessor<ContainerT>,
+            std::decay_t<Detail::ObservedAddReference_t<Observed>>...>{
+            ObservedValueCombinator{std::forward<Detail::ObservedAddReference_t<Observed>>(observed)...},
             IteratorAccessor<ContainerT>{container},
         };
     }
@@ -129,12 +134,15 @@ namespace Nui
 
 #ifdef NUI_HAS_STD_RANGES
     template <typename T, typename... Observed>
-    UnoptimizedRange<std::ranges::subrange<std::ranges::iterator_t<T const>>, Observed...>
+    UnoptimizedRange<
+        std::ranges::subrange<std::ranges::iterator_t<T const>>,
+        std::decay_t<Detail::ObservedAddReference_t<Observed>>...>
     range(T const& container, Observed&&... observed)
     {
-        return UnoptimizedRange<std::ranges::subrange<std::ranges::iterator_t<T const>>, Observed...>{
-            ObservedValueCombinator<Detail::ObservedAddReference_t<Observed>...>{
-                std::forward<Detail::ObservedAddReference_t<Observed>>(observed)...},
+        return UnoptimizedRange<
+            std::ranges::subrange<std::ranges::iterator_t<T const>>,
+            std::decay_t<Detail::ObservedAddReference_t<Observed>>...>{
+            ObservedValueCombinator{std::forward<Detail::ObservedAddReference_t<Observed>>(observed)...},
             std::ranges::subrange<std::ranges::iterator_t<T const>>{
                 std::ranges::begin(container), std::ranges::end(container)},
         };

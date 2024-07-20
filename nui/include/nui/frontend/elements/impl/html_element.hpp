@@ -111,7 +111,7 @@ namespace Nui
                         fragmentContext.clear();
 
                         auto parent = createdSelfWeak.lock();
-                        if (!parent)
+                        if (!parent || observedValues.isAnyExpired())
                         {
                             childrenRefabricator.reset();
                             return;
@@ -133,7 +133,7 @@ namespace Nui
                                              createdSelfWeak = std::weak_ptr<ElementType>(createdSelf),
                                              childrenRefabricator]() mutable {
                         auto parent = createdSelfWeak.lock();
-                        if (!parent)
+                        if (!parent || observedValues.isAnyExpired())
                         {
                             childrenRefabricator.reset();
                             return;
