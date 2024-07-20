@@ -82,7 +82,7 @@ namespace Nui
         bool isAnyExpired() const
         {
             const auto isExpired = Nui::overloaded{
-                [](IsObserved auto const& observed) {
+                [](IsObserved auto const&) {
                     return false;
                 },
                 [](IsWeakObserved auto const& observed) {
