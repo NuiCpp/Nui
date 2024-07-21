@@ -261,6 +261,10 @@ namespace Nui
             return insertModificationRange(
                 static_cast<long>(elementCount), static_cast<long>(low), static_cast<long>(high), type);
         }
+        void reset()
+        {
+            reset(0, false);
+        }
         void reset(long dataSize, bool requireFullRangeUpdate)
         {
             modificationRanges_.clear();

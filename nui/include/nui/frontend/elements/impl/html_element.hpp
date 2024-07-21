@@ -161,10 +161,10 @@ namespace Nui
         auto rangeRender(RangeType&& valueRange, GeneratorT&& elementRenderer) &&
         {
             return [self = this->clone(),
-                    rangeRenderer =
-                        std::make_shared<Detail::RangeRenderer<RangeType, GeneratorT, RangeType::isRandomAccess>>(
-                            std::move(valueRange).underlying(), std::forward<GeneratorT>(elementRenderer))](
-                       auto& parentElement, Renderer const& gen) {
+                    rangeRenderer = std::make_shared<
+                        Detail::RangeRenderer<std::decay_t<RangeType>, GeneratorT, RangeType::isRandomAccess>>(
+                        std::move(valueRange).underlying(), std::forward<GeneratorT>(elementRenderer))](
+                       auto& parentElement, Renderer const& gen) mutable {
                 if (gen.type == RendererType::Inplace)
                     throw std::runtime_error("fragments are not supported for range generators");
 

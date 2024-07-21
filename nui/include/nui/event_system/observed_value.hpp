@@ -1428,27 +1428,33 @@ namespace Nui
         struct ObservedAddMutableReference
         {
             using type = T&;
+            using raw = T;
         };
         template <>
         struct ObservedAddMutableReference<void>
         {
             using type = void;
+            using raw = void;
         };
         template <typename T>
         struct ObservedAddMutableReference<std::weak_ptr<Observed<T>>>
         {
             using type = std::weak_ptr<Observed<T>>;
+            using raw = Observed<T>;
         };
         template <typename T>
         struct ObservedAddMutableReference<std::shared_ptr<Observed<T>>>
         {
             using type = std::weak_ptr<Observed<T>>;
+            using raw = Observed<T>;
         };
 
         template <typename T>
         using ObservedAddReference_t = typename ObservedAddReference<std::decay_t<T>>::type;
         template <typename T>
         using ObservedAddMutableReference_t = typename ObservedAddMutableReference<std::remove_reference_t<T>>::type;
+        template <typename T>
+        using ObservedAddMutableReference_raw = typename ObservedAddMutableReference<std::remove_reference_t<T>>::raw;
     }
 
     template <typename T>
