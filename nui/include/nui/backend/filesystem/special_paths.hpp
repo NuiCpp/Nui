@@ -13,6 +13,15 @@ namespace Nui
      * %appdata% Linux: home. Windows: CSIDL_APPDATA
      * %localappdata% Linux: home. Windows: CSIDL_APPDATA_LOCAL
      * %temp% Linux: /tmp. Windows: ${USER}\AppData\Local\Temp
+     * %config_home% Linux: $XDG_CONFIG_HOME. Windows: CSIDL_APPDATA
+     * %config_home2% Linux: $XDG_CONFIG_HOME. Windows: CSIDL_MYDOCUMENTS
+     * %config_home3% Linux: $XDG_CONFIG_HOME. Windows: home
+     * %state_home% Linux: $XDG_CONFIG_HOME. Windows: CSIDL_APPDATA
+     * %state_home2% Linux: $XDG_CONFIG_HOME. Windows: CSIDL_MYDOCUMENTS
+     * %state_home3% Linux: $XDG_CONFIG_HOME. Windows: home
+     * %data_home% Linux: $XDG_DATA_HOME. Windows: CSIDL_APPDATA
+     * %data_home2% Linux: $XDG_DATA_HOME. Windows: CSIDL_MYDOCUMENTS
+     * %data_home3% Linux: $XDG_DATA_HOME. Windows: home
      *
      *
      * @param path
