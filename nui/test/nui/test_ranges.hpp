@@ -3,6 +3,7 @@
 #pragma once
 
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
 #include "common_test_fixture.hpp"
 #include "engine/global_object.hpp"
@@ -25,7 +26,7 @@ namespace Nui::Tests
     {
       protected:
         template <template <typename...> typename ContainerT, typename RangeElementType>
-        void rangeTextBodyRender(Observed<ContainerT<RangeElementType>> const& observedRange, Nui::val& parent)
+        void rangeTextBodyRender(Observed<ContainerT<RangeElementType>>& observedRange, Nui::val& parent)
         {
             using Nui::Elements::div;
             using Nui::Elements::body;
@@ -37,7 +38,7 @@ namespace Nui::Tests
         }
 
         template <template <typename...> typename ContainerT, typename RangeElementType>
-        void textBodyParityTest(Observed<ContainerT<RangeElementType>> const& observedRange, Nui::val const& parent)
+        void textBodyParityTest(Observed<ContainerT<RangeElementType>>& observedRange, Nui::val const& parent)
         {
             EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(observedRange.size()));
             for (int i = 0; i != observedRange.size(); ++i)
@@ -985,4 +986,160 @@ namespace Nui::Tests
         characters.reset();
         EXPECT_NO_FATAL_FAILURE(globalEventContext.executeActiveEventsImmediately());
     }
+
+    TEST_F(TestRanges, PushBackOnlyDoesNecessaryUpdates)
+    {
+        Nui::val parent;
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        std::function<Nui::ElementRenderer(char element)> renderer{[](char element) -> Nui::ElementRenderer {
+            return Nui::Elements::div{}(std::string{element});
+        }};
+
+        render(body{reference = parent}(range(vec), [&vec, &renderer](long long i, auto const& element) {
+            return renderer(element);
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(vec.size()));
+
+        std::vector<char> renderedElements{};
+        renderer = [&](char element) -> Nui::ElementRenderer {
+            renderedElements.push_back(element);
+            return Nui::Elements::div{}(std::string{element});
+        };
+
+        vec.push_back('E');
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(vec.size()));
+        EXPECT_EQ(renderedElements.size(), 1);
+        EXPECT_EQ(renderedElements[0], 'E');
+
+        for (int i = 0; i != vec.size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i]["textContent"].as<std::string>(), std::string{vec[i]});
+        }
+    }
+
+    TEST_F(TestRanges, EmplaceBackOnlyDoesNecessaryUpdates)
+    {
+        Nui::val parent;
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        std::function<Nui::ElementRenderer(char element)> renderer{[](char element) -> Nui::ElementRenderer {
+            return Nui::Elements::div{}(std::string{element});
+        }};
+
+        render(body{reference = parent}(range(vec), [&vec, &renderer](long long i, auto const& element) {
+            return renderer(element);
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(vec.size()));
+
+        std::vector<char> renderedElements{};
+        renderer = [&](char element) -> Nui::ElementRenderer {
+            renderedElements.push_back(element);
+            return Nui::Elements::div{}(std::string{element});
+        };
+
+        vec.emplace_back('E');
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(vec.size()));
+        EXPECT_EQ(renderedElements.size(), 1);
+        EXPECT_EQ(renderedElements[0], 'E');
+
+        for (int i = 0; i != vec.size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i]["textContent"].as<std::string>(), std::string{vec[i]});
+        }
+    }
+
+    TEST_F(TestRanges, InsertOnlyDoesNecessaryUpdates)
+    {
+        Nui::val parent;
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        std::function<Nui::ElementRenderer(char element)> renderer{[](char element) -> Nui::ElementRenderer {
+            return Nui::Elements::div{}(std::string{element});
+        }};
+
+        render(body{reference = parent}(range(vec), [&vec, &renderer](long long i, auto const& element) {
+            return renderer(element);
+        }));
+
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["children"]["length"].as<long long>(),
+            static_cast<long long>(vec.size()));
+
+        std::vector<char> renderedElements{};
+        renderer = [&](char element) -> Nui::ElementRenderer {
+            renderedElements.push_back(element);
+            return Nui::Elements::div{}(std::string{element});
+        };
+
+        vec.insert(vec.begin() + 2, 'X');
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(
+            Nui::val::global("document")["body"]["children"]["length"].as<long long>(),
+            static_cast<long long>(vec.size()));
+        EXPECT_EQ(renderedElements.size(), 1);
+        EXPECT_EQ(renderedElements[0], 'X');
+
+        for (int i = 0; i != vec.size(); ++i)
+        {
+            EXPECT_EQ(
+                Nui::val::global("document")["body"]["children"][i]["textContent"].as<std::string>(),
+                std::string{vec[i]});
+        }
+    }
+
+    // TEST_F(TestRanges, ErasingASingleItemOnlyDoesNecessaryUpdates)
+    // {
+    //     Nui::val parent;
+    //     Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+    //     using Nui::Elements::div;
+    //     using Nui::Elements::body;
+    //     using namespace Nui::Attributes;
+
+    //     std::function<Nui::ElementRenderer(char element)> renderer{[](char element) -> Nui::ElementRenderer {
+    //         return Nui::Elements::div{}(std::string{element});
+    //     }};
+
+    //     render(body{reference = parent}(range(vec), [&vec, &renderer](long long i, auto const& element) {
+    //         return renderer(element);
+    //     }));
+
+    //     EXPECT_EQ(
+    //         Nui::val::global("document")["body"]["children"]["length"].as<long long>(),
+    //         static_cast<long long>(vec.size()));
+
+    //     vec.erase(vec.begin() + 2);
+    //     globalEventContext.executeActiveEventsImmediately();
+
+    //     EXPECT_EQ(
+    //         Nui::val::global("document")["body"]["children"]["length"].as<long long>(),
+    //         static_cast<long long>(vec.size()));
+
+    //     for (int i = 0; i != vec.size(); ++i)
+    //     {
+    //         EXPECT_EQ(
+    //             Nui::val::global("document")["body"]["children"][i]["textContent"].as<std::string>(),
+    //             std::string{vec[i]});
+    //     }
+    // }
 }

@@ -31,6 +31,7 @@ add_executable(nui-tests
 target_link_libraries(nui-tests PRIVATE
     nui-frontend-mocked
     gtest
+    gmock
 )
 gtest_discover_tests(nui-tests)
 

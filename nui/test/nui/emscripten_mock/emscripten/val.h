@@ -197,7 +197,7 @@ namespace emscripten
         }
 
         template <typename Ret, typename... List>
-        Ret call(char const* name, List&&... args)
+        Ret call(char const* name, List&&... args) const
         {
 #ifdef NUI_TEST_DEBUG_PRINT
             std::cout << "val::call<" << boost::typeindex::type_id<Ret>().pretty_name() << "("
