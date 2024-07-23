@@ -101,14 +101,14 @@ namespace Nui::Detail
             if (valueRange == nullptr)
                 return;
 
-            if (const auto insertInterval = valueRange->rangeContext().insertInterval(); insertInterval)
-            {
-                for (auto i = insertInterval->low(); i <= insertInterval->high(); ++i)
-                {
-                    elementRenderer_(i, valueRange->value()[static_cast<std::size_t>(i)])(
-                        *parent, Renderer{.type = RendererType::Insert, .metadata = static_cast<std::size_t>(i)});
-                }
-            }
+            // if (const auto insertInterval = valueRange->rangeContext().insertInterval(); insertInterval)
+            // {
+            //     for (auto i = insertInterval->low(); i <= insertInterval->high(); ++i)
+            //     {
+            //         elementRenderer_(i, valueRange->value()[static_cast<std::size_t>(i)])(
+            //             *parent, Renderer{.type = RendererType::Insert, .metadata = static_cast<std::size_t>(i)});
+            //     }
+            // }
         }
 
         void modifications(auto& parent)
@@ -118,26 +118,39 @@ namespace Nui::Detail
             if (valueRange == nullptr)
                 return;
 
-            for (auto const& range : valueRange->rangeContext())
+            // for (auto const& range : valueRange->rangeContext())
+            // {
+            //     switch (range.type())
+            //     {
+            //         case RangeStateType::Keep:
+            //         {
+            //             continue;
+            //         }
+            //         case RangeStateType::Modify:
+            //         {
+            //             for (auto i = range.low(), high = range.high(); i <= high; ++i)
+            //             {
+            //                 elementRenderer_(i, valueRange->value()[static_cast<std::size_t>(i)])(
+            //                     *(*parent)[static_cast<std::size_t>(i)], Renderer{.type = RendererType::Replace});
+            //             }
+            //             break;
+            //         }
+            //         default:
+            //             break;
+            //     }
+            // }
+        }
+
+        void erasures(auto& parent)
+        {
+            auto valueRangeHolder = CommonHoldToken<RangeT>{};
+            auto* valueRange = getValueRange(valueRangeHolder);
+            if (valueRange == nullptr)
+                return;
+
+            for (auto const& eraseRange : reverse_view{valueRange->rangeContext()})
             {
-                switch (range.type())
-                {
-                    case RangeStateType::Keep:
-                    {
-                        continue;
-                    }
-                    case RangeStateType::Modify:
-                    {
-                        for (auto i = range.low(), high = range.high(); i <= high; ++i)
-                        {
-                            elementRenderer_(i, valueRange->value()[static_cast<std::size_t>(i)])(
-                                *(*parent)[static_cast<std::size_t>(i)], Renderer{.type = RendererType::Replace});
-                        }
-                        break;
-                    }
-                    default:
-                        break;
-                }
+                parent->erase(begin(*parent) + eraseRange.low(), begin(*parent) + eraseRange.high() + 1);
             }
         }
 
@@ -147,20 +160,34 @@ namespace Nui::Detail
             if (!parent)
                 return InvalidateRange;
 
-            Nui::ScopeExit onExit{[this] {
-                auto valueRangeHolder = ::Nui::Detail::HoldToken<
-                    std::decay_t<ObservedAddMutableReference_t<typename RangeT::ObservedType>>>{};
-                auto* valueRange = getValueRange(valueRangeHolder);
-                if (valueRange)
-                    valueRange->rangeContext().reset();
+            auto valueRangeHolder =
+                ::Nui::Detail::HoldToken<std::decay_t<ObservedAddMutableReference_t<typename RangeT::ObservedType>>>{};
+            auto* valueRange = getValueRange(valueRangeHolder);
+            if (!valueRange)
+                return InvalidateRange;
+
+            Nui::ScopeExit onExit{[this, valueRange] {
+                valueRange->rangeContext().reset(valueRange->value().size());
             }};
 
             // Regenerate all elements if necessary:
             if (fullRangeUpdate(parent))
                 return KeepRange;
 
-            insertions(parent);
-            modifications(parent);
+            switch (valueRange->rangeContext().operationType())
+            {
+                case RangeOperationType::Insert:
+                    insertions(parent);
+                    break;
+                case RangeOperationType::Modify:
+                    modifications(parent);
+                    break;
+                case RangeOperationType::Erase:
+                    erasures(parent);
+                    break;
+                default:
+                    break;
+            }
 
             return KeepRange;
         }

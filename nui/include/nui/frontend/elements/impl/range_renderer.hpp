@@ -5,6 +5,7 @@
 #include <nui/frontend/dom/element_fwd.hpp>
 #include <nui/utility/scope_exit.hpp>
 #include <nui/utility/overloaded.hpp>
+#include <nui/utility/reverse_view.hpp>
 
 #include <memory>
 #include <utility>

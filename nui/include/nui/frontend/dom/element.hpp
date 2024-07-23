@@ -294,6 +294,10 @@ namespace Nui::Dom
         {
             return children_.erase(where);
         }
+        auto erase(iterator first, iterator last)
+        {
+            return children_.erase(first, last);
+        }
 
         void clearChildren()
         {
