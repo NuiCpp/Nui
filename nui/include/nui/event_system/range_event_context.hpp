@@ -1,6 +1,9 @@
 #pragma once
 
+#include <nui/utility/assert.hpp>
+
 #include <interval-tree/interval_tree.hpp>
+#include <interval-tree/tree_hooks.hpp>
 
 #include <cstddef>
 #include <algorithm>
@@ -22,11 +25,6 @@ namespace Nui
     {
         template <typename ValueType, typename IntervalKind = lib_interval_tree::closed>
         class RangeStateInterval;
-
-        // template <typename ValueType, typename IntervalKind = lib_interval_tree::closed>
-        // std::vector<RangeStateInterval<ValueType, IntervalKind>> cutIntervals(
-        //     RangeStateInterval<ValueType, IntervalKind> const& k,
-        //     RangeStateInterval<ValueType, IntervalKind> const& m);
 
         template <typename ValueType, typename IntervalKind>
         class RangeStateInterval
@@ -61,13 +59,18 @@ namespace Nui
             {
                 return high_;
             }
+            void low(value_type value)
+            {
+                low_ = value;
+            }
             void high(value_type value)
             {
                 high_ = value;
             }
             bool overlaps(value_type l, value_type h) const
             {
-                return low_ <= h && l <= high_;
+                // return low_ <= h && l <= high_;
+                return overlapsOrIsAdjacent(l, h);
             }
             bool overlaps_exclusive(value_type l, value_type h) const
             {
@@ -75,7 +78,12 @@ namespace Nui
             }
             bool overlaps(RangeStateInterval const& other) const
             {
-                return overlaps(other.low_, other.high_);
+                // return overlaps(other.low_, other.high_);
+                return overlapsOrIsAdjacent(other);
+            }
+            bool overlapsOrIsAdjacent(value_type l, value_type h) const
+            {
+                return low_ <= h + 1 && l - 1 <= high_;
             }
             bool overlapsOrIsAdjacent(RangeStateInterval const& other) const
             {
@@ -97,6 +105,11 @@ namespace Nui
             {
                 low_ += offset;
                 high_ += offset;
+            }
+            void shiftLeft(value_type offset)
+            {
+                low_ -= offset;
+                high_ -= offset;
             }
             bool isLeftOf(RangeStateInterval const& other) const
             {
@@ -125,37 +138,39 @@ namespace Nui
                 const auto high = low + size() + other.size() + 1;
                 return {low, high};
             }
-            std::vector<RangeStateInterval> join(RangeStateInterval const& other) const
+            RangeStateInterval join(RangeStateInterval const& other) const
             {
-                return {RangeStateInterval{std::min(low_, other.low_), std::max(high_, other.high_)}};
-
-                // auto typeWithoutExtension = static_cast<RangeOperationType>(other.type_ &
-                // ~RangeOperationType::Extended); long extensionFix = other.type_ & RangeOperationType::Extended ? 1 :
-                // 0; switch (typeWithoutExtension | type_)
-                // {
-                //     case (RangeOperationType::Modify | RangeOperationType::Modify):
-                //     {
-                //         return {
-                //             {std::min(low_, other.low_ + extensionFix),
-                //              std::max(high_, other.high_ - extensionFix),
-                //              RangeOperationType::Modify}};
-                //     }
-                //     case (RangeOperationType::Keep | RangeOperationType::Modify):
-                //     {
-                //         // Modifications cut out of the keep part.
-                //         return cutIntervals(
-                //             *this, {other.low_ + extensionFix, other.high_ - extensionFix, typeWithoutExtension});
-                //     }
-                //     default:
-                //     {
-                //         throw std::runtime_error("Invalid insertion case");
-                //     }
-                // }
+                return RangeStateInterval{std::min(low_, other.low_), std::max(high_, other.high_)};
             }
 
           private:
             value_type low_;
             value_type high_;
+        };
+
+        struct CustomIntervalTreeNode
+            : public lib_interval_tree::node<long, RangeStateInterval<long>, CustomIntervalTreeNode>
+        {
+            using lib_interval_tree::node<long, RangeStateInterval<long>, CustomIntervalTreeNode>::node;
+
+            void shiftRight(long offset)
+            {
+                this->interval_.low(this->interval_.low() + offset);
+                this->interval_.high(this->interval_.high() + offset);
+                this->max_ = this->max_ + offset;
+            }
+
+            void shiftLeft(long offset)
+            {
+                this->interval_.low(this->interval_.low() - offset);
+                this->interval_.high(this->interval_.high() - offset);
+                this->max_ = this->max_ - offset;
+            }
+        };
+
+        struct IntervalTreeHook : public lib_interval_tree::hooks::regular
+        {
+            using node_type = CustomIntervalTreeNode;
         };
 
         // stream iterator for intervals
@@ -165,20 +180,6 @@ namespace Nui
             os << "[" << interval.low() << ", " << interval.high() << "]";
             return os;
         }
-
-        // template <typename ValueType, typename IntervalKind>
-        // std::vector<RangeStateInterval<ValueType, IntervalKind>> cutIntervals(
-        //     RangeStateInterval<ValueType, IntervalKind> const& k,
-        //     RangeStateInterval<ValueType, IntervalKind> const& m)
-        // {
-        //     std::vector<RangeStateInterval<ValueType, IntervalKind>> result;
-        //     if (k.low() <= m.low() - 1)
-        //         result.emplace_back(k.low(), m.low() - 1, RangeOperationType::Keep);
-        //     result.emplace_back(m.low(), m.high(), RangeOperationType::Modify);
-        //     if (k.high() >= m.high() + 1)
-        //         result.emplace_back(m.high() + 1, k.high(), RangeOperationType::Keep);
-        //     return result;
-        // }
     }
 
     class RangeEventContext
@@ -207,6 +208,18 @@ namespace Nui
         {
             fullRangeUpdate_ = true;
         }
+        /// @brief Done before the erasure is performed:
+        /// @return true if a fixup was performed
+        bool eraseNotify(long low, long high)
+        {
+            if (operationType_ == RangeOperationType::Keep || fullRangeUpdate_ || disableOptimizations_)
+                return false;
+            return eraseFixup(low, high);
+        }
+        bool eraseNotify(std::size_t low, std::size_t high)
+        {
+            return eraseNotify(static_cast<long>(low), static_cast<long>(high));
+        }
         InsertResult insertModificationRange(long elementCount, long low, long high, RangeOperationType type)
         {
             if (disableOptimizations_)
@@ -222,8 +235,6 @@ namespace Nui
             else if (operationType_ != type)
                 return InsertResult::PerformAndRetry;
 
-            auto newRange = Detail::RangeStateInterval<long>{low, high};
-
             switch (type)
             {
                 default:
@@ -231,51 +242,18 @@ namespace Nui
                 case RangeOperationType::Modify:
                 {
                     // Insert and merge interval only:
-                    trackedRanges_.insert_overlap(newRange);
-                    return InsertResult::Accepted;
+                    trackedRanges_.insert_overlap({low, high});
+                    break;
                 }
                 case RangeOperationType::Insert:
                 {
-                    // TODO:
+                    insertInsertRange(elementCount, low, high);
+                    break;
                 }
                 case RangeOperationType::Erase:
                 {
-                    auto& sourceSpace = trackedRanges_;
-                    bool processed = false;
-                    for (auto it = sourceSpace.begin(); it != sourceSpace.end(); ++it)
-                    {
-                        if (it->low() < newRange.low())
-                        {
-                            // +1 because the range includes its end
-                            newRange.shiftRight(it->size() + 1);
-                        }
-                        else if (it->overlapsOrIsAdjacent(newRange))
-                        {
-                            do
-                            {
-                                newRange = it->expand(newRange);
-                                // This should not happen:
-                                newRange.high(std::min(newRange.high(), dataSize_));
-
-                                // Remove the old range and insert the new one
-                                it = sourceSpace.erase(it);
-
-                                // Comment back in if erase is ever found to be broken :D
-                                // it = sourceSpace.overlap_find(newRange, false);
-                            } while (it != sourceSpace.end() && it->overlapsOrIsAdjacent(newRange));
-                            sourceSpace.insert(newRange);
-                            processed = true;
-                            break;
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-                    if (!processed)
-                    {
-                        sourceSpace.insert_overlap(newRange);
-                    }
+                    insertEraseRange(elementCount, low, high);
+                    break;
                 }
             }
 
@@ -324,8 +302,135 @@ namespace Nui
         }
 
       private:
-        // lib_interval_tree::interval_tree<Detail::RangeStateInterval<long>> eraseSourceSpace_;
-        lib_interval_tree::interval_tree<Detail::RangeStateInterval<long>> trackedRanges_;
+        void insertInsertRange(long elementCount, long low, long high)
+        {
+            // TODO: perform optimization using interval tree specialization for shifting subtrees.
+            auto newRange = Detail::RangeStateInterval<long>{low, high};
+
+            // find insert at same position first to move previous insert at that position over:
+            auto it = trackedRanges_.find(newRange, [](auto const& a, auto const& b) {
+                return a.low() == b.low();
+            });
+
+            if (it != trackedRanges_.end())
+            {
+                newRange = it->expand(newRange);
+                trackedRanges_.erase(it);
+                it = trackedRanges_.insert(newRange);
+            }
+            else
+            {
+                it = trackedRanges_.insert(newRange);
+            }
+            if (it != std::end(trackedRanges_))
+                ++it;
+
+            // move all subsequent intervals to the right:
+            for (; it != trackedRanges_.end(); ++it)
+            {
+                it.node()->shiftRight(high - low + 1);
+            }
+        }
+        void insertEraseRange(long elementCount, long low, long high)
+        {
+            auto newRange = Detail::RangeStateInterval<long>{low, high};
+            const bool processed = [&newRange, low, high, this]() {
+                for (auto it = trackedRanges_.begin(); it != trackedRanges_.end(); ++it)
+                {
+                    if (it->low() < newRange.low())
+                    {
+                        // +1 because the range includes its end
+                        newRange.shiftRight(it->size() + 1);
+                    }
+                    else if (it->overlapsOrIsAdjacent(newRange))
+                    {
+                        do
+                        {
+                            newRange = it->expand(newRange);
+                            // This should not happen:
+                            newRange.high(std::min(newRange.high(), dataSize_));
+
+                            // Remove the old range and insert the new one
+                            it = trackedRanges_.erase(it);
+
+                            // Comment back in if erase is ever found to be broken :D
+                            // it = trackedRanges_.overlap_find(newRange, false);
+                        } while (it != trackedRanges_.end() && it->overlapsOrIsAdjacent(newRange));
+                        trackedRanges_.insert(newRange);
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+                return false;
+            }();
+            if (!processed)
+            {
+                trackedRanges_.insert_overlap(newRange);
+            }
+        }
+        /**
+         * @brief This is necessary to remove previous inserts or modifies that are now erased.
+         *
+         * @param low
+         * @param high
+         */
+        bool eraseFixup(long low, long high)
+        {
+            auto range = Detail::RangeStateInterval<long>{low, high};
+            auto iter = trackedRanges_.overlap_find(range, false);
+
+            if (iter == trackedRanges_.end())
+                return false;
+
+            // find all overlapping modifications and cut them
+            for (; iter != trackedRanges_.end(); iter = trackedRanges_.overlap_find(range, false))
+            {
+                const auto modInterval = *iter;
+                iter = trackedRanges_.erase(iter);
+
+                // cut erasure from found modification interval:
+                // 1. erase is within modification interval:
+                if (modInterval.within(range))
+                {
+                    if (modInterval.low() < range.low())
+                        trackedRanges_.insert({modInterval.low(), range.low() - 1});
+                    if (range.high() < modInterval.high())
+                        trackedRanges_.insert({range.high() + 1, modInterval.high()});
+                    return true; // cannot overlap any further
+                }
+                else if (modInterval.low() < range.low())
+                {
+                    // 2. erase starts within modification interval:
+                    trackedRanges_.insert({modInterval.low(), range.low() - 1});
+
+                    // reduce range to right part:
+                    range.low(range.low() + 1);
+                    if (range.low() > range.high())
+                        return true;
+                }
+                else if (range.high() < modInterval.high())
+                {
+                    // 3. erase ends within modification interval:
+                    trackedRanges_.insert({range.high() + 1, modInterval.high()});
+
+                    // reduce range to left part:
+                    range.high(range.high() - 1);
+                    if (range.low() > range.high())
+                        return true;
+                }
+                else
+                {
+                    NUI_ASSERT(false, "Overlap without overlapping?");
+                }
+            }
+            return true;
+        }
+
+      private:
+        lib_interval_tree::interval_tree<Detail::RangeStateInterval<long>, Detail::IntervalTreeHook> trackedRanges_;
         RangeOperationType operationType_;
         long dataSize_;
         bool fullRangeUpdate_;

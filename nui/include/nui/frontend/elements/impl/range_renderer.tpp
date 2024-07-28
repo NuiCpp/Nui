@@ -101,14 +101,14 @@ namespace Nui::Detail
             if (valueRange == nullptr)
                 return;
 
-            // if (const auto insertInterval = valueRange->rangeContext().insertInterval(); insertInterval)
-            // {
-            //     for (auto i = insertInterval->low(); i <= insertInterval->high(); ++i)
-            //     {
-            //         elementRenderer_(i, valueRange->value()[static_cast<std::size_t>(i)])(
-            //             *parent, Renderer{.type = RendererType::Insert, .metadata = static_cast<std::size_t>(i)});
-            //     }
-            // }
+            for (auto i = valueRange->rangeContext().begin(), end = valueRange->rangeContext().end(); i != end; ++i)
+            {
+                for (auto r = i->low(), high = i->high(); r <= high; ++r)
+                {
+                    elementRenderer_(r, valueRange->value()[static_cast<std::size_t>(r)])(
+                        *parent, Renderer{.type = RendererType::Insert, .metadata = static_cast<std::size_t>(r)});
+                }
+            }
         }
 
         void modifications(auto& parent)
@@ -118,27 +118,14 @@ namespace Nui::Detail
             if (valueRange == nullptr)
                 return;
 
-            // for (auto const& range : valueRange->rangeContext())
-            // {
-            //     switch (range.type())
-            //     {
-            //         case RangeStateType::Keep:
-            //         {
-            //             continue;
-            //         }
-            //         case RangeStateType::Modify:
-            //         {
-            //             for (auto i = range.low(), high = range.high(); i <= high; ++i)
-            //             {
-            //                 elementRenderer_(i, valueRange->value()[static_cast<std::size_t>(i)])(
-            //                     *(*parent)[static_cast<std::size_t>(i)], Renderer{.type = RendererType::Replace});
-            //             }
-            //             break;
-            //         }
-            //         default:
-            //             break;
-            //     }
-            // }
+            for (auto const& range : valueRange->rangeContext())
+            {
+                for (auto r = range.low(), high = range.high(); r <= high; ++r)
+                {
+                    elementRenderer_(r, valueRange->value()[static_cast<std::size_t>(r)])(
+                        *(*parent)[static_cast<std::size_t>(r)], Renderer{.type = RendererType::Replace});
+                }
+            }
         }
 
         void erasures(auto& parent)

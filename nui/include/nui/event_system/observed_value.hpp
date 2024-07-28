@@ -534,7 +534,10 @@ namespace Nui
             {
                 if constexpr (std::is_same_v<WrappedIterator, typename ContainerT::reverse_iterator>)
                     return ReferenceWrapper<value_type, ContainerT>{
-                        owner_, static_cast<std::size_t>(it_ - owner_->contained_.rbegin()), *it_};
+                        owner_,
+                        owner_->contained_.size() - static_cast<std::size_t>(1) -
+                            static_cast<std::size_t>(it_ - owner_->contained_.rbegin()),
+                        *it_};
                 else
                     return ReferenceWrapper<value_type, ContainerT>{
                         owner_, static_cast<std::size_t>(it_ - owner_->contained_.begin()), *it_};
@@ -547,7 +550,10 @@ namespace Nui
             {
                 if constexpr (std::is_same_v<WrappedIterator, typename ContainerT::reverse_iterator>)
                     return PointerWrapper<value_type, ContainerT>{
-                        owner_, static_cast<std::size_t>(it_ - owner_->contained_.rbegin()), &*it_};
+                        owner_,
+                        owner_->contained_.size() - static_cast<std::size_t>(1) -
+                            static_cast<std::size_t>(it_ - owner_->contained_.rbegin()),
+                        &*it_};
                 else
                     return PointerWrapper<value_type, ContainerT>{
                         owner_, static_cast<std::size_t>(it_ - owner_->contained_.begin()), &*it_};
@@ -887,7 +893,7 @@ namespace Nui
         {
             const auto distance = pos - cbegin();
             auto it = contained_.insert(pos, count, value);
-            insertRangeChecked(distance, distance + count, RangeOperationType::Insert);
+            insertRangeChecked(distance, distance + count - 1, RangeOperationType::Insert);
             return iterator{this, it};
         }
         template <typename Iterator>
@@ -900,7 +906,7 @@ namespace Nui
         {
             const auto distance = pos - cbegin();
             auto it = contained_.insert(pos, first, last);
-            insertRangeChecked(distance, distance + std::distance(first, last), RangeOperationType::Insert);
+            insertRangeChecked(distance, distance + std::distance(first, last) - 1, RangeOperationType::Insert);
             return iterator{this, it};
         }
         iterator insert(iterator pos, std::initializer_list<value_type> ilist)
@@ -911,7 +917,7 @@ namespace Nui
         {
             const auto distance = pos - cbegin();
             auto it = contained_.insert(pos, ilist);
-            insertRangeChecked(distance, distance + ilist.size(), RangeOperationType::Insert);
+            insertRangeChecked(distance, distance + ilist.size() - 1, RangeOperationType::Insert);
             return iterator{this, it};
         }
         template <typename... Args>
@@ -919,12 +925,13 @@ namespace Nui
         {
             const auto distance = pos - cbegin();
             auto it = contained_.emplace(pos, std::forward<Args>(args)...);
-            insertRangeChecked(distance, distance + sizeof...(Args), RangeOperationType::Insert);
+            insertRangeChecked(distance, distance, RangeOperationType::Insert);
             return iterator{this, it};
         }
         iterator erase(iterator pos)
         {
             const auto distance = pos - begin();
+            eraseNotify(distance, distance);
             auto it = contained_.erase(pos.getWrapped());
             insertRangeChecked(distance, distance, RangeOperationType::Erase);
             return iterator{this, it};
@@ -932,6 +939,7 @@ namespace Nui
         iterator erase(const_iterator pos)
         {
             const auto distance = pos - cbegin();
+            eraseNotify(distance, distance);
             auto it = contained_.erase(pos);
             insertRangeChecked(distance, distance, RangeOperationType::Erase);
             return iterator{this, it};
@@ -940,6 +948,7 @@ namespace Nui
         {
             const auto distance = first - begin();
             const auto distance2 = std::distance(first, last);
+            eraseNotify(distance, distance + distance2 - 1);
             auto it = contained_.erase(first.getWrapped(), last.getWrapped());
             insertRangeChecked(distance, distance + distance2 - 1, RangeOperationType::Erase);
             return iterator{this, it};
@@ -948,6 +957,7 @@ namespace Nui
         {
             const auto distance = first - cbegin();
             const auto distance2 = std::distance(first, last);
+            eraseNotify(distance, distance + distance2 - 1);
             auto it = contained_.erase(first, last);
             insertRangeChecked(distance, distance + distance2 - 1, RangeOperationType::Erase);
             return iterator{this, it};
@@ -996,6 +1006,7 @@ namespace Nui
         {
             if (contained_.empty())
                 return;
+            eraseNotify(size(), size());
             contained_.pop_back();
             insertRangeChecked(size(), size(), RangeOperationType::Erase);
         }
@@ -1004,6 +1015,7 @@ namespace Nui
         {
             if (contained_.empty())
                 return;
+            eraseNotify(0, 0);
             contained_.pop_front();
             insertRangeChecked(0, 0, RangeOperationType::Erase);
         }
@@ -1012,6 +1024,10 @@ namespace Nui
         resize(size_type count)
         {
             const auto sizeBefore = contained_.size();
+            if (sizeBefore < count && sizeBefore != 0)
+            {
+                eraseNotify(sizeBefore, count - 1);
+            }
             contained_.resize(count);
             if (sizeBefore < count)
             {
@@ -1029,6 +1045,7 @@ namespace Nui
         resize(size_type count, value_type const& fillValue)
         {
             const auto sizeBefore = contained_.size();
+            eraseNotify(sizeBefore, count - 1);
             contained_.resize(count, fillValue);
             if (sizeBefore < count)
             {
@@ -1126,7 +1143,17 @@ namespace Nui
             }});
         }
 
-      private:
+        void eraseNotify(std::size_t index, std::size_t high)
+        {
+            const bool fixupPerformed = rangeContext_.eraseNotify(index, high);
+            if (fixupPerformed) // FORCE update:
+            {
+                update();
+                ObservedBase::eventContext_->executeActiveEventsImmediately();
+            }
+        }
+
+      protected:
         mutable RangeEventContext rangeContext_;
         mutable EventContext::EventIdType afterEffectId_;
     };
@@ -1215,9 +1242,10 @@ namespace Nui
             if (count == std::size_t{0})
                 return *this;
             const auto sizeBefore = this->contained_.size();
+            const auto high = count == std::string::npos ? sizeBefore - 1 : count - 1;
+            this->eraseNotify(index, high);
             this->contained_.erase(index, count);
-            this->insertRangeChecked(
-                index, count == std::string::npos ? sizeBefore - 1 : count - 1, RangeOperationType::Erase);
+            this->insertRangeChecked(index, high, RangeOperationType::Erase);
             return *this;
         }
     };
