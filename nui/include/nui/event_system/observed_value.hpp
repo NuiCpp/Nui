@@ -1006,7 +1006,7 @@ namespace Nui
         {
             if (contained_.empty())
                 return;
-            eraseNotify(size(), size());
+            eraseNotify(size() - 1, size() - 1);
             contained_.pop_back();
             insertRangeChecked(size(), size(), RangeOperationType::Erase);
         }

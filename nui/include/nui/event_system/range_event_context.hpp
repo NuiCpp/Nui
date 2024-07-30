@@ -72,9 +72,10 @@ namespace Nui
                 // return low_ <= h && l <= high_;
                 return overlapsOrIsAdjacent(l, h);
             }
+            // looks inclusive, but inclusive now means adjacent:
             bool overlaps_exclusive(value_type l, value_type h) const
             {
-                return low_ < h && l < high_;
+                return low_ <= h && l <= high_;
             }
             bool overlaps(RangeStateInterval const& other) const
             {
@@ -192,6 +193,7 @@ namespace Nui
             : trackedRanges_{}
             , operationType_{RangeOperationType::Keep}
             , dataSize_{dataSize}
+            , nextEraseOverride_{std::nullopt}
             , fullRangeUpdate_{true}
             , disableOptimizations_{disableOptimizations}
         {
@@ -212,9 +214,13 @@ namespace Nui
         /// @return true if a fixup was performed
         bool eraseNotify(long low, long high)
         {
-            if (operationType_ == RangeOperationType::Keep || fullRangeUpdate_ || disableOptimizations_)
+            if (operationType_ == RangeOperationType::Keep || operationType_ == RangeOperationType::Erase ||
+                fullRangeUpdate_ || disableOptimizations_ || trackedRanges_.empty())
                 return false;
-            return eraseFixup(low, high);
+            if (operationType_ == RangeOperationType::Modify)
+                return eraseModificationFixup(low, high);
+            else
+                return eraseInsertionFixup(low, high);
         }
         bool eraseNotify(std::size_t low, std::size_t high)
         {
@@ -252,7 +258,13 @@ namespace Nui
                 }
                 case RangeOperationType::Erase:
                 {
-                    insertEraseRange(elementCount, low, high);
+                    if (nextEraseOverride_)
+                    {
+                        insertEraseRange(elementCount, nextEraseOverride_->low(), nextEraseOverride_->high());
+                        nextEraseOverride_ = std::nullopt;
+                    }
+                    else
+                        insertEraseRange(elementCount, low, high);
                     break;
                 }
             }
@@ -326,6 +338,7 @@ namespace Nui
                 ++it;
 
             // move all subsequent intervals to the right:
+            // TODO: This is the expensive part and should be optimized.
             for (; it != trackedRanges_.end(); ++it)
             {
                 it.node()->shiftRight(high - low + 1);
@@ -371,19 +384,88 @@ namespace Nui
                 trackedRanges_.insert_overlap(newRange);
             }
         }
+
         /**
-         * @brief This is necessary to remove previous inserts or modifies that are now erased.
+         * @brief This is necessary to remove previous inserts that are now erased.
          *
          * @param low
          * @param high
          */
-        bool eraseFixup(long low, long high)
+        bool eraseInsertionFixup(long low, long high)
+        {
+            const auto lastInterval = *trackedRanges_.rbegin();
+
+            // If the erase interval is left of the last insert interval, we must apply the changes and
+            // retry. The following optimization would make the insert positions invalid.
+            // TODO: Moving them might be possible, but expensive.
+            if (high < lastInterval.high())
+                return true;
+
+            auto eraseRange = Detail::RangeStateInterval<long>{low, high};
+            auto eraseRangeOrig = eraseRange;
+
+            auto iter = trackedRanges_.overlap_find(eraseRange, true);
+            // if erase is completely at the end of a previous insert, we can cut the inserted elements out.
+            for (; iter != trackedRanges_.end(); iter = trackedRanges_.overlap_find(eraseRangeOrig, true))
+            {
+                if (iter == trackedRanges_.end())
+                    return true;
+                const auto insertInterval = *iter;
+
+                // erase overlaps insert to the end or over:
+                if (eraseRangeOrig.high() >= insertInterval.high())
+                {
+                    trackedRanges_.erase(iter);
+                    // if beginning of insert is left of erase, we have to insert the left part of the insert
+                    if (insertInterval.low() < eraseRangeOrig.low())
+                    {
+                        trackedRanges_.insert({insertInterval.low(), eraseRangeOrig.low() - 1});
+                        eraseRangeOrig.high(-insertInterval.high() + eraseRangeOrig.low() + eraseRangeOrig.high() - 1);
+                    }
+
+                    eraseRange.high(eraseRange.high() - insertInterval.size() - 1);
+                }
+                else
+                {
+                    break; // bail out
+                }
+            }
+
+            if (eraseRange.high() != high)
+                nextEraseOverride_ = eraseRange;
+
+            // Other tracking cases are too complicated.
+            // The reason is that cutting the intervals is not enough, we also have to modify where these insertions are
+            // taken from.
+            return true;
+        }
+
+        /**
+         * @brief This is necessary to remove previous modifies that are now erased.
+         *
+         * @param low
+         * @param high
+         */
+        bool eraseModificationFixup(long low, long high)
         {
             auto range = Detail::RangeStateInterval<long>{low, high};
+
             auto iter = trackedRanges_.overlap_find(range, false);
 
             if (iter == trackedRanges_.end())
+            {
+                // If we dont have an overlap, there might still be a case where modifications exists
+                // after the erase. In that case we have to apply these changes immediately and retry the erase.
+                // (Shifting the previous modifications would work too, but is more expensive)
+                const auto lastInterval = *trackedRanges_.rbegin();
+
+                // If the erase interval is left of the last modification interval, we must apply the changes and
+                // retry. An overlap would have been found otherwise.
+                if (high < lastInterval.low())
+                    return true;
+
                 return false;
+            }
 
             // find all overlapping modifications and cut them
             for (; iter != trackedRanges_.end(); iter = trackedRanges_.overlap_find(range, false))
@@ -421,6 +503,11 @@ namespace Nui
                     if (range.low() > range.high())
                         return true;
                 }
+                else if (range.within(modInterval))
+                {
+                    // 4. erase encompasses modification interval, only deletion is necessary:
+                    continue;
+                }
                 else
                 {
                     NUI_ASSERT(false, "Overlap without overlapping?");
@@ -432,6 +519,7 @@ namespace Nui
       private:
         lib_interval_tree::interval_tree<Detail::RangeStateInterval<long>, Detail::IntervalTreeHook> trackedRanges_;
         RangeOperationType operationType_;
+        std::optional<Detail::RangeStateInterval<long>> nextEraseOverride_;
         long dataSize_;
         bool fullRangeUpdate_;
         bool disableOptimizations_;
