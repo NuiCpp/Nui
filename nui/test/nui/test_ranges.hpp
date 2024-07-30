@@ -9,10 +9,6 @@
 #include "engine/global_object.hpp"
 #include "engine/document.hpp"
 
-#include <nui/frontend/elements.hpp>
-#include <nui/frontend/attributes.hpp>
-#include <nui/frontend/dom/reference.hpp>
-
 #include <iostream>
 #include <vector>
 #include <string>
@@ -26,45 +22,6 @@ namespace Nui::Tests
     class TestRanges : public CommonTestFixture
     {
       protected:
-        template <template <typename...> typename ContainerT, typename RangeElementType>
-        void rangeTextBodyRender(Observed<ContainerT<RangeElementType>>& observedRange, Nui::val& parent)
-        {
-            using Nui::Elements::div;
-            using Nui::Elements::body;
-            using namespace Nui::Attributes;
-
-            render(body{reference = parent}(range(observedRange), [&observedRange](long long i, auto const& element) {
-                return div{}(std::string{element});
-            }));
-        }
-
-        template <template <typename...> typename ContainerT, typename RangeElementType>
-        void textBodyParityTest(Observed<ContainerT<RangeElementType>>& observedRange, Nui::val const& parent)
-        {
-            auto toString = [](RangeElementType elem) {
-                if constexpr (std::is_same_v<RangeElementType, char>)
-                    return std::string{elem};
-                else if constexpr (std::is_fundamental_v<RangeElementType>)
-                    return std::to_string(elem);
-                else
-                    return elem;
-            };
-
-            ASSERT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(observedRange.size()));
-
-            std::string viewReality;
-            std::string sourceData;
-            for (int i = 0; i != observedRange.size(); ++i)
-            {
-                viewReality.push_back(parent["children"][i]["textContent"].as<std::string>()[0]);
-            }
-
-            sourceData.reserve(observedRange.size());
-            for (auto const& elem : observedRange.value())
-                sourceData.push_back(toString(elem)[0]);
-
-            EXPECT_EQ(sourceData, viewReality);
-        }
     };
 
     TEST_F(TestRanges, SubscriptOperatorAssignmentUpdatesView)
@@ -1887,5 +1844,38 @@ namespace Nui::Tests
 
         globalEventContext.executeActiveEventsImmediately();
         textBodyParityTest(vec, parent);
+    }
+
+    TEST_F(TestRanges, EraseRemoveIdiomTest)
+    {
+        Nui::val parent;
+        Observed<std::vector<int>> vec{{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        int renders = 0;
+        auto renderElement = [&vec, &renders](long long i, auto const& element) {
+            ++renders;
+            return Nui::Elements::div{}(std::to_string(element));
+        };
+
+        render(body{reference = parent}(range(vec), renderElement));
+        renders = 0;
+
+        vec.erase(
+            std::remove_if(
+                vec.begin(),
+                vec.end(),
+                [](int val) {
+                    return val & 1;
+                }),
+            vec.end());
+
+        globalEventContext.executeActiveEventsImmediately();
+        textBodyParityTest(vec, parent);
+
+        EXPECT_EQ(renders, 0);
     }
 }

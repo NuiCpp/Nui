@@ -354,54 +354,78 @@ namespace Nui
             ReferenceWrapper(ObservedContainer<ContainerT>* owner, std::size_t pos, T& ref)
                 : owner_{owner}
                 , pos_{pos}
-                , ref_{ref}
+                , ref_{&ref}
             {}
+            ReferenceWrapper(ReferenceWrapper const&) = default;
+            ReferenceWrapper(ReferenceWrapper&& other) noexcept
+                : owner_{other.owner_}
+                , pos_{other.pos_}
+                , ref_{other.ref_}
+            {
+                other.owner_ = nullptr;
+                other.pos_ = 0;
+                other.ref_ = nullptr;
+            }
+            ReferenceWrapper& operator=(ReferenceWrapper const&) = default;
+            ReferenceWrapper& operator=(ReferenceWrapper&& other) noexcept
+            {
+                if (this != &other)
+                {
+                    owner_ = other.owner_;
+                    pos_ = other.pos_;
+                    ref_ = other.ref_;
+                    other.owner_ = nullptr;
+                    other.pos_ = 0;
+                    other.ref_ = nullptr;
+                }
+                return *this;
+            }
             operator T&()
             {
-                return ref_;
+                return *ref_;
             }
             T& operator*()
             {
                 owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
-                return ref_;
+                return *ref_;
             }
             T const& operator*() const
             {
-                return ref_;
+                return *ref_;
             }
             T* operator->()
             {
                 owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
-                return &ref_;
+                return ref_;
             }
             T const* operator->() const
             {
-                return &ref_;
+                return ref_;
             }
             T& get()
             {
                 owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
-                return ref_;
+                return *ref_;
             }
             T const& getReadonly()
             {
-                return ref_;
+                return *ref_;
             }
             void operator=(T&& val)
             {
-                ref_ = std::move(val);
+                *ref_ = std::move(val);
                 owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
             }
             void operator=(T const& val)
             {
-                ref_ = val;
+                *ref_ = val;
                 owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
             }
 
           protected:
             ObservedContainer<ContainerT>* owner_;
             std::size_t pos_;
-            T& ref_;
+            T* ref_;
         };
 
         template <typename T, typename ContainerT>
@@ -490,6 +514,10 @@ namespace Nui
                 : owner_{owner}
                 , it_{std::move(it)}
             {}
+            IteratorWrapper(IteratorWrapper const&) = default;
+            IteratorWrapper(IteratorWrapper&&) = default;
+            IteratorWrapper& operator=(IteratorWrapper const&) = default;
+            IteratorWrapper& operator=(IteratorWrapper&&) = default;
             IteratorWrapper& operator+=(difference_type n)
             {
                 it_ += n;
