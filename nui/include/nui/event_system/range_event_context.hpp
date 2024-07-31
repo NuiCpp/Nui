@@ -186,10 +186,10 @@ namespace Nui
     class RangeEventContext
     {
       public:
-        explicit RangeEventContext(long dataSize)
-            : RangeEventContext(dataSize, false)
+        explicit RangeEventContext()
+            : RangeEventContext(false)
         {}
-        RangeEventContext(long dataSize, bool disableOptimizations)
+        RangeEventContext(bool disableOptimizations)
             : trackedRanges_{}
             , operationType_{RangeOperationType::Keep}
             , nextEraseOverride_{std::nullopt}

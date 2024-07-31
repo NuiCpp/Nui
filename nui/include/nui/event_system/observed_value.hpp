@@ -653,24 +653,24 @@ namespace Nui
       public:
         explicit ObservedContainer(CustomEventContextFlag_t, EventContext* ctx)
             : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx}
-            , rangeContext_{0}
+            , rangeContext_{}
             , afterEffectId_{registerAfterEffect()}
         {}
         explicit ObservedContainer()
             : ModifiableObserved<ContainerT>{}
-            , rangeContext_{0}
+            , rangeContext_{}
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
         explicit ObservedContainer(CustomEventContextFlag_t, EventContext* ctx, T&& t)
             : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx, std::forward<T>(t)}
-            , rangeContext_{static_cast<long>(contained_.size())}
+            , rangeContext_{}
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
         explicit ObservedContainer(T&& t)
             : ModifiableObserved<ContainerT>{std::forward<T>(t)}
-            , rangeContext_{static_cast<long>(contained_.size())}
+            , rangeContext_{}
             , afterEffectId_{registerAfterEffect()}
         {}
         explicit ObservedContainer(RangeEventContext&& rangeContext)
@@ -1294,13 +1294,11 @@ namespace Nui
 
       public:
         Observed()
-            : ObservedContainer<std::set<Parameters...>>{RangeEventContext{0, true}}
+            : ObservedContainer<std::set<Parameters...>>{RangeEventContext{true}}
         {}
         template <typename T = std::set<Parameters...>>
         explicit Observed(T&& t)
-            : ObservedContainer<std::set<Parameters...>>{
-                  std::forward<T>(t),
-                  RangeEventContext{static_cast<long>(t.size()), true}}
+            : ObservedContainer<std::set<Parameters...>>{std::forward<T>(t), RangeEventContext{true}}
         {}
 
         Observed<std::set<Parameters...>>& operator=(std::set<Parameters...> const& contained)
@@ -1325,13 +1323,11 @@ namespace Nui
 
       public:
         Observed()
-            : ObservedContainer<std::list<Parameters...>>{RangeEventContext{0, true}}
+            : ObservedContainer<std::list<Parameters...>>{RangeEventContext{true}}
         {}
         template <typename T = std::list<Parameters...>>
         explicit Observed(T&& t)
-            : ObservedContainer<std::list<Parameters...>>{
-                  std::forward<T>(t),
-                  RangeEventContext{static_cast<long>(t.size()), true}}
+            : ObservedContainer<std::list<Parameters...>>{std::forward<T>(t), RangeEventContext{true}}
         {}
 
         Observed<std::list<Parameters...>>& operator=(std::list<Parameters...> const& contained)

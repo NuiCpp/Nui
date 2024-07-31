@@ -31,8 +31,8 @@ namespace Nui::Detail
 
         template <typename Generator = GeneratorT>
         BasicObservedRenderer(ObservedAddMutableReference_t<ObservedType>&& observed, Generator&& elementRenderer)
-            : valueRange_{std::forward<ObservedAddMutableReference_t<ObservedType>>(observed)}
-            , elementRenderer_{std::forward<GeneratorT>(elementRenderer)}
+            : elementRenderer_{std::forward<GeneratorT>(elementRenderer)}
+            , valueRange_{std::forward<ObservedAddMutableReference_t<ObservedType>>(observed)}
         {}
         virtual ~BasicObservedRenderer() = default;
         BasicObservedRenderer(BasicObservedRenderer const&) = delete;
