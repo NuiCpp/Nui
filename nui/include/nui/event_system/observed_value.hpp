@@ -653,46 +653,46 @@ namespace Nui
       public:
         explicit ObservedContainer(CustomEventContextFlag_t, EventContext* ctx)
             : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx}
-            , rangeContext_{}
+            , rangeContext_{std::make_shared<RangeEventContext>()}
             , afterEffectId_{registerAfterEffect()}
         {}
         explicit ObservedContainer()
             : ModifiableObserved<ContainerT>{}
-            , rangeContext_{}
+            , rangeContext_{std::make_shared<RangeEventContext>()}
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
         explicit ObservedContainer(CustomEventContextFlag_t, EventContext* ctx, T&& t)
             : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx, std::forward<T>(t)}
-            , rangeContext_{}
+            , rangeContext_{std::make_shared<RangeEventContext>()}
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
         explicit ObservedContainer(T&& t)
             : ModifiableObserved<ContainerT>{std::forward<T>(t)}
-            , rangeContext_{}
+            , rangeContext_{std::make_shared<RangeEventContext>()}
             , afterEffectId_{registerAfterEffect()}
         {}
         explicit ObservedContainer(RangeEventContext&& rangeContext)
             : ModifiableObserved<ContainerT>{}
-            , rangeContext_{std::move(rangeContext)}
+            , rangeContext_{std::make_shared<RangeEventContext>(std::move(rangeContext))}
             , afterEffectId_{registerAfterEffect()}
         {}
         explicit ObservedContainer(CustomEventContextFlag_t, EventContext* ctx, RangeEventContext&& rangeContext)
             : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx}
-            , rangeContext_{std::move(rangeContext)}
+            , rangeContext_{std::make_shared<RangeEventContext>(std::move(rangeContext))}
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
         ObservedContainer(T&& t, RangeEventContext&& rangeContext)
             : ModifiableObserved<ContainerT>{std::forward<T>(t)}
-            , rangeContext_{std::move(rangeContext)}
+            , rangeContext_{std::make_shared<RangeEventContext>(std::move(rangeContext))}
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
         ObservedContainer(CustomEventContextFlag_t, EventContext* ctx, T&& t, RangeEventContext&& rangeContext)
             : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx, std::forward<T>(t)}
-            , rangeContext_{std::move(rangeContext)}
+            , rangeContext_{std::make_shared<RangeEventContext>(std::move(rangeContext))}
             , afterEffectId_{registerAfterEffect()}
         {}
 
@@ -713,27 +713,27 @@ namespace Nui
         ObservedContainer& operator=(T&& t)
         {
             contained_ = std::forward<T>(t);
-            rangeContext_.reset(true);
+            rangeContext_->reset(true);
             update();
             return *this;
         }
         void assign(size_type count, const value_type& value)
         {
             contained_.assign(count, value);
-            rangeContext_.reset(true);
+            rangeContext_->reset(true);
             update();
         }
         template <typename Iterator>
         void assign(Iterator first, Iterator last)
         {
             contained_.assign(first, last);
-            rangeContext_.reset(true);
+            rangeContext_->reset(true);
             update();
         }
         void assign(std::initializer_list<value_type> ilist)
         {
             contained_.assign(ilist);
-            rangeContext_.reset(true);
+            rangeContext_->reset(true);
             update();
         }
 
@@ -864,7 +864,7 @@ namespace Nui
         void clear()
         {
             contained_.clear();
-            rangeContext_.reset(true);
+            rangeContext_->reset(true);
             update();
         }
         template <typename U = ContainerT>
@@ -876,7 +876,7 @@ namespace Nui
             NUI_ASSERT(ObservedBase::eventContext_ != nullptr, "Event context must never be null.");
 
             const auto result = contained_.insert(value);
-            rangeContext_.performFullRangeUpdate();
+            rangeContext_->performFullRangeUpdate();
             update();
             ObservedBase::eventContext_->executeActiveEventsImmediately();
             return result;
@@ -890,7 +890,7 @@ namespace Nui
             NUI_ASSERT(ObservedBase::eventContext_ != nullptr, "Event context must never be null.");
 
             const auto result = contained_.insert(std::move(value));
-            rangeContext_.performFullRangeUpdate();
+            rangeContext_->performFullRangeUpdate();
             update();
             ObservedBase::eventContext_->executeActiveEventsImmediately();
             return result;
@@ -1091,7 +1091,7 @@ namespace Nui
         void swap(ContainerT& other)
         {
             contained_.swap(other);
-            rangeContext_.reset(true);
+            rangeContext_->reset(true);
             update();
         }
 
@@ -1106,18 +1106,18 @@ namespace Nui
         }
         RangeEventContext& rangeContext()
         {
-            return rangeContext_;
+            return *rangeContext_;
         }
         RangeEventContext const& rangeContext() const
         {
-            return rangeContext_;
+            return *rangeContext_;
         }
 
       protected:
         void update(bool force = false) const override
         {
             if (force)
-                rangeContext_.reset(true);
+                rangeContext_->reset(true);
             ObservedBase::eventContext_->activateAfterEffect(afterEffectId_);
             ObservedBase::update(force);
         }
@@ -1129,7 +1129,7 @@ namespace Nui
             doInsert = [&](int retries) {
                 NUI_ASSERT(ObservedBase::eventContext_ != nullptr, "Event context must never be null.");
 
-                const auto result = rangeContext_.insertModificationRange(low, high, type);
+                const auto result = rangeContext_->insertModificationRange(low, high, type);
                 if (result == RangeEventContext::InsertResult::Perform)
                 {
                     update();
@@ -1144,7 +1144,7 @@ namespace Nui
                         doInsert(retries + 1);
                     else
                     {
-                        rangeContext_.reset(true);
+                        rangeContext_->reset(true);
                         update();
                         ObservedBase::eventContext_->executeActiveEventsImmediately();
                         return;
@@ -1157,7 +1157,7 @@ namespace Nui
                 else
                 {
                     // Rejected! (why?)
-                    rangeContext_.reset(true);
+                    rangeContext_->reset(true);
                     update();
                     ObservedBase::eventContext_->executeActiveEventsImmediately();
                     return;
@@ -1170,15 +1170,20 @@ namespace Nui
         auto registerAfterEffect()
         {
             NUI_ASSERT(ObservedBase::eventContext_ != nullptr, "Event context must never be null.");
-            return ObservedBase::eventContext_->registerAfterEffect(Event{[this](EventContext::EventIdType) {
-                rangeContext_.reset();
-                return true;
-            }});
+            return ObservedBase::eventContext_->registerAfterEffect(
+                Event{[weak = std::weak_ptr<RangeEventContext>{rangeContext_}](EventContext::EventIdType) {
+                    if (auto shared = weak.lock(); shared)
+                    {
+                        shared->reset();
+                        return true;
+                    }
+                    return false;
+                }});
         }
 
         void eraseNotify(std::size_t index, std::size_t high)
         {
-            const bool fixupPerformed = rangeContext_.eraseNotify(index, high);
+            const bool fixupPerformed = rangeContext_->eraseNotify(index, high);
             if (fixupPerformed) // FORCE update:
             {
                 update();
@@ -1188,7 +1193,7 @@ namespace Nui
 
       protected:
         MoveDetector moveDetector_;
-        mutable RangeEventContext rangeContext_;
+        mutable std::shared_ptr<RangeEventContext> rangeContext_;
         mutable EventContext::EventIdType afterEffectId_;
     };
 
@@ -1433,8 +1438,8 @@ namespace Nui
         return observedValue;
     }
     template <typename T>
-    inline auto operator--(ModifiableObserved<T>& observedValue, int)
-        -> Detail::PickFirst_t<T, decltype(std::declval<T>()--)>
+    inline auto
+    operator--(ModifiableObserved<T>& observedValue, int) -> Detail::PickFirst_t<T, decltype(std::declval<T>()--)>
     {
         auto tmp = observedValue.value();
         --observedValue.value();
