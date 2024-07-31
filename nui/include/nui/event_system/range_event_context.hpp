@@ -348,9 +348,11 @@ namespace Nui
             const bool processed = [&newRange, this]() {
                 for (auto it = trackedRanges_.begin(); it != trackedRanges_.end(); ++it)
                 {
+                    // Shift erasure over when previous erasures shrank the range,
+                    // since erasures are replayed from the end.
                     if (it->low() < newRange.low())
                     {
-                        // +1 because the range includes its end
+                        //  +1 because the range includes its end
                         newRange.shiftRight(it->size() + 1);
                     }
                     else if (it->overlapsOrIsAdjacent(newRange))
@@ -358,14 +360,9 @@ namespace Nui
                         do
                         {
                             newRange = it->expand(newRange);
-                            // This should not happen:
-                            newRange.high(std::min(newRange.high(), dataSize_));
 
                             // Remove the old range and insert the new one
                             it = trackedRanges_.erase(it);
-
-                            // Comment back in if erase is ever found to be broken :D
-                            // it = trackedRanges_.overlap_find(newRange, false);
                         } while (it != trackedRanges_.end() && it->overlapsOrIsAdjacent(newRange));
                         trackedRanges_.insert(newRange);
                         return true;
@@ -469,7 +466,7 @@ namespace Nui
             for (; iter != trackedRanges_.end(); iter = trackedRanges_.overlap_find(range, false))
             {
                 const auto modInterval = *iter;
-                iter = trackedRanges_.erase(iter);
+                trackedRanges_.erase(iter);
 
                 // cut erasure from found modification interval:
                 // 1. erase is within modification interval:
