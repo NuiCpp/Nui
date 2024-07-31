@@ -1,6 +1,6 @@
 option(NUI_FETCH_INTERVAL_TREE "Fetch interval tree" ON)
 set(NUI_INTERVAL_TREE_GIT_REPOSITORY "https://github.com/5cript/interval-tree.git" CACHE STRING "interval tree git repository")
-set(NUI_INTERVAL_TREE_GIT_TAG "v2.2.3" CACHE STRING "interval tree git tag")
+set(NUI_INTERVAL_TREE_GIT_TAG "v2.2.4" CACHE STRING "interval tree git tag")
 
 if(NUI_FETCH_INTERVAL_TREE)
     include(FetchContent)
