@@ -1124,7 +1124,7 @@ namespace Nui
             doInsert = [&](int retries) {
                 NUI_ASSERT(ObservedBase::eventContext_ != nullptr, "Event context must never be null.");
 
-                const auto result = rangeContext_.insertModificationRange(contained_.size(), low, high, type);
+                const auto result = rangeContext_.insertModificationRange(low, high, type);
                 if (result == RangeEventContext::InsertResult::Perform)
                 {
                     update();
@@ -1431,8 +1431,8 @@ namespace Nui
         return observedValue;
     }
     template <typename T>
-    inline auto
-    operator--(ModifiableObserved<T>& observedValue, int) -> Detail::PickFirst_t<T, decltype(std::declval<T>()--)>
+    inline auto operator--(ModifiableObserved<T>& observedValue, int)
+        -> Detail::PickFirst_t<T, decltype(std::declval<T>()--)>
     {
         auto tmp = observedValue.value();
         --observedValue.value();

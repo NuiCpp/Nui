@@ -192,8 +192,8 @@ namespace Nui
         RangeEventContext(long dataSize, bool disableOptimizations)
             : trackedRanges_{}
             , operationType_{RangeOperationType::Keep}
-            , dataSize_{dataSize}
             , nextEraseOverride_{std::nullopt}
+            , dataSize_{dataSize}
             , fullRangeUpdate_{true}
             , disableOptimizations_{disableOptimizations}
         {
@@ -226,7 +226,7 @@ namespace Nui
         {
             return eraseNotify(static_cast<long>(low), static_cast<long>(high));
         }
-        InsertResult insertModificationRange(long elementCount, long low, long high, RangeOperationType type)
+        InsertResult insertModificationRange(long low, long high, RangeOperationType type)
         {
             if (disableOptimizations_)
             {
@@ -253,29 +253,27 @@ namespace Nui
                 }
                 case RangeOperationType::Insert:
                 {
-                    insertInsertRange(elementCount, low, high);
+                    insertInsertRange(low, high);
                     break;
                 }
                 case RangeOperationType::Erase:
                 {
                     if (nextEraseOverride_)
                     {
-                        insertEraseRange(elementCount, nextEraseOverride_->low(), nextEraseOverride_->high());
+                        insertEraseRange(nextEraseOverride_->low(), nextEraseOverride_->high());
                         nextEraseOverride_ = std::nullopt;
                     }
                     else
-                        insertEraseRange(elementCount, low, high);
+                        insertEraseRange(low, high);
                     break;
                 }
             }
 
             return InsertResult::Accepted;
         }
-        InsertResult
-        insertModificationRange(std::size_t elementCount, std::size_t low, std::size_t high, RangeOperationType type)
+        InsertResult insertModificationRange(std::size_t low, std::size_t high, RangeOperationType type)
         {
-            return insertModificationRange(
-                static_cast<long>(elementCount), static_cast<long>(low), static_cast<long>(high), type);
+            return insertModificationRange(static_cast<long>(low), static_cast<long>(high), type);
         }
         void reset(std::size_t dataSize)
         {
@@ -314,7 +312,7 @@ namespace Nui
         }
 
       private:
-        void insertInsertRange(long elementCount, long low, long high)
+        void insertInsertRange(long low, long high)
         {
             // TODO: perform optimization using interval tree specialization for shifting subtrees.
             auto newRange = Detail::RangeStateInterval<long>{low, high};
@@ -344,10 +342,10 @@ namespace Nui
                 it.node()->shiftRight(high - low + 1);
             }
         }
-        void insertEraseRange(long elementCount, long low, long high)
+        void insertEraseRange(long low, long high)
         {
             auto newRange = Detail::RangeStateInterval<long>{low, high};
-            const bool processed = [&newRange, low, high, this]() {
+            const bool processed = [&newRange, this]() {
                 for (auto it = trackedRanges_.begin(); it != trackedRanges_.end(); ++it)
                 {
                     if (it->low() < newRange.low())

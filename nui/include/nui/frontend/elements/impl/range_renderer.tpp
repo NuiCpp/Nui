@@ -153,7 +153,7 @@ namespace Nui::Detail
             if (!valueRange)
                 return InvalidateRange;
 
-            Nui::ScopeExit onExit{[this, valueRange] {
+            Nui::ScopeExit onExit{[valueRange] {
                 valueRange->rangeContext().reset(valueRange->value().size());
             }};
 
