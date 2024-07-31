@@ -6,6 +6,7 @@
 #include <nui/event_system/event_context.hpp>
 #include <nui/utility/assert.hpp>
 #include <nui/utility/meta/pick_first.hpp>
+#include <nui/utility/move_detector.hpp>
 
 #include <memory>
 #include <vector>
@@ -648,7 +649,6 @@ namespace Nui
         using const_reverse_iterator = typename ContainerT::const_reverse_iterator;
 
         using ModifiableObserved<ContainerT>::contained_;
-        using ModifiableObserved<ContainerT>::update;
 
       public:
         explicit ObservedContainer(CustomEventContextFlag_t, EventContext* ctx)
@@ -700,7 +700,11 @@ namespace Nui
         ObservedContainer(ObservedContainer&&) = default;
         ObservedContainer& operator=(const ObservedContainer&) = delete;
         ObservedContainer& operator=(ObservedContainer&&) = default;
-        ~ObservedContainer() = default;
+        ~ObservedContainer()
+        {
+            if (!moveDetector_.wasMoved())
+                ObservedBase::eventContext_->removeAfterEffect(afterEffectId_);
+        }
 
         constexpr auto map(auto&& function) const;
         constexpr auto map(auto&& function);
@@ -709,27 +713,27 @@ namespace Nui
         ObservedContainer& operator=(T&& t)
         {
             contained_ = std::forward<T>(t);
-            rangeContext_.reset(static_cast<long>(contained_.size()), true);
+            rangeContext_.reset(true);
             update();
             return *this;
         }
         void assign(size_type count, const value_type& value)
         {
             contained_.assign(count, value);
-            rangeContext_.reset(static_cast<long>(contained_.size()), true);
+            rangeContext_.reset(true);
             update();
         }
         template <typename Iterator>
         void assign(Iterator first, Iterator last)
         {
             contained_.assign(first, last);
-            rangeContext_.reset(static_cast<long>(contained_.size()), true);
+            rangeContext_.reset(true);
             update();
         }
         void assign(std::initializer_list<value_type> ilist)
         {
             contained_.assign(ilist);
-            rangeContext_.reset(static_cast<long>(contained_.size()), true);
+            rangeContext_.reset(true);
             update();
         }
 
@@ -860,7 +864,7 @@ namespace Nui
         void clear()
         {
             contained_.clear();
-            rangeContext_.reset(0, true);
+            rangeContext_.reset(true);
             update();
         }
         template <typename U = ContainerT>
@@ -1087,7 +1091,7 @@ namespace Nui
         void swap(ContainerT& other)
         {
             contained_.swap(other);
-            rangeContext_.reset(contained_.size(), true);
+            rangeContext_.reset(true);
             update();
         }
 
@@ -1113,7 +1117,8 @@ namespace Nui
         void update(bool force = false) const override
         {
             if (force)
-                rangeContext_.reset(static_cast<long>(contained_.size()), true);
+                rangeContext_.reset(true);
+            ObservedBase::eventContext_->activateAfterEffect(afterEffectId_);
             ObservedBase::update(force);
         }
 
@@ -1139,7 +1144,7 @@ namespace Nui
                         doInsert(retries + 1);
                     else
                     {
-                        rangeContext_.reset(static_cast<long>(contained_.size()), true);
+                        rangeContext_.reset(true);
                         update();
                         ObservedBase::eventContext_->executeActiveEventsImmediately();
                         return;
@@ -1152,7 +1157,7 @@ namespace Nui
                 else
                 {
                     // Rejected! (why?)
-                    rangeContext_.reset(static_cast<long>(contained_.size()), true);
+                    rangeContext_.reset(true);
                     update();
                     ObservedBase::eventContext_->executeActiveEventsImmediately();
                     return;
@@ -1166,7 +1171,7 @@ namespace Nui
         {
             NUI_ASSERT(ObservedBase::eventContext_ != nullptr, "Event context must never be null.");
             return ObservedBase::eventContext_->registerAfterEffect(Event{[this](EventContext::EventIdType) {
-                rangeContext_.reset(static_cast<long>(contained_.size()), true);
+                rangeContext_.reset();
                 return true;
             }});
         }
@@ -1182,6 +1187,7 @@ namespace Nui
         }
 
       protected:
+        MoveDetector moveDetector_;
         mutable RangeEventContext rangeContext_;
         mutable EventContext::EventIdType afterEffectId_;
     };

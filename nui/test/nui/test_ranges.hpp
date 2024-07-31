@@ -1878,4 +1878,128 @@ namespace Nui::Tests
 
         EXPECT_EQ(renders, 0);
     }
+
+    TEST_F(TestRanges, ParentRerenderRemakesAllChildren)
+    {
+        Observed<bool> outer{false};
+        Observed<std::vector<char>> inner{{'A', 'B', 'C', 'D'}};
+        Nui::val parent;
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{}(observe(outer), [&inner, &parent]() -> Nui::ElementRenderer {
+            return div{reference.onMaterialize([&parent](Nui::val va) {
+                parent = va;
+            })}(range(inner), [&inner](long long i, auto const& element) {
+                return div{}(std::string{element});
+            });
+        }));
+
+        textBodyParityTest(inner, parent);
+
+        outer = true;
+        globalEventContext.executeActiveEventsImmediately();
+
+        textBodyParityTest(inner, parent);
+    }
+
+    TEST_F(TestRanges, AllRangeObserversAreRerenderedOnChange)
+    {
+        Nui::val parent1;
+        Nui::val parent2;
+
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        auto renderer = [&vec](long long i, auto const& element) -> Nui::ElementRenderer {
+            return div{}(std::string{element});
+        };
+
+        render(body{}(div{reference = parent1}(range(vec), renderer), div{reference = parent2}(range(vec), renderer)));
+
+        textBodyParityTest(vec, parent1);
+        textBodyParityTest(vec, parent2);
+
+        vec.push_back('E');
+        vec[0] = 'X';
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(this->aggregateObservedCharList(vec), this->getChildrenBodyTextConcat(parent1));
+        EXPECT_EQ(this->aggregateObservedCharList(vec), this->getChildrenBodyTextConcat(parent2));
+    }
+
+    TEST_F(TestRanges, RangeContextIsResetAfterAllChildrenAreRendered)
+    {
+        Nui::val parent1;
+        Nui::val parent2;
+
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        auto renderer = [&vec](long long i, auto const& element) -> Nui::ElementRenderer {
+            return div{}(std::string{element});
+        };
+
+        render(body{}(div{reference = parent1}(range(vec), renderer), div{reference = parent2}(range(vec), renderer)));
+
+        vec.push_back('E');
+        vec[0] = 'X';
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_TRUE(vec.rangeContext().isInDefaultState());
+    }
+
+    TEST_F(TestRanges, CanRenderRangeEvenDuringPendingModification)
+    {
+        Nui::val parent1;
+        Nui::val parent2;
+
+        Observed<bool> delayed{false};
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        auto renderer = [&vec](long long i, auto const& element) -> Nui::ElementRenderer {
+            return div{}(std::string{element});
+        };
+
+        // clang-format off
+        render(
+            body{}(
+                div{
+                    reference = parent1,
+                }(range(vec), renderer),
+                div{}(
+                    observe(delayed),
+                    [&parent2, &vec, &renderer, &delayed]() -> Nui::ElementRenderer {
+                        if (!delayed.value())
+                            return Nui::nil();
+                        return div{
+                            reference = parent2,
+                        }(range(vec), renderer);
+                    }
+                )
+            )
+        );
+        // clang-format on
+
+        delayed = true;
+        vec.push_back('E');
+        vec[0] = 'X';
+
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(this->aggregateObservedCharList(vec), this->getChildrenBodyTextConcat(parent1));
+        EXPECT_EQ(this->aggregateObservedCharList(vec), this->getChildrenBodyTextConcat(parent2));
+    }
 }

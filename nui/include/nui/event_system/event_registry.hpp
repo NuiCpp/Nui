@@ -42,6 +42,24 @@ namespace Nui
             return registry_.select(id);
         }
 
+        /**
+         * @brief Activate an after effect.
+         *
+         * @param id
+         * @return RegistryType::SelectionResult
+         */
+        RegistryType::SelectionResult activateAfterEffect(EventIdType id)
+        {
+            return afterEffects_.select(id);
+        }
+
+        /**
+         * @brief After effects are used to cause something to happen after all other events have been processed.
+         * After effects are executed in indeterminate order.
+         *
+         * @param event
+         * @return EventIdType
+         */
         EventIdType registerAfterEffect(Event event)
         {
             return afterEffects_.append(std::move(event));
@@ -83,6 +101,11 @@ namespace Nui
 
             for (auto const& id : invalidIds)
                 registry_.erase(id);
+        }
+
+        void removeAfterEffect(EventIdType id)
+        {
+            afterEffects_.erase(id);
         }
 
         void clear()

@@ -193,12 +193,9 @@ namespace Nui
             : trackedRanges_{}
             , operationType_{RangeOperationType::Keep}
             , nextEraseOverride_{std::nullopt}
-            , dataSize_{dataSize}
-            , fullRangeUpdate_{true}
+            , fullRangeUpdate_{false}
             , disableOptimizations_{disableOptimizations}
-        {
-            reset(dataSize, true);
-        }
+        {}
         enum class InsertResult
         {
             Perform,
@@ -275,16 +272,15 @@ namespace Nui
         {
             return insertModificationRange(static_cast<long>(low), static_cast<long>(high), type);
         }
-        void reset(std::size_t dataSize)
-        {
-            reset(static_cast<long>(dataSize), false);
-        }
-        void reset(long dataSize, bool requireFullRangeUpdate)
+        void reset(bool requireFullRangeUpdate = false)
         {
             trackedRanges_.clear();
-            dataSize_ = dataSize;
             fullRangeUpdate_ = requireFullRangeUpdate;
             operationType_ = RangeOperationType::Keep;
+        }
+        bool isInDefaultState() const
+        {
+            return trackedRanges_.empty() && operationType_ == RangeOperationType::Keep;
         }
         bool isFullRangeUpdate() const noexcept
         {
@@ -515,7 +511,6 @@ namespace Nui
         lib_interval_tree::interval_tree<Detail::RangeStateInterval<long>, Detail::IntervalTreeHook> trackedRanges_;
         RangeOperationType operationType_;
         std::optional<Detail::RangeStateInterval<long>> nextEraseOverride_;
-        long dataSize_;
         bool fullRangeUpdate_;
         bool disableOptimizations_;
     };

@@ -54,25 +54,26 @@ namespace Nui::Detail
             }(valueRange_);
         }
 
-        bool fullRangeUpdate(auto& parent)
+        bool fullRangeUpdate(auto& parent, bool force = false)
         {
             auto valueRangeHolder = HoldToken{};
             auto* valueRange = getValueRange(valueRangeHolder);
             if (valueRange == nullptr)
                 return false;
 
-            if (valueRange->rangeContext().isFullRangeUpdate())
+            if (valueRange->rangeContext().isFullRangeUpdate() || force)
             {
                 parent->clearChildren();
                 long long counter = 0;
                 for (auto& element : valueRange->value())
                     elementRenderer_(counter++, element)(*parent, Renderer{.type = RendererType::Append});
+                valueRange->rangeContext().reset();
                 return true;
             }
             return false;
         }
 
-        virtual bool updateChildren() = 0;
+        virtual bool updateChildren(bool initial) = 0;
 
       protected:
         GeneratorT elementRenderer_;
@@ -141,7 +142,7 @@ namespace Nui::Detail
             }
         }
 
-        bool updateChildren() override
+        bool updateChildren(bool initial) override
         {
             auto parent = weakMaterialized_.lock();
             if (!parent)
@@ -153,12 +154,8 @@ namespace Nui::Detail
             if (!valueRange)
                 return InvalidateRange;
 
-            Nui::ScopeExit onExit{[valueRange] {
-                valueRange->rangeContext().reset(valueRange->value().size());
-            }};
-
             // Regenerate all elements if necessary:
-            if (fullRangeUpdate(parent))
+            if (fullRangeUpdate(parent, initial))
                 return KeepRange;
 
             switch (valueRange->rangeContext().operationType())
@@ -189,13 +186,13 @@ namespace Nui::Detail
             {
                 valueRange->attachEvent(Nui::globalEventContext.registerEvent(Event{
                     [self = this->shared_from_this()](int) -> bool {
-                        return self->updateChildren();
+                        return self->updateChildren(false);
                     },
                     [this /* fine because other function holds this */]() {
                         return !weakMaterialized_.expired();
                     },
                 }));
-                updateChildren();
+                updateChildren(true);
             }
         }
     };
@@ -212,13 +209,13 @@ namespace Nui::Detail
         using BasicObservedRenderer<RangeT, GeneratorT>::fullRangeUpdate;
         using BasicObservedRenderer<RangeT, GeneratorT>::getValueRange;
 
-        bool updateChildren() override
+        bool updateChildren(bool) override
         {
             auto parent = weakMaterialized_.lock();
             if (!parent)
                 return InvalidateRange;
 
-            fullRangeUpdate(parent);
+            fullRangeUpdate(parent, true /* force always */);
             return KeepRange;
         }
 
@@ -231,13 +228,13 @@ namespace Nui::Detail
             {
                 valueRange->attachEvent(Nui::globalEventContext.registerEvent(Event{
                     [self = this->shared_from_this()](int) -> bool {
-                        return self->updateChildren();
+                        return self->updateChildren(true);
                     },
                     [this /* fine because other function holds this */]() {
                         return !weakMaterialized_.expired();
                     },
                 }));
-                updateChildren();
+                updateChildren(true);
             }
         }
     };
@@ -255,7 +252,7 @@ namespace Nui::Detail
             , elementRenderer_{std::forward<GeneratorT>(elementRenderer)}
         {}
 
-        bool updateChildren()
+        bool updateChildren(bool)
         {
             auto materialized = weakMaterialized_.lock();
             if (!materialized)
@@ -278,13 +275,13 @@ namespace Nui::Detail
             weakMaterialized_ = materialized;
             unoptimizedRange_.underlying().attachEvent(Nui::globalEventContext.registerEvent(Event{
                 [self = this->shared_from_this()](int) -> bool {
-                    return self->updateChildren();
+                    return self->updateChildren(true);
                 },
                 [this]() {
                     return !weakMaterialized_.expired();
                 },
             }));
-            updateChildren();
+            updateChildren(true);
         }
 
       protected:

@@ -57,6 +57,10 @@ namespace Nui
         {
             return impl_->eventRegistry().activateEvent(id);
         }
+        auto activateAfterEffect(EventIdType id)
+        {
+            return impl_->eventRegistry().activateAfterEffect(id);
+        }
         void executeActiveEventsImmediately()
         {
             impl_->eventRegistry().executeActiveEvents();
@@ -72,6 +76,10 @@ namespace Nui
         void cleanInvalidEvents()
         {
             impl_->eventRegistry().cleanInvalidEvents();
+        }
+        void removeAfterEffect(EventIdType id)
+        {
+            impl_->eventRegistry().removeAfterEffect(id);
         }
         void reset()
         {

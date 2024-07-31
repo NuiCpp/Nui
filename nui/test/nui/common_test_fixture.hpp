@@ -56,7 +56,7 @@ namespace Nui::Tests
         }
 
         template <template <typename...> typename ContainerT, typename RangeElementType>
-        void textBodyParityTest(Observed<ContainerT<RangeElementType>>& observedRange, Nui::val const& parent)
+        std::string aggregateObservedCharList(Observed<ContainerT<RangeElementType>>& observedRange)
         {
             auto toString = [](RangeElementType elem) {
                 if constexpr (std::is_same_v<RangeElementType, char>)
@@ -67,20 +67,28 @@ namespace Nui::Tests
                     return elem;
             };
 
-            ASSERT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(observedRange.size()));
-
-            std::string viewReality;
             std::string sourceData;
-            for (int i = 0; i != observedRange.size(); ++i)
-            {
-                viewReality.push_back(parent["children"][i]["textContent"].as<std::string>()[0]);
-            }
-
             sourceData.reserve(observedRange.size());
             for (auto const& elem : observedRange.value())
-                sourceData.push_back(toString(elem)[0]);
+                sourceData += toString(elem);
+            return sourceData;
+        }
 
-            EXPECT_EQ(sourceData, viewReality);
+        std::string getChildrenBodyTextConcat(Nui::val const& parent)
+        {
+            std::string viewReality;
+            for (long long i = 0, end = parent["children"]["length"].as<long long>(); i != end; ++i)
+            {
+                viewReality += parent["children"][i]["textContent"].as<std::string>();
+            }
+            return viewReality;
+        }
+
+        template <template <typename...> typename ContainerT, typename RangeElementType>
+        void textBodyParityTest(Observed<ContainerT<RangeElementType>>& observedRange, Nui::val const& parent)
+        {
+            ASSERT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(observedRange.size()));
+            EXPECT_EQ(this->aggregateObservedCharList(observedRange), this->getChildrenBodyTextConcat(parent));
         }
 
         int preConstructionHelper_;
