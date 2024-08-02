@@ -1,6 +1,9 @@
 #pragma once
 
+#include <nui/utility/assert.hpp>
+
 #include <interval-tree/interval_tree.hpp>
+#include <interval-tree/tree_hooks.hpp>
 
 #include <cstddef>
 #include <algorithm>
@@ -10,24 +13,18 @@
 
 namespace Nui
 {
-    enum RangeStateType
+    enum RangeOperationType
     {
         Keep = 0b0001,
         Modify = 0b0010,
         Insert = 0b0100,
-        Erase = 0b1000,
-        Extended = 0b0001'0000
+        Erase = 0b1000
     };
 
     namespace Detail
     {
         template <typename ValueType, typename IntervalKind = lib_interval_tree::closed>
         class RangeStateInterval;
-
-        template <typename ValueType, typename IntervalKind = lib_interval_tree::closed>
-        std::vector<RangeStateInterval<ValueType, IntervalKind>> cutIntervals(
-            RangeStateInterval<ValueType, IntervalKind> const& k,
-            RangeStateInterval<ValueType, IntervalKind> const& m);
 
         template <typename ValueType, typename IntervalKind>
         class RangeStateInterval
@@ -37,16 +34,14 @@ namespace Nui
             using interval_kind = IntervalKind;
 
           public:
-            RangeStateInterval(value_type low, value_type high, RangeStateType type)
+            RangeStateInterval(value_type low, value_type high)
                 : low_{low}
                 , high_{high}
-                , type_{type}
             {}
-            void reset(value_type low, value_type high, RangeStateType type)
+            void reset(value_type low, value_type high)
             {
                 low_ = low;
                 high_ = high;
-                type_ = type;
             }
             friend bool operator==(RangeStateInterval const& lhs, RangeStateInterval const& rhs)
             {
@@ -64,17 +59,32 @@ namespace Nui
             {
                 return high_;
             }
+            void low(value_type value)
+            {
+                low_ = value;
+            }
+            void high(value_type value)
+            {
+                high_ = value;
+            }
             bool overlaps(value_type l, value_type h) const
+            {
+                // return low_ <= h && l <= high_;
+                return overlapsOrIsAdjacent(l, h);
+            }
+            // looks inclusive, but inclusive now means adjacent:
+            bool overlaps_exclusive(value_type l, value_type h) const
             {
                 return low_ <= h && l <= high_;
             }
-            bool overlaps_exclusive(value_type l, value_type h) const
-            {
-                return low_ < h && l < high_;
-            }
             bool overlaps(RangeStateInterval const& other) const
             {
-                return overlaps(other.low_, other.high_);
+                // return overlaps(other.low_, other.high_);
+                return overlapsOrIsAdjacent(other);
+            }
+            bool overlapsOrIsAdjacent(value_type l, value_type h) const
+            {
+                return low_ <= h + 1 && l - 1 <= high_;
             }
             bool overlapsOrIsAdjacent(RangeStateInterval const& other) const
             {
@@ -92,6 +102,20 @@ namespace Nui
             {
                 return low_ <= other.low_ && high_ >= other.high_;
             }
+            void shiftRight(value_type offset)
+            {
+                low_ += offset;
+                high_ += offset;
+            }
+            void shiftLeft(value_type offset)
+            {
+                low_ -= offset;
+                high_ -= offset;
+            }
+            bool isLeftOf(RangeStateInterval const& other) const
+            {
+                return high_ < other.low_;
+            }
             value_type operator-(RangeStateInterval const& other) const
             {
                 if (overlaps(other))
@@ -105,40 +129,49 @@ namespace Nui
             {
                 return high_ - low_;
             }
-            std::vector<RangeStateInterval> join(RangeStateInterval const& other) const
+            // undefined if they do not overlap
+            RangeStateInterval expand(RangeStateInterval const& other) const
             {
-                auto typeWithoutExtension = static_cast<RangeStateType>(other.type_ & ~RangeStateType::Extended);
-                long extensionFix = other.type_ & RangeStateType::Extended ? 1 : 0;
-                switch (typeWithoutExtension | type_)
-                {
-                    case (RangeStateType::Modify | RangeStateType::Modify):
-                    {
-                        return {
-                            {std::min(low_, other.low_ + extensionFix),
-                             std::max(high_, other.high_ - extensionFix),
-                             RangeStateType::Modify}};
-                    }
-                    case (RangeStateType::Keep | RangeStateType::Modify):
-                    {
-                        // Modifications cut out of the keep part.
-                        return cutIntervals(
-                            *this, {other.low_ + extensionFix, other.high_ - extensionFix, typeWithoutExtension});
-                    }
-                    default:
-                    {
-                        throw std::runtime_error("Invalid insertion case");
-                    }
-                }
+                const auto low = std::min(low_, other.low_);
+                // +1, because if they overlap they share a side, so its not double counted
+                // [0, 1] and [1, 2] -> [0, 2]
+                // [8, 8] and [8, 8] -> [8, 9]
+                const auto high = low + size() + other.size() + 1;
+                return {low, high};
             }
-            RangeStateType type() const noexcept
+            RangeStateInterval join(RangeStateInterval const& other) const
             {
-                return type_;
+                return RangeStateInterval{std::min(low_, other.low_), std::max(high_, other.high_)};
             }
 
           private:
             value_type low_;
             value_type high_;
-            RangeStateType type_;
+        };
+
+        struct CustomIntervalTreeNode
+            : public lib_interval_tree::node<long, RangeStateInterval<long>, CustomIntervalTreeNode>
+        {
+            using lib_interval_tree::node<long, RangeStateInterval<long>, CustomIntervalTreeNode>::node;
+
+            void shiftRight(long offset)
+            {
+                this->interval_.low(this->interval_.low() + offset);
+                this->interval_.high(this->interval_.high() + offset);
+                this->max_ = this->max_ + offset;
+            }
+
+            void shiftLeft(long offset)
+            {
+                this->interval_.low(this->interval_.low() - offset);
+                this->interval_.high(this->interval_.high() - offset);
+                this->max_ = this->max_ - offset;
+            }
+        };
+
+        struct IntervalTreeHook : public lib_interval_tree::hooks::regular
+        {
+            using node_type = CustomIntervalTreeNode;
         };
 
         // stream iterator for intervals
@@ -146,149 +179,338 @@ namespace Nui
         std::ostream& operator<<(std::ostream& os, RangeStateInterval<T, Kind> const& interval)
         {
             os << "[" << interval.low() << ", " << interval.high() << "]";
-            switch (interval.type())
-            {
-                case RangeStateType::Keep:
-                    os << "k";
-                    break;
-                case RangeStateType::Modify:
-                    os << "m";
-                    break;
-                case RangeStateType::Insert:
-                    os << "i";
-                    break;
-                default:
-                    os << "?";
-                    break;
-            }
             return os;
-        }
-
-        template <typename ValueType, typename IntervalKind>
-        std::vector<RangeStateInterval<ValueType, IntervalKind>> cutIntervals(
-            RangeStateInterval<ValueType, IntervalKind> const& k,
-            RangeStateInterval<ValueType, IntervalKind> const& m)
-        {
-            std::vector<RangeStateInterval<ValueType, IntervalKind>> result;
-            if (k.low() <= m.low() - 1)
-                result.emplace_back(k.low(), m.low() - 1, RangeStateType::Keep);
-            result.emplace_back(m.low(), m.high(), RangeStateType::Modify);
-            if (k.high() >= m.high() + 1)
-                result.emplace_back(m.high() + 1, k.high(), RangeStateType::Keep);
-            return result;
         }
     }
 
     class RangeEventContext
     {
       public:
-        explicit RangeEventContext(long dataSize)
-            : modificationRanges_{}
-            , fullRangeUpdate_{true}
-            , disableOptimizations_{false}
-        {
-            reset(dataSize, true);
-        }
-        RangeEventContext(long dataSize, bool disableOptimizations)
-            : modificationRanges_{}
-            , fullRangeUpdate_{true}
+        explicit RangeEventContext()
+            : RangeEventContext(false)
+        {}
+        RangeEventContext(bool disableOptimizations)
+            : trackedRanges_{}
+            , operationType_{RangeOperationType::Keep}
+            , nextEraseOverride_{std::nullopt}
+            , fullRangeUpdate_{false}
             , disableOptimizations_{disableOptimizations}
-        {
-            reset(dataSize, true);
-        }
+        {}
         enum class InsertResult
         {
-            Final, // Final, cannot accept further updates, must update immediately
-            Accepted, // Accepted, update can be deferred.
-            Retry // Must update immediately and reissue this.
+            Perform,
+            PerformAndRetry,
+            Accepted,
+            Rejected
         };
         void performFullRangeUpdate()
         {
             fullRangeUpdate_ = true;
         }
-        InsertResult insertModificationRange(long elementCount, long low, long high, RangeStateType type)
+        /// @brief Done before the erasure is performed:
+        /// @return true if a fixup was performed
+        bool eraseNotify(long low, long high)
+        {
+            if (operationType_ == RangeOperationType::Keep || operationType_ == RangeOperationType::Erase ||
+                fullRangeUpdate_ || disableOptimizations_ || trackedRanges_.empty())
+                return false;
+            if (operationType_ == RangeOperationType::Modify)
+                return eraseModificationFixup(low, high);
+            else
+                return eraseInsertionFixup(low, high);
+        }
+        bool eraseNotify(std::size_t low, std::size_t high)
+        {
+            return eraseNotify(static_cast<long>(low), static_cast<long>(high));
+        }
+        InsertResult insertModificationRange(long low, long high, RangeOperationType type)
         {
             if (disableOptimizations_)
             {
                 fullRangeUpdate_ = true;
-                return InsertResult::Final;
+                return InsertResult::Perform;
             }
-            if (type == RangeStateType::Erase)
+
+            if (operationType_ == RangeOperationType::Keep)
             {
-                // TODO: optimize erase like insert.
-                reset(elementCount, true);
-                return InsertResult::Final;
+                operationType_ = type;
             }
-            else if (type == RangeStateType::Insert)
+            else if (operationType_ != type)
+                return InsertResult::PerformAndRetry;
+
+            switch (type)
             {
-                if (modificationRanges_.size() > 1)
-                    return InsertResult::Retry;
-                if (!insertInterval_)
+                default:
+                    return InsertResult::Rejected;
+                case RangeOperationType::Modify:
                 {
-                    insertInterval_ = {low, high, type};
-                    return InsertResult::Accepted;
+                    // Insert and merge interval only:
+                    trackedRanges_.insert_overlap({low, high});
+                    break;
                 }
-                else
+                case RangeOperationType::Insert:
                 {
-                    if (insertInterval_->overlapsOrIsAdjacent({low, high, type}))
+                    insertInsertRange(low, high);
+                    break;
+                }
+                case RangeOperationType::Erase:
+                {
+                    if (nextEraseOverride_)
                     {
-                        auto lowmin = std::min(low, insertInterval_->low());
-                        insertInterval_->reset(lowmin, lowmin + insertInterval_->size() + (high - low + 1), type);
-                        return InsertResult::Accepted;
+                        insertEraseRange(nextEraseOverride_->low(), nextEraseOverride_->high());
+                        nextEraseOverride_ = std::nullopt;
                     }
                     else
-                    {
-                        if (high < insertInterval_->low())
-                        {
-                            const auto size = high - low + 1;
-                            insertInterval_->reset(
-                                insertInterval_->low() + size, insertInterval_->high() + size, insertInterval_->type());
-                        }
-                        return InsertResult::Retry;
-                    }
+                        insertEraseRange(low, high);
+                    break;
                 }
             }
-            if (insertInterval_)
-                return InsertResult::Retry;
 
-            auto iter = modificationRanges_.insert_overlap(
-                {low - 1, high + 1, static_cast<RangeStateType>(type | RangeStateType::Extended)}, false, true);
             return InsertResult::Accepted;
         }
-        InsertResult
-        insertModificationRange(std::size_t elementCount, std::size_t low, std::size_t high, RangeStateType type)
+        InsertResult insertModificationRange(std::size_t low, std::size_t high, RangeOperationType type)
         {
-            return insertModificationRange(
-                static_cast<long>(elementCount), static_cast<long>(low), static_cast<long>(high), type);
+            return insertModificationRange(static_cast<long>(low), static_cast<long>(high), type);
         }
-        void reset(long dataSize, bool requireFullRangeUpdate)
+        void reset(bool requireFullRangeUpdate = false)
         {
-            modificationRanges_.clear();
-            if (dataSize > 0)
-                modificationRanges_.insert({0l, dataSize - 1, RangeStateType::Keep});
-            insertInterval_ = std::nullopt;
+            trackedRanges_.clear();
             fullRangeUpdate_ = requireFullRangeUpdate;
+            operationType_ = RangeOperationType::Keep;
+        }
+        bool isInDefaultState() const
+        {
+            return trackedRanges_.empty() && operationType_ == RangeOperationType::Keep;
         }
         bool isFullRangeUpdate() const noexcept
         {
             return fullRangeUpdate_;
         }
-        std::optional<Detail::RangeStateInterval<long>> const& insertInterval() const
-        {
-            return insertInterval_;
-        }
         auto begin() const
         {
-            return modificationRanges_.begin();
+            return trackedRanges_.begin();
         }
         auto end() const
         {
-            return modificationRanges_.end();
+            return trackedRanges_.end();
+        }
+        auto rbegin() const
+        {
+            return trackedRanges_.rbegin();
+        }
+        auto rend() const
+        {
+            return trackedRanges_.rend();
+        }
+        RangeOperationType operationType() const noexcept
+        {
+            return operationType_;
         }
 
       private:
-        lib_interval_tree::interval_tree<Detail::RangeStateInterval<long>> modificationRanges_;
-        std::optional<Detail::RangeStateInterval<long>> insertInterval_;
+        void insertInsertRange(long low, long high)
+        {
+            // TODO: perform optimization using interval tree specialization for shifting subtrees.
+            auto newRange = Detail::RangeStateInterval<long>{low, high};
+
+            // find insert at same position first to move previous insert at that position over:
+            auto it = trackedRanges_.find(newRange, [](auto const& a, auto const& b) {
+                return a.low() == b.low();
+            });
+
+            if (it != trackedRanges_.end())
+            {
+                newRange = it->expand(newRange);
+                trackedRanges_.erase(it);
+                it = trackedRanges_.insert(newRange);
+            }
+            else
+            {
+                it = trackedRanges_.insert(newRange);
+            }
+            if (it != std::end(trackedRanges_))
+                ++it;
+
+            // move all subsequent intervals to the right:
+            // TODO: This is the expensive part and should be optimized.
+            for (; it != trackedRanges_.end(); ++it)
+            {
+                it.node()->shiftRight(high - low + 1);
+            }
+        }
+        void insertEraseRange(long low, long high)
+        {
+            auto newRange = Detail::RangeStateInterval<long>{low, high};
+            const bool processed = [&newRange, this]() {
+                for (auto it = trackedRanges_.begin(); it != trackedRanges_.end(); ++it)
+                {
+                    // Shift erasure over when previous erasures shrank the range,
+                    // since erasures are replayed from the end.
+                    if (it->low() < newRange.low())
+                    {
+                        //  +1 because the range includes its end
+                        newRange.shiftRight(it->size() + 1);
+                    }
+                    else if (it->overlapsOrIsAdjacent(newRange))
+                    {
+                        do
+                        {
+                            newRange = it->expand(newRange);
+
+                            // Remove the old range and insert the new one
+                            it = trackedRanges_.erase(it);
+                        } while (it != trackedRanges_.end() && it->overlapsOrIsAdjacent(newRange));
+                        trackedRanges_.insert(newRange);
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+                return false;
+            }();
+            if (!processed)
+            {
+                trackedRanges_.insert_overlap(newRange);
+            }
+        }
+
+        /**
+         * @brief This is necessary to remove previous inserts that are now erased.
+         *
+         * @param low
+         * @param high
+         */
+        bool eraseInsertionFixup(long low, long high)
+        {
+            const auto lastInterval = *trackedRanges_.rbegin();
+
+            // If the erase interval is left of the last insert interval, we must apply the changes and
+            // retry. The following optimization would make the insert positions invalid.
+            // TODO: Moving them might be possible, but expensive.
+            if (high < lastInterval.high())
+                return true;
+
+            auto eraseRange = Detail::RangeStateInterval<long>{low, high};
+            auto eraseRangeOrig = eraseRange;
+
+            auto iter = trackedRanges_.overlap_find(eraseRange, true);
+            // if erase is completely at the end of a previous insert, we can cut the inserted elements out.
+            for (; iter != trackedRanges_.end(); iter = trackedRanges_.overlap_find(eraseRangeOrig, true))
+            {
+                if (iter == trackedRanges_.end())
+                    return true;
+                const auto insertInterval = *iter;
+
+                // erase overlaps insert to the end or over:
+                if (eraseRangeOrig.high() >= insertInterval.high())
+                {
+                    trackedRanges_.erase(iter);
+                    // if beginning of insert is left of erase, we have to insert the left part of the insert
+                    if (insertInterval.low() < eraseRangeOrig.low())
+                    {
+                        trackedRanges_.insert({insertInterval.low(), eraseRangeOrig.low() - 1});
+                        eraseRangeOrig.high(-insertInterval.high() + eraseRangeOrig.low() + eraseRangeOrig.high() - 1);
+                    }
+
+                    eraseRange.high(eraseRange.high() - insertInterval.size() - 1);
+                }
+                else
+                {
+                    break; // bail out
+                }
+            }
+
+            if (eraseRange.high() != high)
+                nextEraseOverride_ = eraseRange;
+
+            // Other tracking cases are too complicated.
+            // The reason is that cutting the intervals is not enough, we also have to modify where these insertions are
+            // taken from.
+            return true;
+        }
+
+        /**
+         * @brief This is necessary to remove previous modifies that are now erased.
+         *
+         * @param low
+         * @param high
+         */
+        bool eraseModificationFixup(long low, long high)
+        {
+            auto range = Detail::RangeStateInterval<long>{low, high};
+
+            auto iter = trackedRanges_.overlap_find(range, false);
+
+            if (iter == trackedRanges_.end())
+            {
+                // If we dont have an overlap, there might still be a case where modifications exists
+                // after the erase. In that case we have to apply these changes immediately and retry the erase.
+                // (Shifting the previous modifications would work too, but is more expensive)
+                const auto lastInterval = *trackedRanges_.rbegin();
+
+                // If the erase interval is left of the last modification interval, we must apply the changes and
+                // retry. An overlap would have been found otherwise.
+                if (high < lastInterval.low())
+                    return true;
+
+                return false;
+            }
+
+            // find all overlapping modifications and cut them
+            for (; iter != trackedRanges_.end(); iter = trackedRanges_.overlap_find(range, false))
+            {
+                const auto modInterval = *iter;
+                trackedRanges_.erase(iter);
+
+                // cut erasure from found modification interval:
+                // 1. erase is within modification interval:
+                if (modInterval.within(range))
+                {
+                    if (modInterval.low() < range.low())
+                        trackedRanges_.insert({modInterval.low(), range.low() - 1});
+                    if (range.high() < modInterval.high())
+                        trackedRanges_.insert({range.high() + 1, modInterval.high()});
+                    return true; // cannot overlap any further
+                }
+                else if (modInterval.low() < range.low())
+                {
+                    // 2. erase starts within modification interval:
+                    trackedRanges_.insert({modInterval.low(), range.low() - 1});
+
+                    // reduce range to right part:
+                    range.low(range.low() + 1);
+                    if (range.low() > range.high())
+                        return true;
+                }
+                else if (range.high() < modInterval.high())
+                {
+                    // 3. erase ends within modification interval:
+                    trackedRanges_.insert({range.high() + 1, modInterval.high()});
+
+                    // reduce range to left part:
+                    range.high(range.high() - 1);
+                    if (range.low() > range.high())
+                        return true;
+                }
+                else if (range.within(modInterval))
+                {
+                    // 4. erase encompasses modification interval, only deletion is necessary:
+                    continue;
+                }
+                else
+                {
+                    NUI_ASSERT(false, "Overlap without overlapping?");
+                }
+            }
+            return true;
+        }
+
+      private:
+        lib_interval_tree::interval_tree<Detail::RangeStateInterval<long>, Detail::IntervalTreeHook> trackedRanges_;
+        RangeOperationType operationType_;
+        std::optional<Detail::RangeStateInterval<long>> nextEraseOverride_;
         bool fullRangeUpdate_;
         bool disableOptimizations_;
     };

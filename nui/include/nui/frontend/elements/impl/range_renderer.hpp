@@ -1,10 +1,14 @@
 #pragma once
 
-#include <nui/frontend/event_system/range.hpp>
-#include <nui/frontend/event_system/event_context.hpp>
+#include <nui/event_system/range.hpp>
+#include <nui/event_system/event_context.hpp>
 #include <nui/frontend/dom/element_fwd.hpp>
+#include <nui/utility/scope_exit.hpp>
+#include <nui/utility/overloaded.hpp>
+#include <nui/utility/reverse_view.hpp>
 
 #include <memory>
+#include <utility>
 
 namespace Nui::Detail
 {

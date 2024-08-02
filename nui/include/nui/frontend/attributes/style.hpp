@@ -26,7 +26,7 @@ namespace Nui::Attributes
         template <typename... T>
         struct StylePropertyEbo
         {
-            std::tuple<Observed<T> const&...> observed;
+            std::tuple<::Nui::Detail::ObservedAddReference_t<T>...> observed;
         };
         template <>
         struct StylePropertyEbo<void>
@@ -35,12 +35,12 @@ namespace Nui::Attributes
     template <typename FunctionT, typename... T>
     struct StylePropertyImpl : public Detail::StylePropertyEbo<T...>
     {
-        using value_type = std::tuple<Observed<T> const&...>;
+        using value_type = std::tuple<::Nui::Detail::ObservedAddReference_t<T>...>;
 
         FunctionT generator;
         constexpr static bool isStatic()
         {
-            return sizeof...(T) == 1 && std::is_same_v<Nui::Detail::PickFirst_t<T...>, void>;
+            return sizeof...(T) == 1 && std::is_same_v<UnpackObserved_t<Nui::Detail::PickFirst_t<T...>>, void>;
         }
         constexpr auto operator()() const
         {
@@ -52,6 +52,16 @@ namespace Nui::Attributes
             : Detail::StylePropertyEbo<T...>{std::forward_as_tuple(observed)}
             , generator{std::move(generator)}
         {}
+        template <typename U>
+        constexpr StylePropertyImpl(FunctionT generator, std::weak_ptr<Observed<U>> observed)
+            : Detail::StylePropertyEbo<T...>{std::make_tuple(std::move(observed))}
+            , generator{std::move(generator)}
+        {}
+        template <typename U>
+        constexpr StylePropertyImpl(FunctionT generator, std::shared_ptr<Observed<U>> observed)
+            : Detail::StylePropertyEbo<T...>{std::make_tuple(std::weak_ptr{observed})}
+            , generator{std::move(generator)}
+        {}
         constexpr StylePropertyImpl(FunctionT generator, std::nullptr_t)
             : Detail::StylePropertyEbo<T...>{}
             , generator{std::move(generator)}
@@ -59,7 +69,7 @@ namespace Nui::Attributes
         template <typename GeneratorT>
         constexpr StylePropertyImpl(
             FunctionT generator,
-            ObservedValueCombinatorWithGenerator<GeneratorT, Observed<T>...>&& observed)
+            ObservedValueCombinatorWithGenerator<GeneratorT, T...>&& observed)
             : Detail::StylePropertyEbo<T...>{std::move(observed).observedValues()}
             , generator{std::move(generator)}
         {}
@@ -67,10 +77,18 @@ namespace Nui::Attributes
     template <typename FunctionT>
     StylePropertyImpl(FunctionT generator, std::nullptr_t) -> StylePropertyImpl<FunctionT, void>;
     template <typename FunctionT, typename T>
-    StylePropertyImpl(FunctionT generator, Observed<T>&) -> StylePropertyImpl<FunctionT, T>;
+    StylePropertyImpl(FunctionT generator, Observed<T>&) -> StylePropertyImpl<FunctionT, Observed<T>>;
+    template <typename FunctionT, typename T>
+    StylePropertyImpl(FunctionT generator, Observed<T> const&) -> StylePropertyImpl<FunctionT, Observed<T>>;
+    template <typename FunctionT, typename T>
+    StylePropertyImpl(FunctionT generator, std::shared_ptr<Observed<T>>)
+        -> StylePropertyImpl<FunctionT, std::weak_ptr<Observed<T>>>;
+    template <typename FunctionT, typename T>
+    StylePropertyImpl(FunctionT generator, std::weak_ptr<Observed<T>>&&)
+        -> StylePropertyImpl<FunctionT, std::weak_ptr<Observed<T>>>;
     template <typename FunctionT, typename GeneratorT, typename... ObservedT>
     StylePropertyImpl(FunctionT generator, ObservedValueCombinatorWithGenerator<GeneratorT, ObservedT...>&&)
-        -> StylePropertyImpl<FunctionT, typename ObservedT::value_type...>;
+        -> StylePropertyImpl<FunctionT, ObservedT...>;
 
     namespace Detail
     {
@@ -169,13 +187,33 @@ namespace Nui::Attributes
                 },
                 nullptr};
         }
-        auto operator=(Observed<std::string>& observedValue)
+        auto operator=(Observed<std::string> const& observedValue)
         {
             return StylePropertyImpl{
                 [name_ = std::string{name}, &observedValue]() {
                     return name_ + ":" + observedValue.value();
                 },
                 observedValue};
+        }
+        auto operator=(std::weak_ptr<Observed<std::string>>&& observedValue)
+        {
+            return StylePropertyImpl{
+                [name_ = std::string{name}, observedValue = std::weak_ptr{observedValue.lock()}]() {
+                    if (auto shared = observedValue.lock(); shared)
+                        return name_ + ":" + shared->value();
+                    return std::string{};
+                },
+                std::move(observedValue)};
+        }
+        auto operator=(std::shared_ptr<Observed<std::string>> observedValue)
+        {
+            return StylePropertyImpl{
+                [name_ = std::string{name}, observedValue = std::weak_ptr{observedValue}]() {
+                    if (auto shared = observedValue.lock(); shared)
+                        return name_ + ":" + shared->value();
+                    return std::string{};
+                },
+                std::move(observedValue)};
         }
         template <typename FunctionT, typename... ArgsT>
         auto operator=(ObservedValueCombinatorWithGenerator<FunctionT, ArgsT...>&& combinator)
@@ -206,8 +244,9 @@ namespace Nui::Attributes
                 std::stringstream sstr;
                 [&sstr](auto const& head, auto const&... tail) {
                     using expander = int[];
-                    sstr << head();
-                    (void)expander{0, (sstr << ";" << tail(), void(), 0)...};
+                    const auto headStr = head();
+                    sstr << headStr;
+                    (void)expander{0, (sstr << (headStr.empty() ? "" : ";") << tail(), void(), 0)...};
                 }(props...);
                 return sstr.str();
             };
@@ -288,9 +327,9 @@ namespace Nui::Attributes
             else
             {
                 return std::apply(
-                    [&style]<typename... ObservedValueTypes>(ObservedValueTypes&... obs) {
+                    [&style]<typename... ObservedValueTypes>(ObservedValueTypes&&... obs) {
                         return AttributeFactory{"style"}.operator=(
-                            ObservedValueCombinator<ObservedValueTypes...>{obs...}.generate(
+                            ObservedValueCombinator{std::forward<ObservedValueTypes>(obs)...}.generate(
                                 std::move(style).ejectGenerator()));
                     },
                     std::move(style).ejectObservedValues());

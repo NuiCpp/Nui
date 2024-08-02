@@ -785,4 +785,120 @@ namespace Nui::Tests
             EXPECT_EQ(child["attributes"]["class"].as<std::string>(), expectedClass);
         }
     }
+
+    TEST_F(TestRender, CanUseSharedObservedForObserve)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        Nui::val nested;
+        auto toggle = std::make_shared<Observed<bool>>(true);
+
+        render(body{}(observe(toggle), [&toggle, &nested]() {
+            if (*toggle)
+            {
+                return div{reference = nested}("Hello");
+            }
+            else
+            {
+                return div{reference = nested}("Goodbye");
+            }
+        }));
+
+        EXPECT_EQ(nested["textContent"].as<std::string>(), "Hello");
+
+        *toggle = false;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(nested["textContent"].as<std::string>(), "Goodbye");
+    }
+
+    TEST_F(TestRender, CanUseWeakObservedForObserve)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        Nui::val nested;
+        auto toggle = std::make_shared<Observed<bool>>(true);
+        auto weak = std::weak_ptr<Observed<bool>>{toggle};
+
+        render(body{}(observe(weak), [&toggle, &nested]() {
+            if (*toggle)
+            {
+                return div{reference = nested}("Hello");
+            }
+            else
+            {
+                return div{reference = nested}("Goodbye");
+            }
+        }));
+
+        EXPECT_EQ(nested["textContent"].as<std::string>(), "Hello");
+
+        *toggle = false;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(nested["textContent"].as<std::string>(), "Goodbye");
+    }
+
+    TEST_F(TestRender, SharedObservedMayExpire)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        Nui::val nested;
+        auto toggle = std::make_shared<Observed<bool>>(true);
+
+        render(body{}(observe(toggle), [&toggle, &nested]() {
+            if (*toggle)
+            {
+                return div{reference = nested}("Hello");
+            }
+            else
+            {
+                return div{reference = nested}("Goodbye");
+            }
+        }));
+
+        EXPECT_EQ(nested["textContent"].as<std::string>(), "Hello");
+
+        *toggle = false;
+        toggle.reset();
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(nested["textContent"].as<std::string>(), "Hello");
+    }
+
+    TEST_F(TestRender, CanMixSharedWeakAndRegularObserved)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        Nui::val nested;
+        Observed<bool> bla{true};
+        auto toggle = std::make_shared<Observed<bool>>(true);
+        auto weak = std::weak_ptr<Observed<bool>>{toggle};
+
+        render(body{}(observe(toggle, weak, bla), [&toggle, &nested]() {
+            if (*toggle)
+            {
+                return div{reference = nested}("Hello");
+            }
+            else
+            {
+                return div{reference = nested}("Goodbye");
+            }
+        }));
+
+        EXPECT_EQ(nested["textContent"].as<std::string>(), "Hello");
+
+        *toggle = false;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(nested["textContent"].as<std::string>(), "Goodbye");
+    }
 }

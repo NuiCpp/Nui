@@ -1,7 +1,9 @@
 #pragma once
 
-#include <nui/frontend/event_system/event_context.hpp>
+#include <nui/event_system/event_context.hpp>
+#include <nui/event_system/observed_value.hpp>
 #include <nui/utility/tuple_for_each.hpp>
+#include <nui/utility/overloaded.hpp>
 #include <nui/concepts.hpp>
 
 #include <tuple>
@@ -12,51 +14,92 @@ namespace Nui
     class ObservedValueCombinatorBase
     {
       public:
-        explicit constexpr ObservedValueCombinatorBase(ObservedValues const&... observedValues)
-            : observedValues_{observedValues...}
+        explicit constexpr ObservedValueCombinatorBase(
+            Detail::ObservedAddReference_t<ObservedValues>&&... observedValues)
+            : observedValues_{std::forward<Detail::ObservedAddReference_t<ObservedValues>>(observedValues)...}
         {}
-        explicit constexpr ObservedValueCombinatorBase(std::tuple<ObservedValues const&...> observedValues)
+        explicit constexpr ObservedValueCombinatorBase(
+            std::tuple<Detail::ObservedAddReference_t<ObservedValues>...> observedValues)
             : observedValues_{std::move(observedValues)}
         {}
 
         constexpr void attachEvent(auto eventId) const
         {
-            tupleForEach(observedValues_, [eventId](auto const& observed) {
-                observed.attachEvent(eventId);
-            });
+            tupleForEach(
+                observedValues_,
+                Nui::overloaded{
+                    [eventId](IsObserved auto const& observed) {
+                        observed.attachEvent(eventId);
+                    },
+                    [eventId](IsWeakObserved auto const& observed) {
+                        if (auto shared = observed.lock(); shared)
+                            shared->attachEvent(eventId);
+                    },
+                });
         }
 
         constexpr void attachOneshotEvent(auto eventId) const
         {
-            tupleForEach(observedValues_, [eventId](auto const& observed) {
-                observed.attachOneshotEvent(eventId);
-            });
+            tupleForEach(
+                observedValues_,
+                Nui::overloaded{
+                    [eventId](IsObserved auto const& observed) {
+                        observed.attachOneshotEvent(eventId);
+                    },
+                    [eventId](IsWeakObserved auto const& observed) {
+                        if (auto shared = observed.lock(); shared)
+                            shared->attachOneshotEvent(eventId);
+                    },
+                });
         }
 
         constexpr void detachEvent(auto eventId) const
         {
-            tupleForEach(observedValues_, [eventId](auto const& observed) {
-                observed.detachEvent(eventId);
-            });
+            tupleForEach(
+                observedValues_,
+                Nui::overloaded{
+                    [eventId](IsObserved auto const& observed) {
+                        observed.detachEvent(eventId);
+                    },
+                    [eventId](IsWeakObserved auto const& observed) {
+                        if (auto shared = observed.lock(); shared)
+                            shared->detachEvent(eventId);
+                    },
+                });
         }
 
-        std::tuple<ObservedValues const&...> const& observedValues() &
+        std::tuple<Detail::ObservedAddReference_t<ObservedValues>...> const& observedValues() &
         {
             return observedValues_;
         }
 
-        std::tuple<ObservedValues const&...>&& observedValues() &&
+        std::tuple<Detail::ObservedAddReference_t<ObservedValues>...>&& observedValues() &&
         {
-            return std::move(const_cast<std::tuple<ObservedValues const&...>&>(observedValues_));
+            return std::move(
+                const_cast<std::tuple<Detail::ObservedAddReference_t<ObservedValues>...>&>(observedValues_));
+        }
+
+        bool isAnyExpired() const
+        {
+            const auto isExpired = Nui::overloaded{
+                [](IsObserved auto const&) {
+                    return false;
+                },
+                [](IsWeakObserved auto const& observed) {
+                    return observed.expired();
+                },
+            };
+
+            return std::apply(
+                [isExpired](auto const&... observed) {
+                    return (isExpired(observed) || ...);
+                },
+                observedValues_);
         }
 
       protected:
-        const std::tuple<ObservedValues const&...> observedValues_;
+        const std::tuple<Detail::ObservedAddReference_t<ObservedValues>...> observedValues_;
     };
-    template <typename... ObservedValues>
-    ObservedValueCombinatorBase(std::tuple<ObservedValues const&...>) -> ObservedValueCombinatorBase<ObservedValues...>;
-    template <typename... ObservedValues>
-    ObservedValueCombinatorBase(ObservedValues const&...) -> ObservedValueCombinatorBase<ObservedValues...>;
 
     template <typename... ObservedValues>
     class ObservedValueCombinator;
@@ -66,7 +109,7 @@ namespace Nui
     {
       public:
         constexpr ObservedValueCombinatorWithGenerator(
-            std::tuple<ObservedValues const&...> observedValues,
+            std::tuple<Detail::ObservedAddReference_t<ObservedValues>...> observedValues,
             RendererType generator)
             : ObservedValueCombinatorBase<ObservedValues...>{std::move(observedValues)}
             , generator_{std::move(generator)}
@@ -138,12 +181,18 @@ namespace Nui
         }
     };
     template <typename... ObservedValues>
-    ObservedValueCombinator(ObservedValues const&...) -> ObservedValueCombinator<ObservedValues...>;
+    ObservedValueCombinator(ObservedValues&&...)
+        -> ObservedValueCombinator<std::decay_t<Detail::ObservedAddReference_t<ObservedValues>>...>;
+    template <typename... ObservedValues>
+    ObservedValueCombinator(std::tuple<Detail::ObservedAddReference_t<ObservedValues>...>)
+        -> ObservedValueCombinator<std::decay_t<Detail::ObservedAddReference_t<ObservedValues>>...>;
 
     template <typename... ObservedValues>
-    requires(Detail::IsObserved<ObservedValues>::value && ...)
-    ObservedValueCombinator<ObservedValues...> observe(ObservedValues const&... observedValues)
+    requires(IsObservedLike<ObservedValues> && ...)
+    ObservedValueCombinator<std::decay_t<Detail::ObservedAddReference_t<ObservedValues>>...>
+    observe(ObservedValues&&... observedValues)
     {
-        return ObservedValueCombinator(observedValues...);
+        return ObservedValueCombinator<std::decay_t<Detail::ObservedAddReference_t<ObservedValues>>...>{
+            std::forward<Detail::ObservedAddReference_t<ObservedValues>>(observedValues)...};
     }
 }

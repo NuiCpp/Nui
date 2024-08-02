@@ -1,6 +1,10 @@
 #pragma once
 
-#include <nui/frontend/val.hpp>
+#if !defined(__cpp_exceptions) && !defined(__EMSCRIPTEN__)
+#    include <nui/frontend/val.hpp>
+#else
+#    include <iostream>
+#endif
 
 #include <stdexcept>
 
@@ -12,8 +16,11 @@ namespace Nui
         {
 #ifdef __cpp_exceptions
             throw std::runtime_error(message);
-#else
+#elif defined(__EMSCRIPTEN__)
             Nui::val::global("console").call<void>("error", message);
+#else
+            std::cerr << message << std::endl;
+            std::terminate();
 #endif
         }
     }

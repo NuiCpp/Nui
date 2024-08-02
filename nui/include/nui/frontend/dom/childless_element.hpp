@@ -159,6 +159,10 @@ namespace Nui::Dom
         }
 
       protected:
+        explicit ChildlessElement()
+            : BasicElement{}
+        {}
+
         static Nui::val createElement(HtmlElement const& element)
         {
             return element.bridge()->createElement(element);

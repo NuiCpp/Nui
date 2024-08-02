@@ -26,6 +26,18 @@ namespace Nui::Tests::Engine
         return allValues[*values_[index]];
     }
 
+    void Array::insert(const_iterator it, std::shared_ptr<ReferenceType> const& reference)
+    {
+        values_.insert(it, reference);
+        updateArrayObject();
+    }
+
+    void Array::insert(iterator it, std::shared_ptr<ReferenceType> const& reference)
+    {
+        values_.insert(it, reference);
+        updateArrayObject();
+    }
+
     std::shared_ptr<ReferenceType> Array::reference(std::size_t index) const
     {
         return values_[index];

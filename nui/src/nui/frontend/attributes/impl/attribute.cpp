@@ -15,7 +15,7 @@ namespace Nui
     {
         if (createEvent_)
             return createEvent_(std::move(element));
-        return EventContext::EventIdType{};
+        return EventContext::invalidEventId;
     }
     //---------------------------------------------------------------------------------------------------------------------
     std::function<void(EventContext::EventIdType const&)> Attribute::getEventClear() const

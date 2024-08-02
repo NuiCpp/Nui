@@ -275,4 +275,78 @@ namespace Nui::Tests
 
         EXPECT_EQ(Nui::val::global("document")["body"]["value"].as<std::string>(), "Goodbye World");
     }
+
+    TEST_F(TestProperties, CanUseWeakPointerObservedInProperty)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        std::shared_ptr<Observed<std::string>> value = std::make_shared<Observed<std::string>>("A");
+
+        render(div{id = property(std::weak_ptr{value})}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
+
+        *value = "B";
+        Nui::globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "B");
+    }
+
+    TEST_F(TestProperties, CanUseSharedPointerObservedInProperty)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        std::shared_ptr<Observed<std::string>> value = std::make_shared<Observed<std::string>>("A");
+
+        render(div{id = property(value)}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
+
+        *value = "B";
+        Nui::globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "B");
+    }
+
+    TEST_F(TestProperties, WeakPointerPropertyDoesNotFailOnExpired)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        std::shared_ptr<Observed<std::string>> value = std::make_shared<Observed<std::string>>("A");
+
+        render(div{id = property(std::weak_ptr{value})}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
+
+        {
+            *value = "B";
+        }
+        value = nullptr;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
+    }
+
+    TEST_F(TestProperties, SharedPointerPropertyDoesNotFailOnExpired)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        std::shared_ptr<Observed<std::string>> value = std::make_shared<Observed<std::string>>("A");
+
+        render(div{id = property(value)}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
+
+        {
+            *value = "B";
+        }
+        value = nullptr;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
+    }
 }

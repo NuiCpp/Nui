@@ -2,10 +2,11 @@
 
 #include <iterator>
 #include <nui/concepts.hpp>
-#include <nui/frontend/event_system/range_event_context.hpp>
-#include <nui/frontend/event_system/event_context.hpp>
+#include <nui/event_system/range_event_context.hpp>
+#include <nui/event_system/event_context.hpp>
 #include <nui/utility/assert.hpp>
 #include <nui/utility/meta/pick_first.hpp>
+#include <nui/utility/move_detector.hpp>
 
 #include <memory>
 #include <vector>
@@ -17,6 +18,7 @@
 #include <string>
 #include <cassert>
 #include <set>
+#include <memory>
 
 namespace Nui
 {
@@ -298,6 +300,12 @@ namespace Nui
             return ModificationProxy{*this, true};
         }
 
+        explicit operator bool() const
+        requires std::convertible_to<ContainedT, bool>
+        {
+            return static_cast<bool>(contained_);
+        }
+
         ContainedT& value()
         {
             return contained_;
@@ -347,55 +355,99 @@ namespace Nui
             ReferenceWrapper(ObservedContainer<ContainerT>* owner, std::size_t pos, T& ref)
                 : owner_{owner}
                 , pos_{pos}
-                , ref_{ref}
+                , ref_{&ref}
             {}
+            ReferenceWrapper(ReferenceWrapper const&) = default;
+            ReferenceWrapper(ReferenceWrapper&& other) noexcept
+                : owner_{other.owner_}
+                , pos_{other.pos_}
+                , ref_{other.ref_}
+            {
+                other.owner_ = nullptr;
+                other.pos_ = 0;
+                other.ref_ = nullptr;
+            }
+            ReferenceWrapper& operator=(ReferenceWrapper const&) = default;
+            ReferenceWrapper& operator=(ReferenceWrapper&& other) noexcept
+            {
+                if (this != &other)
+                {
+                    owner_ = other.owner_;
+                    pos_ = other.pos_;
+                    ref_ = other.ref_;
+                    other.owner_ = nullptr;
+                    other.pos_ = 0;
+                    other.ref_ = nullptr;
+                }
+                return *this;
+            }
             operator T&()
             {
-                return ref_;
+                return *ref_;
             }
             T& operator*()
             {
-                owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
-                return ref_;
+                owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
+                return *ref_;
             }
             T const& operator*() const
             {
-                return ref_;
+                return *ref_;
             }
             T* operator->()
             {
-                owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
-                return &ref_;
+                owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
+                return ref_;
             }
             T const* operator->() const
             {
-                return &ref_;
+                return ref_;
             }
             T& get()
             {
-                owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
-                return ref_;
+                owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
+                return *ref_;
             }
             T const& getReadonly()
             {
-                return ref_;
+                return *ref_;
             }
             void operator=(T&& val)
             {
-                ref_ = std::move(val);
-                owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
+                *ref_ = std::move(val);
+                owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
             }
             void operator=(T const& val)
             {
-                ref_ = val;
-                owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
+                *ref_ = val;
+                owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
             }
 
           protected:
             ObservedContainer<ContainerT>* owner_;
             std::size_t pos_;
-            T& ref_;
+            T* ref_;
         };
+
+        template <typename T, typename ContainerT>
+        auto& unwrapReferenceWrapper(ReferenceWrapper<T, ContainerT>& wrapper)
+        {
+            return wrapper.get();
+        }
+        template <typename T, typename ContainerT>
+        auto const& unwrapReferenceWrapper(ReferenceWrapper<T, ContainerT> const& wrapper)
+        {
+            return wrapper.get();
+        }
+        auto& unwrapReferenceWrapper(auto& ref)
+        {
+            return ref;
+        }
+        auto const& unwrapReferenceWrapper(auto const& ref)
+        {
+            return ref;
+        }
+
         template <typename T, typename ContainerT>
         class PointerWrapper
         {
@@ -411,7 +463,7 @@ namespace Nui
             }
             T& operator*()
             {
-                owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
+                owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
                 return *ptr_;
             }
             T const& operator*() const
@@ -420,7 +472,7 @@ namespace Nui
             }
             T* operator->()
             {
-                owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
+                owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
                 return ptr_;
             }
             T const* operator->() const
@@ -429,7 +481,7 @@ namespace Nui
             }
             T& get()
             {
-                owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
+                owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
                 return *ptr_;
             }
             T const& getReadonly()
@@ -439,7 +491,7 @@ namespace Nui
             void operator=(T* ptr)
             {
                 ptr_ = ptr;
-                owner_->insertRangeChecked(pos_, pos_, RangeStateType::Modify);
+                owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
             }
 
           protected:
@@ -463,6 +515,10 @@ namespace Nui
                 : owner_{owner}
                 , it_{std::move(it)}
             {}
+            IteratorWrapper(IteratorWrapper const&) = default;
+            IteratorWrapper(IteratorWrapper&&) = default;
+            IteratorWrapper& operator=(IteratorWrapper const&) = default;
+            IteratorWrapper& operator=(IteratorWrapper&&) = default;
             IteratorWrapper& operator+=(difference_type n)
             {
                 it_ += n;
@@ -507,7 +563,10 @@ namespace Nui
             {
                 if constexpr (std::is_same_v<WrappedIterator, typename ContainerT::reverse_iterator>)
                     return ReferenceWrapper<value_type, ContainerT>{
-                        owner_, static_cast<std::size_t>(it_ - owner_->contained_.rbegin()), *it_};
+                        owner_,
+                        owner_->contained_.size() - static_cast<std::size_t>(1) -
+                            static_cast<std::size_t>(it_ - owner_->contained_.rbegin()),
+                        *it_};
                 else
                     return ReferenceWrapper<value_type, ContainerT>{
                         owner_, static_cast<std::size_t>(it_ - owner_->contained_.begin()), *it_};
@@ -520,7 +579,10 @@ namespace Nui
             {
                 if constexpr (std::is_same_v<WrappedIterator, typename ContainerT::reverse_iterator>)
                     return PointerWrapper<value_type, ContainerT>{
-                        owner_, static_cast<std::size_t>(it_ - owner_->contained_.rbegin()), &*it_};
+                        owner_,
+                        owner_->contained_.size() - static_cast<std::size_t>(1) -
+                            static_cast<std::size_t>(it_ - owner_->contained_.rbegin()),
+                        &*it_};
                 else
                     return PointerWrapper<value_type, ContainerT>{
                         owner_, static_cast<std::size_t>(it_ - owner_->contained_.begin()), &*it_};
@@ -587,51 +649,50 @@ namespace Nui
         using const_reverse_iterator = typename ContainerT::const_reverse_iterator;
 
         using ModifiableObserved<ContainerT>::contained_;
-        using ModifiableObserved<ContainerT>::update;
 
       public:
         explicit ObservedContainer(CustomEventContextFlag_t, EventContext* ctx)
             : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx}
-            , rangeContext_{0}
+            , rangeContext_{std::make_shared<RangeEventContext>()}
             , afterEffectId_{registerAfterEffect()}
         {}
         explicit ObservedContainer()
             : ModifiableObserved<ContainerT>{}
-            , rangeContext_{0}
+            , rangeContext_{std::make_shared<RangeEventContext>()}
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
         explicit ObservedContainer(CustomEventContextFlag_t, EventContext* ctx, T&& t)
             : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx, std::forward<T>(t)}
-            , rangeContext_{static_cast<long>(contained_.size())}
+            , rangeContext_{std::make_shared<RangeEventContext>()}
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
         explicit ObservedContainer(T&& t)
             : ModifiableObserved<ContainerT>{std::forward<T>(t)}
-            , rangeContext_{static_cast<long>(contained_.size())}
+            , rangeContext_{std::make_shared<RangeEventContext>()}
             , afterEffectId_{registerAfterEffect()}
         {}
         explicit ObservedContainer(RangeEventContext&& rangeContext)
             : ModifiableObserved<ContainerT>{}
-            , rangeContext_{std::move(rangeContext)}
+            , rangeContext_{std::make_shared<RangeEventContext>(std::move(rangeContext))}
             , afterEffectId_{registerAfterEffect()}
         {}
         explicit ObservedContainer(CustomEventContextFlag_t, EventContext* ctx, RangeEventContext&& rangeContext)
             : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx}
-            , rangeContext_{std::move(rangeContext)}
+            , rangeContext_{std::make_shared<RangeEventContext>(std::move(rangeContext))}
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
         ObservedContainer(T&& t, RangeEventContext&& rangeContext)
             : ModifiableObserved<ContainerT>{std::forward<T>(t)}
-            , rangeContext_{std::move(rangeContext)}
+            , rangeContext_{std::make_shared<RangeEventContext>(std::move(rangeContext))}
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
         ObservedContainer(CustomEventContextFlag_t, EventContext* ctx, T&& t, RangeEventContext&& rangeContext)
             : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx, std::forward<T>(t)}
-            , rangeContext_{std::move(rangeContext)}
+            , rangeContext_{std::make_shared<RangeEventContext>(std::move(rangeContext))}
             , afterEffectId_{registerAfterEffect()}
         {}
 
@@ -639,7 +700,11 @@ namespace Nui
         ObservedContainer(ObservedContainer&&) = default;
         ObservedContainer& operator=(const ObservedContainer&) = delete;
         ObservedContainer& operator=(ObservedContainer&&) = default;
-        ~ObservedContainer() = default;
+        ~ObservedContainer()
+        {
+            if (!moveDetector_.wasMoved())
+                ObservedBase::eventContext_->removeAfterEffect(afterEffectId_);
+        }
 
         constexpr auto map(auto&& function) const;
         constexpr auto map(auto&& function);
@@ -648,27 +713,27 @@ namespace Nui
         ObservedContainer& operator=(T&& t)
         {
             contained_ = std::forward<T>(t);
-            rangeContext_.reset(static_cast<long>(contained_.size()), true);
+            rangeContext_->reset(true);
             update();
             return *this;
         }
         void assign(size_type count, const value_type& value)
         {
             contained_.assign(count, value);
-            rangeContext_.reset(static_cast<long>(contained_.size()), true);
+            rangeContext_->reset(true);
             update();
         }
         template <typename Iterator>
         void assign(Iterator first, Iterator last)
         {
             contained_.assign(first, last);
-            rangeContext_.reset(static_cast<long>(contained_.size()), true);
+            rangeContext_->reset(true);
             update();
         }
         void assign(std::initializer_list<value_type> ilist)
         {
             contained_.assign(ilist);
-            rangeContext_.reset(static_cast<long>(contained_.size()), true);
+            rangeContext_->reset(true);
             update();
         }
 
@@ -799,7 +864,7 @@ namespace Nui
         void clear()
         {
             contained_.clear();
-            rangeContext_.reset(0, true);
+            rangeContext_->reset(true);
             update();
         }
         template <typename U = ContainerT>
@@ -811,7 +876,7 @@ namespace Nui
             NUI_ASSERT(ObservedBase::eventContext_ != nullptr, "Event context must never be null.");
 
             const auto result = contained_.insert(value);
-            rangeContext_.performFullRangeUpdate();
+            rangeContext_->performFullRangeUpdate();
             update();
             ObservedBase::eventContext_->executeActiveEventsImmediately();
             return result;
@@ -825,7 +890,7 @@ namespace Nui
             NUI_ASSERT(ObservedBase::eventContext_ != nullptr, "Event context must never be null.");
 
             const auto result = contained_.insert(std::move(value));
-            rangeContext_.performFullRangeUpdate();
+            rangeContext_->performFullRangeUpdate();
             update();
             ObservedBase::eventContext_->executeActiveEventsImmediately();
             return result;
@@ -838,7 +903,7 @@ namespace Nui
         {
             const auto distance = pos - cbegin();
             auto it = contained_.insert(pos, value);
-            insertRangeChecked(distance, distance, RangeStateType::Insert);
+            insertRangeChecked(distance, distance, RangeOperationType::Insert);
             return iterator{this, it};
         }
         iterator insert(iterator pos, value_type&& value)
@@ -849,7 +914,7 @@ namespace Nui
         {
             const auto distance = pos - cbegin();
             auto it = contained_.insert(pos, std::move(value));
-            insertRangeChecked(distance, distance, RangeStateType::Insert);
+            insertRangeChecked(distance, distance, RangeOperationType::Insert);
             return iterator{this, it};
         }
         iterator insert(iterator pos, size_type count, const value_type& value)
@@ -860,7 +925,7 @@ namespace Nui
         {
             const auto distance = pos - cbegin();
             auto it = contained_.insert(pos, count, value);
-            insertRangeChecked(distance, distance + count, RangeStateType::Insert);
+            insertRangeChecked(distance, distance + count - 1, RangeOperationType::Insert);
             return iterator{this, it};
         }
         template <typename Iterator>
@@ -873,7 +938,7 @@ namespace Nui
         {
             const auto distance = pos - cbegin();
             auto it = contained_.insert(pos, first, last);
-            insertRangeChecked(distance, distance + std::distance(first, last), RangeStateType::Insert);
+            insertRangeChecked(distance, distance + std::distance(first, last) - 1, RangeOperationType::Insert);
             return iterator{this, it};
         }
         iterator insert(iterator pos, std::initializer_list<value_type> ilist)
@@ -884,7 +949,7 @@ namespace Nui
         {
             const auto distance = pos - cbegin();
             auto it = contained_.insert(pos, ilist);
-            insertRangeChecked(distance, distance + ilist.size(), RangeStateType::Insert);
+            insertRangeChecked(distance, distance + ilist.size() - 1, RangeOperationType::Insert);
             return iterator{this, it};
         }
         template <typename... Args>
@@ -892,36 +957,41 @@ namespace Nui
         {
             const auto distance = pos - cbegin();
             auto it = contained_.emplace(pos, std::forward<Args>(args)...);
-            insertRangeChecked(distance, distance + sizeof...(Args), RangeStateType::Insert);
+            insertRangeChecked(distance, distance, RangeOperationType::Insert);
             return iterator{this, it};
         }
         iterator erase(iterator pos)
         {
-            // TODO: move item to delete to end and then pop back? or is vector erase clever enough?
             const auto distance = pos - begin();
+            eraseNotify(distance, distance);
             auto it = contained_.erase(pos.getWrapped());
-            insertRangeChecked(distance, distance, RangeStateType::Erase);
+            insertRangeChecked(distance, distance, RangeOperationType::Erase);
             return iterator{this, it};
         }
         iterator erase(const_iterator pos)
         {
             const auto distance = pos - cbegin();
+            eraseNotify(distance, distance);
             auto it = contained_.erase(pos);
-            insertRangeChecked(distance, distance, RangeStateType::Erase);
+            insertRangeChecked(distance, distance, RangeOperationType::Erase);
             return iterator{this, it};
         }
         iterator erase(iterator first, iterator last)
         {
             const auto distance = first - begin();
+            const auto distance2 = std::distance(first, last);
+            eraseNotify(distance, distance + distance2 - 1);
             auto it = contained_.erase(first.getWrapped(), last.getWrapped());
-            insertRangeChecked(distance, distance + std::distance(first, last), RangeStateType::Erase);
+            insertRangeChecked(distance, distance + distance2 - 1, RangeOperationType::Erase);
             return iterator{this, it};
         }
         iterator erase(const_iterator first, const_iterator last)
         {
             const auto distance = first - cbegin();
+            const auto distance2 = std::distance(first, last);
+            eraseNotify(distance, distance + distance2 - 1);
             auto it = contained_.erase(first, last);
-            insertRangeChecked(distance, distance + std::distance(first, last), RangeStateType::Erase);
+            insertRangeChecked(distance, distance + distance2 - 1, RangeOperationType::Erase);
             return iterator{this, it};
         }
         template <typename U = ContainerT>
@@ -929,62 +999,76 @@ namespace Nui
         push_back(const value_type& value)
         {
             contained_.push_back(value);
-            insertRangeChecked(size() - 1, size() - 1, RangeStateType::Insert);
+            insertRangeChecked(size() - 1, size() - 1, RangeOperationType::Insert);
         }
         template <typename U = ContainerT>
         Detail::PickFirst_t<void, decltype(std::declval<U>().push_back(std::declval<value_type>()))>
         push_back(value_type&& value)
         {
             contained_.push_back(std::move(value));
-            insertRangeChecked(size() - 1, size() - 1, RangeStateType::Insert);
+            insertRangeChecked(size() - 1, size() - 1, RangeOperationType::Insert);
         }
         template <typename U = ContainerT>
         Detail::PickFirst_t<void, decltype(std::declval<U>().push_front(std::declval<const value_type&>()))>
         push_front(const value_type& value)
         {
             contained_.push_front(value);
-            insertRangeChecked(0, 0, RangeStateType::Insert);
+            insertRangeChecked(0, 0, RangeOperationType::Insert);
         }
         template <typename U = ContainerT>
         Detail::PickFirst_t<void, decltype(std::declval<U>().push_front(std::declval<value_type>()))>
         push_front(value_type&& value)
         {
             contained_.push_front(std::move(value));
-            insertRangeChecked(0, 0, RangeStateType::Insert);
+            insertRangeChecked(0, 0, RangeOperationType::Insert);
         }
         template <typename... Args>
         void emplace_back(Args&&... args)
         {
             contained_.emplace_back(std::forward<Args>(args)...);
-            insertRangeChecked(size() - 1, size() - 1, RangeStateType::Insert);
+            insertRangeChecked(size() - 1, size() - 1, RangeOperationType::Insert);
         }
         template <typename U = ContainerT, typename... Args>
         Detail::PickFirst_t<void, decltype(std::declval<U>().emplace_front())> emplace_front(Args&&... args)
         {
             contained_.emplace_front(std::forward<Args>(args)...);
-            insertRangeChecked(0, 0, RangeStateType::Insert);
+            insertRangeChecked(0, 0, RangeOperationType::Insert);
         }
         void pop_back()
         {
+            if (contained_.empty())
+                return;
+            eraseNotify(size() - 1, size() - 1);
             contained_.pop_back();
-            insertRangeChecked(size(), size(), RangeStateType::Erase);
+            insertRangeChecked(size(), size(), RangeOperationType::Erase);
         }
         template <typename U = ContainerT>
         Detail::PickFirst_t<void, decltype(std::declval<U>().pop_front())> pop_front()
         {
+            if (contained_.empty())
+                return;
+            eraseNotify(0, 0);
             contained_.pop_front();
-            insertRangeChecked(0, 0, RangeStateType::Erase);
+            insertRangeChecked(0, 0, RangeOperationType::Erase);
         }
         template <typename U = ContainerT>
         Detail::PickFirst_t<void, decltype(std::declval<U>().resize(std::declval<std::size_t>()))>
         resize(size_type count)
         {
             const auto sizeBefore = contained_.size();
+            if (sizeBefore < count && sizeBefore != 0)
+            {
+                eraseNotify(sizeBefore, count - 1);
+            }
             contained_.resize(count);
             if (sizeBefore < count)
-                insertRangeChecked(sizeBefore, count, RangeStateType::Insert);
-            else
-                insertRangeChecked(count, sizeBefore, RangeStateType::Erase);
+            {
+                insertRangeChecked(sizeBefore, count - 1, RangeOperationType::Insert);
+            }
+            else if (sizeBefore != 0)
+            {
+                insertRangeChecked(count, sizeBefore - 1, RangeOperationType::Erase);
+            }
         }
         template <typename U = ContainerT>
         Detail::PickFirst_t<
@@ -993,16 +1077,21 @@ namespace Nui
         resize(size_type count, value_type const& fillValue)
         {
             const auto sizeBefore = contained_.size();
+            eraseNotify(sizeBefore, count - 1);
             contained_.resize(count, fillValue);
             if (sizeBefore < count)
-                insertRangeChecked(sizeBefore, count, RangeStateType::Insert);
-            else
-                insertRangeChecked(count, sizeBefore, RangeStateType::Erase);
+            {
+                insertRangeChecked(sizeBefore, count - 1, RangeOperationType::Insert);
+            }
+            else if (sizeBefore != 0)
+            {
+                insertRangeChecked(count, sizeBefore - 1, RangeOperationType::Erase);
+            }
         }
         void swap(ContainerT& other)
         {
             contained_.swap(other);
-            rangeContext_.reset(contained_.size(), true);
+            rangeContext_->reset(true);
             update();
         }
 
@@ -1017,48 +1106,62 @@ namespace Nui
         }
         RangeEventContext& rangeContext()
         {
-            return rangeContext_;
+            return *rangeContext_;
         }
         RangeEventContext const& rangeContext() const
         {
-            return rangeContext_;
+            return *rangeContext_;
         }
 
       protected:
         void update(bool force = false) const override
         {
             if (force)
-                rangeContext_.reset(static_cast<long>(contained_.size()), true);
+                rangeContext_->reset(true);
+            ObservedBase::eventContext_->activateAfterEffect(afterEffectId_);
             ObservedBase::update(force);
         }
 
       protected:
-        void insertRangeChecked(std::size_t low, std::size_t high, RangeStateType type)
+        void insertRangeChecked(std::size_t low, std::size_t high, RangeOperationType type)
         {
             std::function<void(int)> doInsert;
             doInsert = [&](int retries) {
                 NUI_ASSERT(ObservedBase::eventContext_ != nullptr, "Event context must never be null.");
 
-                const auto result = rangeContext_.insertModificationRange(contained_.size(), low, high, type);
-                if (result == RangeEventContext::InsertResult::Final)
+                const auto result = rangeContext_->insertModificationRange(low, high, type);
+                if (result == RangeEventContext::InsertResult::Perform)
                 {
                     update();
                     ObservedBase::eventContext_->executeActiveEventsImmediately();
                 }
-                else if (result == RangeEventContext::InsertResult::Retry)
+                else if (result == RangeEventContext::InsertResult::PerformAndRetry)
                 {
+                    update();
+                    ObservedBase::eventContext_->executeActiveEventsImmediately();
+
                     if (retries < 3)
                         doInsert(retries + 1);
                     else
                     {
-                        rangeContext_.reset(static_cast<long>(contained_.size()), true);
+                        rangeContext_->reset(true);
                         update();
                         ObservedBase::eventContext_->executeActiveEventsImmediately();
                         return;
                     }
                 }
-                else
+                else if (result == RangeEventContext::InsertResult::Accepted)
+                {
                     update();
+                }
+                else
+                {
+                    // Rejected! (why?)
+                    rangeContext_->reset(true);
+                    update();
+                    ObservedBase::eventContext_->executeActiveEventsImmediately();
+                    return;
+                }
             };
 
             doInsert(0);
@@ -1067,14 +1170,30 @@ namespace Nui
         auto registerAfterEffect()
         {
             NUI_ASSERT(ObservedBase::eventContext_ != nullptr, "Event context must never be null.");
-            return ObservedBase::eventContext_->registerAfterEffect(Event{[this](EventContext::EventIdType) {
-                rangeContext_.reset(static_cast<long>(contained_.size()), true);
-                return true;
-            }});
+            return ObservedBase::eventContext_->registerAfterEffect(
+                Event{[weak = std::weak_ptr<RangeEventContext>{rangeContext_}](EventContext::EventIdType) {
+                    if (auto shared = weak.lock(); shared)
+                    {
+                        shared->reset();
+                        return true;
+                    }
+                    return false;
+                }});
         }
 
-      private:
-        mutable RangeEventContext rangeContext_;
+        void eraseNotify(std::size_t index, std::size_t high)
+        {
+            const bool fixupPerformed = rangeContext_->eraseNotify(index, high);
+            if (fixupPerformed) // FORCE update:
+            {
+                update();
+                ObservedBase::eventContext_->executeActiveEventsImmediately();
+            }
+        }
+
+      protected:
+        MoveDetector moveDetector_;
+        mutable std::shared_ptr<RangeEventContext> rangeContext_;
         mutable EventContext::EventIdType afterEffectId_;
     };
 
@@ -1159,9 +1278,13 @@ namespace Nui
 
         Observed<std::basic_string<Parameters...>>& erase(std::size_t index = 0, std::size_t count = std::string::npos)
         {
+            if (count == std::size_t{0})
+                return *this;
             const auto sizeBefore = this->contained_.size();
+            const auto high = count == std::string::npos ? sizeBefore - 1 : count - 1;
+            this->eraseNotify(index, high);
             this->contained_.erase(index, count);
-            this->insertRangeChecked(index, sizeBefore, RangeStateType::Erase);
+            this->insertRangeChecked(index, high, RangeOperationType::Erase);
             return *this;
         }
     };
@@ -1176,13 +1299,11 @@ namespace Nui
 
       public:
         Observed()
-            : ObservedContainer<std::set<Parameters...>>{RangeEventContext{0, true}}
+            : ObservedContainer<std::set<Parameters...>>{RangeEventContext{true}}
         {}
         template <typename T = std::set<Parameters...>>
         explicit Observed(T&& t)
-            : ObservedContainer<std::set<Parameters...>>{
-                  std::forward<T>(t),
-                  RangeEventContext{static_cast<long>(t.size()), true}}
+            : ObservedContainer<std::set<Parameters...>>{std::forward<T>(t), RangeEventContext{true}}
         {}
 
         Observed<std::set<Parameters...>>& operator=(std::set<Parameters...> const& contained)
@@ -1207,13 +1328,11 @@ namespace Nui
 
       public:
         Observed()
-            : ObservedContainer<std::list<Parameters...>>{RangeEventContext{0, true}}
+            : ObservedContainer<std::list<Parameters...>>{RangeEventContext{true}}
         {}
         template <typename T = std::list<Parameters...>>
         explicit Observed(T&& t)
-            : ObservedContainer<std::list<Parameters...>>{
-                  std::forward<T>(t),
-                  RangeEventContext{static_cast<long>(t.size()), true}}
+            : ObservedContainer<std::list<Parameters...>>{std::forward<T>(t), RangeEventContext{true}}
         {}
 
         Observed<std::list<Parameters...>>& operator=(std::list<Parameters...> const& contained)
@@ -1259,6 +1378,37 @@ namespace Nui
         {
             static constexpr bool value = true;
         };
+
+        template <typename T>
+        struct IsWeakObserved
+        {
+            static constexpr bool value = false;
+        };
+
+        template <typename T>
+        struct IsWeakObserved<std::weak_ptr<Observed<T>>>
+        {
+            static constexpr bool value = true;
+        };
+
+        template <typename T>
+        struct IsSharedObserved
+        {
+            static constexpr bool value = false;
+        };
+
+        template <typename T>
+        struct IsSharedObserved<std::shared_ptr<Observed<T>>>
+        {
+            static constexpr bool value = true;
+        };
+
+        template <typename T>
+        struct IsObservedLike
+        {
+            static constexpr bool value =
+                IsObserved<T>::value || IsWeakObserved<T>::value || IsSharedObserved<T>::value;
+        };
     }
 
     template <typename T>
@@ -1299,6 +1449,12 @@ namespace Nui
 
     template <typename T>
     concept IsObserved = Detail::IsObserved<std::decay_t<T>>::value;
+    template <typename T>
+    concept IsSharedObserved = Detail::IsSharedObserved<std::decay_t<T>>::value;
+    template <typename T>
+    concept IsWeakObserved = Detail::IsWeakObserved<std::decay_t<T>>::value;
+    template <typename T>
+    concept IsObservedLike = Detail::IsObservedLike<std::decay_t<T>>::value;
 
     namespace Detail
     {
@@ -1328,5 +1484,101 @@ namespace Nui
           private:
             Observed<T> const* observed_;
         };
+
+        template <typename T>
+        struct ObservedAddReference
+        {
+            using type = T const&;
+        };
+        template <>
+        struct ObservedAddReference<void>
+        {
+            using type = void;
+        };
+        template <typename T>
+        struct ObservedAddReference<std::weak_ptr<Observed<T>>>
+        {
+            using type = std::weak_ptr<Observed<T>>;
+        };
+        template <typename T>
+        struct ObservedAddReference<std::shared_ptr<Observed<T>>>
+        {
+            using type = std::weak_ptr<Observed<T>>;
+        };
+        template <typename T>
+        struct ObservedAddReference<std::weak_ptr<const Observed<T>>>
+        {
+            using type = std::weak_ptr<const Observed<T>>;
+        };
+        template <typename T>
+        struct ObservedAddReference<std::shared_ptr<const Observed<T>>>
+        {
+            using type = std::weak_ptr<const Observed<T>>;
+        };
+
+        template <typename T>
+        struct ObservedAddMutableReference
+        {
+            using type = T&;
+            using raw = T;
+        };
+        template <>
+        struct ObservedAddMutableReference<void>
+        {
+            using type = void;
+            using raw = void;
+        };
+        template <typename T>
+        struct ObservedAddMutableReference<std::weak_ptr<Observed<T>>>
+        {
+            using type = std::weak_ptr<Observed<T>>;
+            using raw = Observed<T>;
+        };
+        template <typename T>
+        struct ObservedAddMutableReference<std::shared_ptr<Observed<T>>>
+        {
+            using type = std::weak_ptr<Observed<T>>;
+            using raw = Observed<T>;
+        };
+
+        template <typename T>
+        using ObservedAddReference_t = typename ObservedAddReference<std::decay_t<T>>::type;
+        template <typename T>
+        using ObservedAddMutableReference_t = typename ObservedAddMutableReference<std::remove_reference_t<T>>::type;
+        template <typename T>
+        using ObservedAddMutableReference_raw = typename ObservedAddMutableReference<std::remove_reference_t<T>>::raw;
     }
+
+    template <typename T>
+    struct UnpackObserved
+    {
+        using type = T;
+    };
+    template <typename T>
+    struct UnpackObserved<Observed<T>>
+    {
+        using type = T;
+    };
+    template <typename T>
+    struct UnpackObserved<std::weak_ptr<Observed<T>>>
+    {
+        using type = T;
+    };
+    template <typename T>
+    struct UnpackObserved<std::shared_ptr<Observed<T>>>
+    {
+        using type = T;
+    };
+    template <typename T>
+    struct UnpackObserved<std::weak_ptr<const Observed<T>>>
+    {
+        using type = T;
+    };
+    template <typename T>
+    struct UnpackObserved<std::shared_ptr<const Observed<T>>>
+    {
+        using type = T;
+    };
+    template <typename T>
+    using UnpackObserved_t = typename UnpackObserved<T>::type;
 }

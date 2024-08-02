@@ -27,7 +27,7 @@ namespace Nui::Tests
         model_.value().emplace_back(Components::SelectOptions<int>{.label = "foo", .value = 7});
         model_.value().emplace_back(Components::SelectOptions<int>{.label = "bar", .value = 8});
 
-        const auto select = Components::Select<int>({
+        auto select = Components::Select<int>({
             .model = model_,
         });
 
@@ -47,7 +47,7 @@ namespace Nui::Tests
         model_.value().emplace_back(Components::SelectOptions<int>{.label = "foo", .value = 7});
         model_.value().emplace_back(Components::SelectOptions<int>{.label = "bar", .value = 8});
 
-        const auto select = Components::Select<int>({.model = model_, .preSelectedIndex = 1});
+        auto select = Components::Select<int>({.model = model_, .preSelectedIndex = 1});
 
         render(select);
 
@@ -60,7 +60,7 @@ namespace Nui::Tests
     {
         using namespace Nui::Attributes;
 
-        const auto select = Components::Select<int>({
+        auto select = Components::Select<int>({
             .model = model_,
             .selectAttributes =
                 {
@@ -82,7 +82,7 @@ namespace Nui::Tests
         model_.value().emplace_back(Components::SelectOptions<int>{.label = "foo", .value = 7});
 
         bool called = false;
-        const auto select = Components::Select<int>({
+        auto select = Components::Select<int>({
             .model = model_,
             .onSelect =
                 [&called](long long index, Components::SelectOptions<int> const& opt) {

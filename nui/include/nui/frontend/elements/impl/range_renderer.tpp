@@ -6,16 +6,33 @@ namespace Nui::Detail
         KeepRange = true,
     };
 
+    template <typename ObservedType>
+    struct HoldToken
+    {
+        // FIXME: Remove this, when getValueRange overload is not instantiated for non weak observed types
+        std::shared_ptr<ObservedType> locked;
+    };
+
+    template <typename T>
+    struct HoldToken<std::weak_ptr<T>>
+    {
+        std::shared_ptr<T> locked;
+    };
+
+    template <typename T>
+    using CommonHoldToken = ::Nui::Detail::HoldToken<ObservedAddMutableReference_raw<typename T::ObservedType>>;
+
     template <typename RangeT, typename GeneratorT>
     class BasicObservedRenderer
     {
       public:
         using ObservedType = typename RangeT::ObservedType;
+        using HoldToken = CommonHoldToken<RangeT>;
 
         template <typename Generator = GeneratorT>
-        BasicObservedRenderer(ObservedType& observed, Generator&& elementRenderer)
-            : valueRange_{observed}
-            , elementRenderer_{std::forward<GeneratorT>(elementRenderer)}
+        BasicObservedRenderer(ObservedAddMutableReference_t<ObservedType>&& observed, Generator&& elementRenderer)
+            : elementRenderer_{std::forward<GeneratorT>(elementRenderer)}
+            , valueRange_{std::forward<ObservedAddMutableReference_t<ObservedType>>(observed)}
         {}
         virtual ~BasicObservedRenderer() = default;
         BasicObservedRenderer(BasicObservedRenderer const&) = delete;
@@ -23,25 +40,47 @@ namespace Nui::Detail
         BasicObservedRenderer& operator=(BasicObservedRenderer const&) = delete;
         BasicObservedRenderer& operator=(BasicObservedRenderer&&) = delete;
 
-        bool fullRangeUpdate(auto& parent) const
+        auto* getValueRange(HoldToken& holder)
         {
-            if (valueRange_.rangeContext().isFullRangeUpdate())
+            return Nui::overloaded{
+                [](::Nui::IsObserved auto& valueRange) {
+                    return &valueRange;
+                },
+                [&holder](::Nui::IsWeakObserved auto& valueRange) {
+                    if (holder.locked = valueRange.lock(); holder.locked)
+                        return holder.locked.get();
+                    return nullptr;
+                },
+            }(valueRange_);
+        }
+
+        bool fullRangeUpdate(auto& parent, bool force = false)
+        {
+            auto valueRangeHolder = HoldToken{};
+            auto* valueRange = getValueRange(valueRangeHolder);
+            if (valueRange == nullptr)
+                return false;
+
+            if (valueRange->rangeContext().isFullRangeUpdate() || force)
             {
                 parent->clearChildren();
                 long long counter = 0;
-                for (auto& element : valueRange_.value())
+                for (auto& element : valueRange->value())
                     elementRenderer_(counter++, element)(*parent, Renderer{.type = RendererType::Append});
+                valueRange->rangeContext().reset();
                 return true;
             }
             return false;
         }
 
-        virtual bool updateChildren() const = 0;
+        virtual bool updateChildren(bool initial) = 0;
 
       protected:
-        ObservedType& valueRange_;
         GeneratorT elementRenderer_;
         std::weak_ptr<Nui::Dom::Element> weakMaterialized_;
+
+      private:
+        ObservedAddMutableReference_t<ObservedType> valueRange_;
     };
 
     template <typename RangeT, typename GeneratorT>
@@ -52,59 +91,87 @@ namespace Nui::Detail
       public:
         using BasicObservedRenderer<RangeT, GeneratorT>::BasicObservedRenderer;
         using BasicObservedRenderer<RangeT, GeneratorT>::weakMaterialized_;
-        using BasicObservedRenderer<RangeT, GeneratorT>::valueRange_;
         using BasicObservedRenderer<RangeT, GeneratorT>::elementRenderer_;
         using BasicObservedRenderer<RangeT, GeneratorT>::fullRangeUpdate;
+        using BasicObservedRenderer<RangeT, GeneratorT>::getValueRange;
 
-        void insertions(auto& parent) const
+        void insertions(auto& parent)
         {
-            if (const auto insertInterval = valueRange_.rangeContext().insertInterval(); insertInterval)
+            auto valueRangeHolder = CommonHoldToken<RangeT>{};
+            auto* valueRange = getValueRange(valueRangeHolder);
+            if (valueRange == nullptr)
+                return;
+
+            for (auto i = valueRange->rangeContext().begin(), end = valueRange->rangeContext().end(); i != end; ++i)
             {
-                for (auto i = insertInterval->low(); i <= insertInterval->high(); ++i)
+                for (auto r = i->low(), high = i->high(); r <= high; ++r)
                 {
-                    elementRenderer_(i, valueRange_.value()[static_cast<std::size_t>(i)])(
-                        *parent, Renderer{.type = RendererType::Insert, .metadata = static_cast<std::size_t>(i)});
+                    elementRenderer_(r, valueRange->value()[static_cast<std::size_t>(r)])(
+                        *parent, Renderer{.type = RendererType::Insert, .metadata = static_cast<std::size_t>(r)});
                 }
             }
         }
 
-        void updates(auto& parent) const
+        void modifications(auto& parent)
         {
-            for (auto const& range : valueRange_.rangeContext())
+            auto valueRangeHolder = CommonHoldToken<RangeT>{};
+            auto* valueRange = getValueRange(valueRangeHolder);
+            if (valueRange == nullptr)
+                return;
+
+            for (auto const& range : valueRange->rangeContext())
             {
-                switch (range.type())
+                for (auto r = range.low(), high = range.high(); r <= high; ++r)
                 {
-                    case RangeStateType::Keep:
-                    {
-                        continue;
-                    }
-                    case RangeStateType::Modify:
-                    {
-                        for (auto i = range.low(), high = range.high(); i <= high; ++i)
-                        {
-                            elementRenderer_(i, valueRange_.value()[static_cast<std::size_t>(i)])(
-                                *(*parent)[static_cast<std::size_t>(i)], Renderer{.type = RendererType::Replace});
-                        }
-                        break;
-                    }
-                    default:
-                        break;
+                    elementRenderer_(r, valueRange->value()[static_cast<std::size_t>(r)])(
+                        *(*parent)[static_cast<std::size_t>(r)], Renderer{.type = RendererType::Replace});
                 }
             }
         }
 
-        bool updateChildren() const override
+        void erasures(auto& parent)
+        {
+            auto valueRangeHolder = CommonHoldToken<RangeT>{};
+            auto* valueRange = getValueRange(valueRangeHolder);
+            if (valueRange == nullptr)
+                return;
+
+            for (auto const& eraseRange : reverse_view{valueRange->rangeContext()})
+            {
+                parent->erase(begin(*parent) + eraseRange.low(), begin(*parent) + eraseRange.high() + 1);
+            }
+        }
+
+        bool updateChildren(bool initial) override
         {
             auto parent = weakMaterialized_.lock();
             if (!parent)
                 return InvalidateRange;
 
+            auto valueRangeHolder =
+                ::Nui::Detail::HoldToken<std::decay_t<ObservedAddMutableReference_t<typename RangeT::ObservedType>>>{};
+            auto* valueRange = getValueRange(valueRangeHolder);
+            if (!valueRange)
+                return InvalidateRange;
+
             // Regenerate all elements if necessary:
-            if (fullRangeUpdate(parent))
+            if (fullRangeUpdate(parent, initial))
                 return KeepRange;
 
-            insertions(parent);
-            updates(parent);
+            switch (valueRange->rangeContext().operationType())
+            {
+                case RangeOperationType::Insert:
+                    insertions(parent);
+                    break;
+                case RangeOperationType::Modify:
+                    modifications(parent);
+                    break;
+                case RangeOperationType::Erase:
+                    erasures(parent);
+                    break;
+                default:
+                    break;
+            }
 
             return KeepRange;
         }
@@ -112,15 +179,21 @@ namespace Nui::Detail
         void operator()(auto& materialized)
         {
             weakMaterialized_ = materialized;
-            valueRange_.attachEvent(Nui::globalEventContext.registerEvent(Event{
-                [self = this->shared_from_this()](int) -> bool {
-                    return self->updateChildren();
-                },
-                [this /* fine because other function holds this */]() {
-                    return !weakMaterialized_.expired();
-                },
-            }));
-            updateChildren();
+
+            auto valueRangeHolder = CommonHoldToken<RangeT>{};
+            auto* valueRange = getValueRange(valueRangeHolder);
+            if (valueRange)
+            {
+                valueRange->attachEvent(Nui::globalEventContext.registerEvent(Event{
+                    [self = this->shared_from_this()](int) -> bool {
+                        return self->updateChildren(false);
+                    },
+                    [this /* fine because other function holds this */]() {
+                        return !weakMaterialized_.expired();
+                    },
+                }));
+                updateChildren(true);
+            }
         }
     };
 
@@ -132,32 +205,37 @@ namespace Nui::Detail
       public:
         using BasicObservedRenderer<RangeT, GeneratorT>::BasicObservedRenderer;
         using BasicObservedRenderer<RangeT, GeneratorT>::weakMaterialized_;
-        using BasicObservedRenderer<RangeT, GeneratorT>::valueRange_;
         using BasicObservedRenderer<RangeT, GeneratorT>::elementRenderer_;
         using BasicObservedRenderer<RangeT, GeneratorT>::fullRangeUpdate;
+        using BasicObservedRenderer<RangeT, GeneratorT>::getValueRange;
 
-        bool updateChildren() const override
+        bool updateChildren(bool) override
         {
             auto parent = weakMaterialized_.lock();
             if (!parent)
                 return InvalidateRange;
 
-            fullRangeUpdate(parent);
+            fullRangeUpdate(parent, true /* force always */);
             return KeepRange;
         }
 
         void operator()(auto& materialized)
         {
             weakMaterialized_ = materialized;
-            valueRange_.attachEvent(Nui::globalEventContext.registerEvent(Event{
-                [self = this->shared_from_this()](int) -> bool {
-                    return self->updateChildren();
-                },
-                [this /* fine because other function holds this */]() {
-                    return !weakMaterialized_.expired();
-                },
-            }));
-            updateChildren();
+            auto valueRangeHolder = CommonHoldToken<RangeT>{};
+            auto* valueRange = getValueRange(valueRangeHolder);
+            if (valueRange)
+            {
+                valueRange->attachEvent(Nui::globalEventContext.registerEvent(Event{
+                    [self = this->shared_from_this()](int) -> bool {
+                        return self->updateChildren(true);
+                    },
+                    [this /* fine because other function holds this */]() {
+                        return !weakMaterialized_.expired();
+                    },
+                }));
+                updateChildren(true);
+            }
         }
     };
 
@@ -174,7 +252,7 @@ namespace Nui::Detail
             , elementRenderer_{std::forward<GeneratorT>(elementRenderer)}
         {}
 
-        bool updateChildren() const
+        bool updateChildren(bool)
         {
             auto materialized = weakMaterialized_.lock();
             if (!materialized)
@@ -183,9 +261,10 @@ namespace Nui::Detail
             materialized->clearChildren();
 
             long long counter = 0;
-            for (auto& element : unoptimizedRange_)
+            for (auto&& element : unoptimizedRange_)
             {
-                elementRenderer_(counter++, element)(*materialized, Renderer{.type = RendererType::Append});
+                elementRenderer_(counter++, ContainerWrapUtility::unwrapReferenceWrapper(element))(
+                    *materialized, Renderer{.type = RendererType::Append});
             }
 
             return KeepRange;
@@ -196,13 +275,13 @@ namespace Nui::Detail
             weakMaterialized_ = materialized;
             unoptimizedRange_.underlying().attachEvent(Nui::globalEventContext.registerEvent(Event{
                 [self = this->shared_from_this()](int) -> bool {
-                    return self->updateChildren();
+                    return self->updateChildren(true);
                 },
                 [this]() {
                     return !weakMaterialized_.expired();
                 },
             }));
-            updateChildren();
+            updateChildren(true);
         }
 
       protected:

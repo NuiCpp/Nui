@@ -31,7 +31,13 @@ add_executable(nui-tests
 target_link_libraries(nui-tests PRIVATE
     nui-frontend-mocked
     gtest
+    gmock
 )
+
+if (INT_TREE_DRAW_EXAMPLES)
+    target_link_libraries(nui-tests PRIVATE cairo cairo-wrap)
+endif()
+
 gtest_discover_tests(nui-tests)
 
 set_target_properties(nui-tests

@@ -21,6 +21,12 @@ namespace Nui
         };
 
         template <typename T>
+        struct Property<std::weak_ptr<Observed<T>>>
+        {
+            std::weak_ptr<Observed<T>> prop;
+        };
+
+        template <typename T>
         struct IsPropertyImpl
         {
             static constexpr bool value = false;
@@ -44,6 +50,20 @@ namespace Nui
     }
 
     template <typename U>
+    requires(IsWeakObserved<std::decay_t<U>>)
+    Detail::Property<std::decay_t<U>> property(U&& val)
+    {
+        return Detail::Property<std::decay_t<U>>{.prop = std::forward<U>(val)};
+    }
+
+    template <typename U>
+    requires(IsSharedObserved<std::decay_t<U>>)
+    Detail::Property<typename std::decay_t<U>::weak_type> property(U const& val)
+    {
+        return Detail::Property<typename std::decay_t<U>::weak_type>{.prop = std::weak_ptr{val}};
+    }
+
+    template <typename U>
     requires(std::invocable<U, Nui::val>)
     Detail::Property<std::function<void(Nui::val)>> property(U val)
     {
@@ -58,7 +78,7 @@ namespace Nui
     }
 
     template <typename U>
-    requires(!IsObserved<std::decay_t<U>> && !std::invocable<U> && !std::invocable<U, Nui::val>)
+    requires(!IsObservedLike<std::decay_t<U>> && !std::invocable<U> && !std::invocable<U, Nui::val>)
     Detail::Property<std::decay_t<U>> property(U val)
     {
         return Detail::Property<std::decay_t<U>>{.prop = std::move(val)};

@@ -31,6 +31,10 @@ namespace Nui
         {
             return getSpecialPath(CSIDL_APPDATA);
         }
+        std::filesystem::path getDocuments()
+        {
+            return getSpecialPath(CSIDL_MYDOCUMENTS);
+        }
         std::filesystem::path getLocalAppData()
         {
             return getSpecialPath(CSIDL_LOCAL_APPDATA);
@@ -66,6 +70,27 @@ namespace Nui
         std::filesystem::path getTemp()
         {
             return "/tmp";
+        }
+        std::filesystem::path getXdgConfigHome()
+        {
+            auto const* xdgConfigHome = getenv("XDG_CONFIG_HOME");
+            if (xdgConfigHome != nullptr)
+                return {xdgConfigHome};
+            return getHome() / ".config";
+        }
+        std::filesystem::path getXdgStateHome()
+        {
+            auto const* xdgStateHome = getenv("XDG_STATE_HOME");
+            if (xdgStateHome != nullptr)
+                return {xdgStateHome};
+            return getHome() / ".local/state";
+        }
+        std::filesystem::path getXdgDataHome()
+        {
+            auto const* xdgDataHome = getenv("XDG_DATA_HOME");
+            if (xdgDataHome != nullptr)
+                return {xdgDataHome};
+            return getHome() / ".local/share";
         }
 #endif
     }
@@ -106,6 +131,45 @@ namespace Nui
             return path;
         if (tryAndMap("%temp%", getTemp))
             return path;
+#ifdef _WIN32
+        if (tryAndMap("%config_home%", getAppData))
+            return path;
+        if (tryAndMap("%config_home2%", getDocuments))
+            return path;
+        if (tryAndMap("%config_home3%", getHome))
+            return path;
+        if (tryAndMap("%state_home%", getAppData))
+            return path;
+        if (tryAndMap("%state_home2%", getDocuments))
+            return path;
+        if (tryAndMap("%state_home3%", getHome))
+            return path;
+        if (tryAndMap("%data_home%", getAppData))
+            return path;
+        if (tryAndMap("%data_home2%", getDocuments))
+            return path;
+        if (tryAndMap("%data_home3%", getHome))
+            return path;
+#else
+        if (tryAndMap("%config_home%", getXdgConfigHome))
+            return path;
+        if (tryAndMap("%config_home2%", getXdgConfigHome))
+            return path;
+        if (tryAndMap("%config_home3%", getXdgConfigHome))
+            return path;
+        if (tryAndMap("%state_home%", getXdgStateHome))
+            return path;
+        if (tryAndMap("%state_home2%", getXdgStateHome))
+            return path;
+        if (tryAndMap("%state_home3%", getXdgStateHome))
+            return path;
+        if (tryAndMap("%data_home%", getXdgDataHome))
+            return path;
+        if (tryAndMap("%data_home2%", getXdgDataHome))
+            return path;
+        if (tryAndMap("%data_home3%", getXdgDataHome))
+            return path;
+#endif
 
         return path;
     }

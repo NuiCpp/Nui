@@ -27,6 +27,11 @@ namespace Nui
         {
             return element.replaceElement(htmlElement);
         }
+        /// Replaces the given element with the new one.
+        inline auto emplaceMaterialize(auto& element, auto const& htmlElement)
+        {
+            return element.emplaceElement(htmlElement);
+        }
         /// Used for elements that dont have a direct parent.
         inline auto inplaceMaterialize(auto& element, auto const&)
         {
@@ -40,7 +45,8 @@ namespace Nui
         Fragment,
         Insert,
         Replace,
-        Inplace
+        Inplace,
+        Emplace
     };
     struct Renderer
     {
@@ -61,6 +67,8 @@ namespace Nui
                 return Materializers::replaceMaterialize(element, htmlElement);
             case RendererType::Inplace:
                 return Materializers::inplaceMaterialize(element, htmlElement);
+            case RendererType::Emplace:
+                return Materializers::emplaceMaterialize(element, htmlElement);
         }
     };
 }
