@@ -34,6 +34,12 @@ jobs:
           # OPTIONAL: Specify a platform version
           platform_version: 22.04
 
+      - name: Tool Version Dump
+        run: |
+          clang++ --version
+          cmake --version
+          ninja --version
+
       - name: Symlink xlocale
         run: sudo ln -s /usr/include/locale.h /usr/include/xlocale.h
 
