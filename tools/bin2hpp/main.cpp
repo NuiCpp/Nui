@@ -1,3 +1,7 @@
+#include "raw_encoder.hpp"
+#include "base64_encoder.hpp"
+#include "compressed_encoder.hpp"
+
 #include <cctype>
 #include <fstream>
 #include <ios>
@@ -6,14 +10,13 @@
 #include <string>
 #include <filesystem>
 
-constexpr std::size_t lineWidth = 120;
-
 int main(int argc, char** argv)
 {
-    if (argc != 5)
+    if (argc != 6)
     {
-        std::cout << "Expected 4 arguments: <yes/no> <input file> <output file> <name>, but got " << argc - 1 << "\n";
-        std::cout << "Usage: " << argv[0] << " <yes/no> <input file> <output file> <name>"
+        std::cout << "Expected 5 arguments: <yes/no> <input file> <output file> <name> <encoding>, but got " << argc - 1
+                  << "\n";
+        std::cout << "Usage: " << argv[0] << " <yes/no> <input file> <output file> <name> <encoding>"
                   << "\n";
         return 1;
     }
@@ -22,10 +25,24 @@ int main(int argc, char** argv)
     std::string inputFile = argv[2];
     std::string outputFile = argv[3];
     std::string name = argv[4];
+    std::string encoding = argv[5];
 
     if (enable == "no")
     {
         return 0;
+    }
+
+    std::unique_ptr<Encoder> encoder;
+    if (encoding == "raw")
+        encoder = std::make_unique<RawEncoder>(name);
+    else if (encoding == "base64")
+        encoder = std::make_unique<Base64Encoder>(name);
+    else if (encoding == "gz_base64")
+        encoder = std::make_unique<CompressedEncoder>(name);
+    else
+    {
+        std::cout << "Unknown encoding: " << encoding << "\n";
+        return 1;
     }
 
     auto outputPath = std::filesystem::path(outputFile).parent_path();
@@ -45,54 +62,7 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    output << "#pragma once\n";
-    output << "\n";
-    output << "#include <string_view>\n";
-    output << "#include <string>\n";
-    output << "\n";
-    output << "static const std::string_view " << name << "_data[] = {\n";
-
-    do
-    {
-        char buffer[1024];
-        input.read(buffer, sizeof(buffer));
-        if (input.gcount() == 0)
-            break;
-        for (std::streamsize i = 0; i != input.gcount();)
-        {
-            std::streamsize j = 0;
-            output << "\t\"";
-            std::size_t widthUsed = 0;
-            for (; (widthUsed < (lineWidth - 9)) && (j + i != input.gcount()); ++j)
-            {
-                char c = buffer[i + j];
-                if (c < 32 || c == '"' || c == '\\')
-                {
-                    output << '\\' << std::oct << std::setw(3) << std::setfill('0') << static_cast<int>(c);
-                    widthUsed += 4;
-                }
-                else
-                {
-                    output << c;
-                    ++widthUsed;
-                }
-            }
-            output << "\"\n";
-            i += j;
-        }
-        output << "\t,\n";
-    } while (input.gcount() > 0);
-
-    output << "};\n\n";
-    output << "static std::string " << name << "()\n";
-    output << "{\n";
-    output << "\tstatic std::string memo;\n";
-    output << "\tif(!memo.empty())\n";
-    output << "\t\treturn memo;\n";
-    output << "\tfor (std::size_t i = 0; i != sizeof(" << name << "_data) / sizeof(std::string_view)"
-           << "; ++i) {\n";
-    output << "\t\tmemo += " << name << "_data[i];\n";
-    output << "\t}\n";
-    output << "\treturn memo;\n";
-    output << "}\n";
+    encoder->header(output);
+    encoder->content(output, input);
+    encoder->index(output);
 }

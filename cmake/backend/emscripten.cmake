@@ -40,7 +40,7 @@ function(nui_add_emscripten_target)
     cmake_parse_arguments(
         NUI_ADD_EMSCRIPTEN_TARGET_ARGS
         "DISABLE_BIN2HPP;DISABLE_PARCEL_ADAPTER;ENABLE_TAILWIND;ENABLE_DOTENV"
-        "TARGET;PREJS;SOURCE_DIR"
+        "TARGET;PREJS;SOURCE_DIR;BIN2HPP_ENCODING"
         "CMAKE_OPTIONS"
         ${ARGN}
     )
@@ -99,8 +99,14 @@ function(nui_add_emscripten_target)
         set(BUILD_COMMAND BUILD_COMMAND cmake -E copy "${SOURCE_DIR}/package.json" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/package.json")
     endif()
 
+    if (NUI_ADD_EMSCRIPTEN_TARGET_ARGS_BIN2HPP_ENCODING)
+        set(BIN2HPP_ENCODING ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_BIN2HPP_ENCODING})
+    else()
+        set(BIN2HPP_ENCODING "raw")
+    endif()
+
     if (ENABLE_BIN2HPP AND ${ENABLE_BIN2HPP})
-        set(BIN2HPP_COMMAND COMMAND $<TARGET_FILE:bin2hpp> "on" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/include/index.hpp" index)
+        set(BIN2HPP_COMMAND COMMAND $<TARGET_FILE:bin2hpp> "on" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html" "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/include/index.hpp" index ${BIN2HPP_ENCODING})
     else()
         set(BIN2HPP_COMMAND COMMAND cmake -E true)
     endif()
