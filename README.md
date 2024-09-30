@@ -43,13 +43,13 @@ Pull Requests are welcome, please format your changes and additions with clang-f
 
 ## Dependencies pulled by CMake
 Nui uses the following dependencies:
-- emscripten - [LICENSE](https://github.com/emscripten-core/emscripten/blob/main/LICENSE)
-- A nui maintained fork of webview/webview https://github.com/webview/webview - [LICENSE](https://github.com/webview/webview/blob/master/LICENSE)
+- emscripten - [Custom LICENSE](https://github.com/emscripten-core/emscripten/blob/main/LICENSE)
+- A nui maintained fork of webview/webview https://github.com/webview/webview - [MIT LICENSE](https://github.com/webview/webview/blob/master/LICENSE)
 - boost under BSL License
-- fmt https://github.com/fmtlib/fmt - [LICENSE](https://github.com/fmtlib/fmt/blob/master/LICENSE)
-- gtest https://github.com/google/googletest - [BSL 3.0 LICENSE](https://github.com/google/googletest/blob/main/LICENSE)
-- 5cript/interval-tree https://github.com/5cript/interval-tree - [CC0 LICENSE](https://github.com/5cript/interval-tree/blob/master/LICENSE)
+- fmt https://github.com/fmtlib/fmt - [Custom MIT-like LICENSE](https://github.com/fmtlib/fmt/blob/master/LICENSE)
+- gtest https://github.com/google/googletest - [BSD 3-Clause LICENSE](https://github.com/google/googletest/blob/main/LICENSE)
+- 5cript/interval-tree https://github.com/5cript/interval-tree - [CC0-1.0 LICENSE](https://github.com/5cript/interval-tree/blob/master/LICENSE)
 - 5cript/mplex https://github.com/5cript/mplex - [MIT LICENSE](https://github.com/5cript/mplex/blob/master/LICENSE)
 - nlohmann/json https://github.com/nlohmann/json - [MIT LICENSE](https://github.com/nlohmann/json/blob/develop/LICENSE.MIT)
-- portable-file-dialogs https://github.com/samhocevar/portable-file-dialogs - [WTFPL LICENSE](https://github.com/samhocevar/portable-file-dialogs/blob/main/README.md)
+- portable-file-dialogs https://github.com/samhocevar/portable-file-dialogs - [WTFPL LICENSE](https://github.com/samhocevar/portable-file-dialogs/blob/main/COPYING)
 - 5cript/roar https://github.com/5cript/roar - [BSL-1.0 LICENSE](https://github.com/5cript/roar/blob/master/LICENSE)
