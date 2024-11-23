@@ -45,7 +45,7 @@ namespace Nui
             }
             friend bool operator==(RangeStateInterval const& lhs, RangeStateInterval const& rhs)
             {
-                return lhs.low_ == rhs.low_ && lhs.high_ == rhs.high_ && lhs.type_ == rhs.type_;
+                return lhs.low_ == rhs.low_ && lhs.high_ == rhs.high_;
             }
             friend bool operator!=(RangeStateInterval const& lhs, RangeStateInterval const& rhs)
             {
