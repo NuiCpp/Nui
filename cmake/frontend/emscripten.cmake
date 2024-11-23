@@ -42,22 +42,32 @@ function(nui_prepare_emscripten_target)
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 
-    add_custom_target(
-        ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
+    add_custom_command(
+        OUTPUT "${CMAKE_BINARY_DIR}/bin/index.html" 
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${NUI_SOURCE_DIRECTORY}/nui/js" "${NUI_MODULE_BUILD_DIR}/nui-js"
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_STATIC} "${CMAKE_BINARY_DIR}/static"
         ${INLINER_COMMAND}
         COMMAND "${CMAKE_BINARY_DIR}/node_modules/.bin/parcel" build --dist-dir "${CMAKE_BINARY_DIR}/bin" ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PARCEL_ARGS}
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
-        BYPRODUCTS "${CMAKE_BINARY_DIR}/bin/index.html"
         DEPENDS "${CMAKE_BINARY_DIR}/bin/index.js"
+    )
+
+    add_custom_target(
+        ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
+        DEPENDS "${CMAKE_BINARY_DIR}/bin/index.html"
     )
 
     if (${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_UNPACKED_MODE})
         set(SINGLE_FILE_STRING "")
+
+        add_custom_command(
+            OUTPUT "${CMAKE_BINARY_DIR}/../bin/index.wasm"
+            COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/bin/index.wasm" "${CMAKE_BINARY_DIR}/../bin/index.wasm"
+        )
+
         add_custom_target(
             ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-copy-wasm
-            COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/bin/index.wasm" "${CMAKE_BINARY_DIR}/../bin/index.wasm"
+            DEPENDS "${CMAKE_BINARY_DIR}/../bin/index.wasm"
         )
         add_dependencies(${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_TARGET}-copy-wasm)
     else()
