@@ -16,11 +16,28 @@ namespace Nui
         {}
         ~ScopeExit()
         {
-            onExit_();
+            if (onExit_)
+                onExit_();
         }
+        ScopeExit(ScopeExit&& other)
+            : onExit_(std::move(other.onExit_))
+        {
+            other.onExit_ = {};
+        }
+        ScopeExit& operator=(ScopeExit&& other)
+        {
+            if (this != &other)
+            {
+                onExit_ = std::move(other.onExit_);
+                other.onExit_ = {};
+            }
+            return *this;
+        }
+        ScopeExit(const ScopeExit&) = delete;
+        ScopeExit& operator=(const ScopeExit&) = delete;
         void disarm()
         {
-            onExit_ = [] {};
+            onExit_ = {};
         }
 
       private:
