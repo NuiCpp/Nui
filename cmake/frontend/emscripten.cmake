@@ -45,6 +45,7 @@ function(nui_prepare_emscripten_target)
     add_custom_command(
         OUTPUT "${CMAKE_BINARY_DIR}/bin/index.html" 
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${NUI_SOURCE_DIRECTORY}/nui/js" "${NUI_MODULE_BUILD_DIR}/nui-js"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${CMAKE_BINARY_DIR}/static"
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_STATIC} "${CMAKE_BINARY_DIR}/static"
         ${INLINER_COMMAND}
         COMMAND "${CMAKE_BINARY_DIR}/node_modules/.bin/parcel" build --dist-dir "${CMAKE_BINARY_DIR}/bin" ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PARCEL_ARGS}
