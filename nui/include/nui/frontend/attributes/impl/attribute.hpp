@@ -24,7 +24,7 @@ namespace Nui
         };
 
         Attribute() = default;
-        Attribute(
+        explicit Attribute(
             std::function<void(Dom::ChildlessElement&)> setter,
             std::function<EventContext::EventIdType(std::weak_ptr<Dom::ChildlessElement>&& element)> createEvent = {},
             std::function<void(EventContext::EventIdType const&)> clearEvent = {})
@@ -57,6 +57,7 @@ namespace Nui
         Attribute(Attribute&&) = default;
         Attribute& operator=(Attribute const&) = default;
         Attribute& operator=(Attribute&&) = default;
+        ~Attribute() = default;
 
         void setOn(Dom::ChildlessElement& element) const;
         EventContext::EventIdType createEvent(std::weak_ptr<Dom::ChildlessElement>&& element) const;
