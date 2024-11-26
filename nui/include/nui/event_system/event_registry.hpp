@@ -4,9 +4,7 @@
 #include <nui/frontend/event_system/event.hpp>
 #include <nui/utility/visit_overloaded.hpp>
 
-#include <functional>
 #include <limits>
-#include <map>
 
 namespace Nui
 {
