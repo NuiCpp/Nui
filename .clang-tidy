@@ -35,6 +35,7 @@ Checks: '-*,
         -hicpp-vararg,
         -hicpp-member-init,
         -hicpp-braces-around-statements,
+        -hicpp-named-parameter,
     misc-*,
         -misc-non-private-member-variables-in-classes'
 CheckOptions:
