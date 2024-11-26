@@ -13,9 +13,9 @@ namespace Nui
         ThrottledFunction(int32_t id, bool calledWhenReady, std::function<void()> func);
         ~ThrottledFunction();
         ThrottledFunction(ThrottledFunction const&) = delete;
-        ThrottledFunction(ThrottledFunction&& other);
+        ThrottledFunction(ThrottledFunction&& other) noexcept;
         ThrottledFunction& operator=(ThrottledFunction const&) = delete;
-        ThrottledFunction& operator=(ThrottledFunction&& other);
+        ThrottledFunction& operator=(ThrottledFunction&& other) noexcept;
 
         /// Calls the function if it is valid.
         void operator()();
@@ -24,7 +24,7 @@ namespace Nui
         bool valid() const;
 
       private:
-        int32_t id_{-1};
+        int32_t id_;
         bool calledWhenReady_;
         std::function<void()> func_{};
     };
