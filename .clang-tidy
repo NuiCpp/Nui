@@ -8,6 +8,7 @@ Checks: '-*,
     llvm-*,
         -llvm-header-guard,
         -llvm-include-order,
+        -llvm-namespace-comment,
     clang-analyzer-*,
     modernize-*,
         -modernize-use-trailing-return-type,
@@ -25,14 +26,19 @@ Checks: '-*,
         -readability-named-parameter,
         -readability-redundant-access-specifiers,
         -readability-magic-numbers,
+        -readability-braces-around-statements,
     hicpp-*,
         -hicpp-avoid-c-arrays,
         -hicpp-uppercase-literal-suffix,
         -hicpp-noexcept-move,
         -hicpp-vararg,
         -hicpp-member-init,
+        -hicpp-braces-around-statements,
     misc-*,
         -misc-non-private-member-variables-in-classes'
+CheckOptions:
+    - key: AllowPartialMove
+      value: true
 
 # Disabled Options Explanation:
 # CppCoreGuidelines:

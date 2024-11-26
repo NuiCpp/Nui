@@ -21,8 +21,6 @@
 #include <concepts>
 #include <memory>
 #include <functional>
-#include <optional>
-#include <initializer_list>
 
 namespace Nui
 {
@@ -49,7 +47,7 @@ namespace Nui
     struct TrivialRenderer
     {
       public:
-        TrivialRenderer(HtmlElem htmlElement);
+        explicit TrivialRenderer(HtmlElem htmlElement);
         std::shared_ptr<Dom::Element> operator()(Dom::Element& parentElement, Renderer const& gen) const;
 
       private:
@@ -63,7 +61,10 @@ namespace Nui
 
         HtmlElement(HtmlElement const&) = default;
         HtmlElement(HtmlElement&&) = default;
+        HtmlElement& operator=(HtmlElement const&) = default;
+        HtmlElement& operator=(HtmlElement&&) = default;
         virtual ~HtmlElement() = default;
+
         HtmlElement(char const* name, HtmlElementBridge const* bridge, std::vector<Attribute> const& attributes)
             : name_{name}
             , bridge_{bridge}
@@ -158,12 +159,13 @@ namespace Nui
         }
 
         template <typename RangeType, typename GeneratorT>
+        // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
         auto rangeRender(RangeType&& valueRange, GeneratorT&& elementRenderer) &&
         {
             return [self = this->clone(),
                     rangeRenderer = std::make_shared<
                         Detail::RangeRenderer<std::decay_t<RangeType>, GeneratorT, RangeType::isRandomAccess>>(
-                        std::move(valueRange).underlying(), std::forward<GeneratorT>(elementRenderer))](
+                        std::forward<RangeType>(valueRange).underlying(), std::forward<GeneratorT>(elementRenderer))](
                        auto& parentElement, Renderer const& gen) mutable {
                 if (gen.type == RendererType::Inplace)
                     throw std::runtime_error("fragments are not supported for range generators");
@@ -202,7 +204,7 @@ namespace Nui
         }
 
         // Trivial case:
-        auto operator()() &&
+        auto operator()() const&&
         {
             return std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>{
                 TrivialRenderer<HtmlElement>{this->clone()}};
@@ -224,7 +226,7 @@ namespace Nui
                 return materialized;
             };
         }
-        auto operator()(std::string_view view) &&
+        auto operator()(std::string_view view) const&&
         {
             return [self = this->clone(), view](auto& parentElement, Renderer const& gen) {
                 auto materialized = renderElement(gen, parentElement, self);
@@ -232,7 +234,7 @@ namespace Nui
                 return materialized;
             };
         }
-        auto operator()(char const* text) &&
+        auto operator()(char const* text) const&&
         {
             return [self = this->clone(), text](auto& parentElement, Renderer const& gen) {
                 auto materialized = renderElement(gen, parentElement, self);
@@ -311,6 +313,7 @@ namespace Nui
             return std::move(*this).rangeRender(std::move(mapPair.first), std::move(mapPair.second));
         }
         template <typename IteratorT, typename GeneratorT, typename... ObservedT>
+        // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward): false positive
         auto operator()(UnoptimizedRange<IteratorT, ObservedT...>&& unoptimizedRange, GeneratorT&& elementRenderer) &&
         {
             return [self = this->clone(),
@@ -328,7 +331,7 @@ namespace Nui
         }
 
         // Observed text and number content functions:
-        inline auto operator()(Observed<std::string> const& observedString) &&
+        auto operator()(Observed<std::string> const& observedString) &&
         {
             return std::move(*this).operator()(observe(observedString), [&observedString]() -> std::string {
                 return observedString.value();
@@ -343,17 +346,17 @@ namespace Nui
             });
         }
 
-        inline std::vector<Attribute> const& attributes() const
+        std::vector<Attribute> const& attributes() const
         {
             return attributes_;
         }
 
-        inline char const* name() const
+        char const* name() const
         {
             return name_;
         }
 
-        inline HtmlElementBridge const* bridge() const
+        HtmlElementBridge const* bridge() const
         {
             return bridge_;
         }
