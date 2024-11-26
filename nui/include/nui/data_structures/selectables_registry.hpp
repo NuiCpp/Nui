@@ -6,7 +6,6 @@
 #include <utility>
 #include <optional>
 #include <algorithm>
-#include <variant>
 #include <limits>
 #include <set>
 #include <iterator>
@@ -66,6 +65,7 @@ namespace Nui
             ItemWithId(ItemWithId&&) = default;
             ItemWithId& operator=(ItemWithId const&) = default;
             ItemWithId& operator=(ItemWithId&&) = default;
+            ~ItemWithId() = default;
 
             /// @brief Compares the id of the item.
             bool operator<(ItemWithId const& other) const
@@ -197,7 +197,7 @@ namespace Nui
             using IteratorBase<WrappedIterator>::operator=;
             using IteratorBase<WrappedIterator>::wrappedIterator_;
 
-            ConstIterator(typename ItemContainerType::iterator iter)
+            explicit ConstIterator(typename ItemContainerType::iterator iter)
                 : IteratorBase<WrappedIterator>{std::move(iter)}
             {}
 
@@ -400,6 +400,9 @@ namespace Nui
                     {
                         ++itemCount_;
                         ++result;
+                        // selected is a set item, and therefore immutable, so we need to const_cast to move it.
+                        // this would break the set, but its cleared afterwards anyway.
+                        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
                         entry->item = std::move(const_cast<ItemWithId&>(selected).item);
                     }
                 }
