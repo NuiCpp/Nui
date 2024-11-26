@@ -70,14 +70,11 @@ namespace Nui::Attributes
             : name_{name}
         {}
 
-        explicit constexpr PropertyFactory(PropertyFactory const& other)
-            : name_{other.name_}
-        {}
-        explicit constexpr PropertyFactory(PropertyFactory&& other)
-            : name_{other.name_}
-        {}
+        constexpr PropertyFactory(PropertyFactory const& other) = default;
+        constexpr PropertyFactory(PropertyFactory&& other) noexcept = default;
         PropertyFactory& operator=(PropertyFactory const&) = delete;
         PropertyFactory& operator=(PropertyFactory&&) = delete;
+        ~PropertyFactory() = default;
 
         constexpr char const* name() const
         {
@@ -88,6 +85,7 @@ namespace Nui::Attributes
         requires(
             !IsObservedLike<std::decay_t<U>> && !std::invocable<U, Nui::val> && !std::invocable<U> &&
             !Nui::Detail::IsProperty<std::decay_t<U>>)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(U val) const
         {
             return Attribute{
@@ -99,6 +97,7 @@ namespace Nui::Attributes
 
         template <typename U>
         requires(IsSharedObserved<std::decay_t<U>>)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(U const& shared) const
         {
             return Attribute{
@@ -106,7 +105,7 @@ namespace Nui::Attributes
                     if (auto shared = weak.lock(); shared)
                         element.setProperty(name, shared->value());
                 },
-                [name = name(), weak = std::weak_ptr{shared}](std::weak_ptr<Dom::ChildlessElement>&& element) {
+                [name = name(), weak = std::weak_ptr{shared}](std::weak_ptr<Dom::ChildlessElement> const& element) {
                     auto shared = weak.lock();
                     if (!shared)
                         return EventContext::invalidEventId;
@@ -142,6 +141,7 @@ namespace Nui::Attributes
 
         template <typename U>
         requires(IsWeakObserved<std::decay_t<U>>)
+        // NOLINTNEXTLINE
         Attribute operator=(U&& val) const
         {
             auto shared = val.lock();
@@ -153,6 +153,7 @@ namespace Nui::Attributes
 
         template <typename U>
         requires(IsObserved<std::decay_t<U>>)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(U& val) const
         {
             return Attribute{
@@ -170,6 +171,7 @@ namespace Nui::Attributes
         }
 
         template <typename RendererType, typename... ObservedValues>
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute
         operator=(ObservedValueCombinatorWithPropertyGenerator<RendererType, ObservedValues...> const& combinator) const
         {
@@ -187,6 +189,7 @@ namespace Nui::Attributes
         }
 
         template <typename RendererType, typename... ObservedValues>
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute
         operator=(ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...> const& combinator) const
         {
@@ -203,23 +206,25 @@ namespace Nui::Attributes
             };
         }
 
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(std::function<void(Nui::val)> func) const
         {
             return Attribute{
                 [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
                     element.setProperty(name, [func](Nui::val val) {
-                        func(val);
+                        func(std::move(val));
                         globalEventContext.executeActiveEventsImmediately();
                     });
                 },
             };
         }
 
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(std::function<void()> func) const
         {
             return Attribute{
                 [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                    element.setProperty(name, [func](Nui::val) {
+                    element.setProperty(name, [func](Nui::val const&) {
                         func();
                         globalEventContext.executeActiveEventsImmediately();
                     });
@@ -238,14 +243,11 @@ namespace Nui::Attributes
             : name_{name}
         {}
 
-        explicit constexpr AttributeFactory(AttributeFactory const& other)
-            : name_{other.name_}
-        {}
-        explicit constexpr AttributeFactory(AttributeFactory&& other)
-            : name_{other.name_}
-        {}
+        constexpr AttributeFactory(AttributeFactory const& other) = default;
+        constexpr AttributeFactory(AttributeFactory&& other) = default;
         AttributeFactory& operator=(AttributeFactory const&) = delete;
         AttributeFactory& operator=(AttributeFactory&&) = delete;
+        ~AttributeFactory() = default;
 
         constexpr char const* name() const
         {
@@ -256,6 +258,7 @@ namespace Nui::Attributes
         requires(
             !IsObservedLike<std::decay_t<U>> && !std::invocable<U, Nui::val> && !std::invocable<U> &&
             !Nui::Detail::IsProperty<std::decay_t<U>>)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(U val) const
         {
             return Attribute{
@@ -267,6 +270,7 @@ namespace Nui::Attributes
 
         template <typename U>
         requires(IsSharedObserved<std::decay_t<U>>)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(U const& shared) const
         {
             return Attribute{
@@ -274,7 +278,7 @@ namespace Nui::Attributes
                     if (auto shared = weak.lock(); shared)
                         element.setAttribute(name, shared->value());
                 },
-                [name = name(), weak = std::weak_ptr{shared}](std::weak_ptr<Dom::ChildlessElement>&& element) {
+                [name = name(), weak = std::weak_ptr{shared}](std::weak_ptr<Dom::ChildlessElement> const& element) {
                     auto shared = weak.lock();
                     if (!shared)
                         return EventContext::invalidEventId;
@@ -310,6 +314,7 @@ namespace Nui::Attributes
 
         template <typename U>
         requires(IsWeakObserved<std::decay_t<U>>)
+        // NOLINTNEXTLINE
         Attribute operator=(U&& val) const
         {
             auto shared = val.lock();
@@ -321,6 +326,7 @@ namespace Nui::Attributes
 
         template <typename U>
         requires(IsObserved<std::decay_t<U>>)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(U& val) const
         {
             return Attribute{
@@ -339,6 +345,7 @@ namespace Nui::Attributes
 
         template <typename U>
         requires(IsObserved<std::decay_t<U>>)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(Nui::Detail::Property<U> const& prop) const
         {
             return Attribute{
@@ -357,6 +364,7 @@ namespace Nui::Attributes
 
         template <typename U>
         requires(IsWeakObserved<std::decay_t<U>>)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(Nui::Detail::Property<U> const& prop) const
         {
             auto shared = prop.prop.lock();
@@ -368,7 +376,7 @@ namespace Nui::Attributes
                     if (auto shared = weak.lock(); shared)
                         element.setProperty(name, shared->value());
                 },
-                [name = name(), weak = std::weak_ptr{shared}](std::weak_ptr<Dom::ChildlessElement>&& element) {
+                [name = name(), weak = std::weak_ptr{shared}](std::weak_ptr<Dom::ChildlessElement> const& element) {
                     auto shared = weak.lock();
                     if (!shared)
                         return EventContext::invalidEventId;
@@ -404,6 +412,7 @@ namespace Nui::Attributes
 
         template <typename U>
         requires(!IsObservedLike<std::decay_t<U>> && !std::invocable<U, Nui::val> && !std::invocable<U>)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(Nui::Detail::Property<U> const& prop) const
         {
             return Attribute{[name = name(), p = std::move(prop.prop)](Dom::ChildlessElement& element) {
@@ -412,6 +421,7 @@ namespace Nui::Attributes
         }
 
         template <typename RendererType, typename... ObservedValues>
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute
         operator=(ObservedValueCombinatorWithPropertyGenerator<RendererType, ObservedValues...> const& combinator) const
         {
@@ -429,6 +439,7 @@ namespace Nui::Attributes
         }
 
         template <typename RendererType, typename... ObservedValues>
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute
         operator=(ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...> const& combinator) const
         {
@@ -445,23 +456,25 @@ namespace Nui::Attributes
             };
         }
 
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(std::function<void(Nui::val)> func) const
         {
             return Attribute{
                 [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
                     element.setAttribute(name, [func](Nui::val val) {
-                        func(val);
+                        func(std::move(val));
                         globalEventContext.executeActiveEventsImmediately();
                     });
                 },
             };
         }
 
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(std::function<void()> func) const
         {
             return Attribute{
                 [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                    element.setAttribute(name, [func](Nui::val) {
+                    element.setAttribute(name, [func](Nui::val const&) {
                         func();
                         globalEventContext.executeActiveEventsImmediately();
                     });
@@ -469,23 +482,25 @@ namespace Nui::Attributes
             };
         }
 
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(Nui::Detail::Property<std::function<void(Nui::val)>> func) const
         {
             return Attribute{
                 [name = name(), func = std::move(func.prop)](Dom::ChildlessElement& element) {
                     element.setProperty(name, [func](Nui::val val) {
-                        func(val);
+                        func(std::move(val));
                         globalEventContext.executeActiveEventsImmediately();
                     });
                 },
             };
         }
 
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(Nui::Detail::Property<std::function<void()>> func) const
         {
             return Attribute{
                 [name = name(), func = std::move(func.prop)](Dom::ChildlessElement& element) {
-                    element.setProperty(name, [func](Nui::val) {
+                    element.setProperty(name, [func](Nui::val const&) {
                         func();
                         globalEventContext.executeActiveEventsImmediately();
                     });
@@ -504,25 +519,23 @@ namespace Nui::Attributes
             : name_{name}
         {}
 
-        explicit constexpr EventFactory(EventFactory const& other)
-            : name_{other.name_}
-        {}
-        explicit constexpr EventFactory(EventFactory&& other)
-            : name_{other.name_}
-        {}
+        constexpr EventFactory(EventFactory const& other) = default;
+        constexpr EventFactory(EventFactory&& other) = default;
         EventFactory& operator=(EventFactory const&) = delete;
         EventFactory& operator=(EventFactory&&) = delete;
+        ~EventFactory() = default;
 
         constexpr char const* name() const
         {
             return name_;
         };
 
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(std::function<void()> func) const
         {
             return Attribute{
                 [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                    element.addEventListener(name, [func](Nui::val) {
+                    element.addEventListener(name, [func](Nui::val const&) {
                         func();
                         globalEventContext.executeActiveEventsImmediately();
                     });
@@ -530,6 +543,7 @@ namespace Nui::Attributes
             };
         }
 
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(std::function<void(Nui::val)> func) const
         {
             return Attribute{
@@ -570,6 +584,7 @@ namespace Nui::Attributes
             T factory;
 
             template <typename... Args>
+            // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
             Attribute operator=(Args&&... args) const
             {
                 auto attr = factory.operator=(std::forward<Args>(args)...);
@@ -588,6 +603,7 @@ namespace Nui::Attributes
     }
 }
 
+// NOLINTBEGIN
 #define MAKE_HTML_VALUE_ATTRIBUTE_RENAME(NAME, HTML_NAME) \
     namespace Nui::Attributes \
     { \
@@ -605,5 +621,6 @@ namespace Nui::Attributes
         } \
         static constexpr auto NAME = AttributeFactory{Names::Attr##NAME}; \
     }
+// NOLINTEND
 
 #define MAKE_HTML_EVENT_ATTRIBUTE(NAME) MAKE_HTML_EVENT_ATTRIBUTE_RENAME(NAME, #NAME)
