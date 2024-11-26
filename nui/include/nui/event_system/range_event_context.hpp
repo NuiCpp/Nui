@@ -7,7 +7,6 @@
 
 #include <cstddef>
 #include <algorithm>
-#include <stdexcept>
 #include <vector>
 #include <optional>
 
@@ -34,10 +33,12 @@ namespace Nui
             using interval_kind = IntervalKind;
 
           public:
+            // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
             RangeStateInterval(value_type low, value_type high)
                 : low_{low}
                 , high_{high}
             {}
+            // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
             void reset(value_type low, value_type high)
             {
                 low_ = low;
@@ -122,8 +123,7 @@ namespace Nui
                     return 0;
                 if (high_ < other.low_)
                     return other.low_ - high_;
-                else
-                    return low_ - other.high_;
+                return low_ - other.high_;
             }
             value_type size() const
             {
@@ -189,7 +189,7 @@ namespace Nui
         explicit RangeEventContext()
             : RangeEventContext(false)
         {}
-        RangeEventContext(bool disableOptimizations)
+        explicit RangeEventContext(bool disableOptimizations)
             : trackedRanges_{}
             , operationType_{RangeOperationType::Keep}
             , nextEraseOverride_{std::nullopt}
@@ -216,8 +216,7 @@ namespace Nui
                 return false;
             if (operationType_ == RangeOperationType::Modify)
                 return eraseModificationFixup(low, high);
-            else
-                return eraseInsertionFixup(low, high);
+            return eraseInsertionFixup(low, high);
         }
         bool eraseNotify(std::size_t low, std::size_t high)
         {
@@ -452,10 +451,7 @@ namespace Nui
 
                 // If the erase interval is left of the last modification interval, we must apply the changes and
                 // retry. An overlap would have been found otherwise.
-                if (high < lastInterval.low())
-                    return true;
-
-                return false;
+                return high < lastInterval.low();
             }
 
             // find all overlapping modifications and cut them
@@ -474,7 +470,8 @@ namespace Nui
                         trackedRanges_.insert({range.high() + 1, modInterval.high()});
                     return true; // cannot overlap any further
                 }
-                else if (modInterval.low() < range.low())
+
+                if (modInterval.low() < range.low())
                 {
                     // 2. erase starts within modification interval:
                     trackedRanges_.insert({modInterval.low(), range.low() - 1});
