@@ -1,6 +1,5 @@
 #pragma once
 
-#include <iterator>
 #include <nui/concepts.hpp>
 #include <nui/event_system/range_event_context.hpp>
 #include <nui/event_system/event_context.hpp>
@@ -18,6 +17,8 @@
 #include <string>
 #include <cassert>
 #include <set>
+#include <concepts>
+#include <iterator>
 
 namespace Nui
 {
@@ -48,9 +49,17 @@ namespace Nui
                 attachedOneshotEvents_.reserve(attachedOneshotEvents_.size() + other.attachedOneshotEvents_.size());
 
                 for (auto& event : other.attachedEvents_)
+                {
+                    // Dont want to lose the move if event becomes non trivial
+                    // NOLINTNEXTLINE(performance-move-const-arg, hicpp-move-const-arg)
                     attachedEvents_.push_back(std::move(event));
+                }
                 for (auto& event : other.attachedOneshotEvents_)
+                {
+                    // Dont want to lose the move if event becomes non trivial
+                    // NOLINTNEXTLINE(performance-move-const-arg, hicpp-move-const-arg)
                     attachedOneshotEvents_.push_back(std::move(event));
+                }
             }
             catch (...)
             {
@@ -67,9 +76,17 @@ namespace Nui
                 attachedOneshotEvents_.reserve(attachedOneshotEvents_.size() + other.attachedOneshotEvents_.size());
 
                 for (auto& event : other.attachedEvents_)
+                {
+                    // Dont want to lose the move if event becomes non trivial
+                    // NOLINTNEXTLINE(performance-move-const-arg, hicpp-move-const-arg)
                     attachedEvents_.push_back(std::move(event));
+                }
                 for (auto& event : other.attachedOneshotEvents_)
+                {
+                    // Dont want to lose the move if event becomes non trivial
+                    // NOLINTNEXTLINE(performance-move-const-arg, hicpp-move-const-arg)
                     attachedOneshotEvents_.push_back(std::move(event));
+                }
             }
             catch (...)
             {
@@ -123,7 +140,7 @@ namespace Nui
             for (auto& event : attachedEvents_)
             {
                 auto activationResult = eventContext_->activateEvent(event);
-                if (activationResult.found == false)
+                if (!activationResult.found)
                     event = EventRegistry::invalidEventId;
             }
             for (auto& event : attachedOneshotEvents_)
@@ -159,22 +176,44 @@ namespace Nui
         {
           public:
             explicit ModificationProxy(ModifiableObserved& observed)
-                : observed_{observed}
+                : observed_{&observed}
                 , now_{false}
             {}
             explicit ModificationProxy(ModifiableObserved& observed, bool now)
-                : observed_{observed}
+                : observed_{&observed}
                 , now_{now}
             {}
+            ModificationProxy(ModificationProxy const&) = delete;
+            ModificationProxy& operator=(ModificationProxy const&) = delete;
+            ModificationProxy(ModificationProxy&& other) noexcept
+                : observed_{other.observed_}
+                , now_{other.now_}
+            {
+                other.observed_ = nullptr;
+            }
+            ModificationProxy& operator=(ModificationProxy&& other) noexcept
+            {
+                if (this != &other)
+                {
+                    observed_ = other.observed_;
+                    now_ = other.now_;
+                    other.observed_ = nullptr;
+                }
+                return *this;
+            }
             ~ModificationProxy()
             {
                 try
                 {
+                    if (observed_ == nullptr)
+                        return;
+
                     if (now_)
-                        observed_.updateNow(true);
+                        observed_->updateNow(true);
                     else
-                        observed_.update(true);
+                        observed_->update(true);
                 }
+                // NOLINTNEXTLINE(bugprone-empty-catch)
                 catch (...)
                 {
                     // TODO: log?
@@ -182,23 +221,23 @@ namespace Nui
             }
             auto& value()
             {
-                return observed_.contained_;
+                return observed_->contained_;
             }
             auto* operator->()
             {
-                return &observed_.contained_;
+                return &observed_->contained_;
             }
             auto& operator*()
             {
-                return observed_.contained_;
+                return observed_->contained_;
             }
-            operator ContainedT&()
+            explicit operator ContainedT&()
             {
-                return observed_.contained_;
+                return observed_->contained_;
             }
 
           private:
-            ModifiableObserved& observed_;
+            ModifiableObserved* observed_;
             bool now_;
         };
 
@@ -208,14 +247,14 @@ namespace Nui
             , contained_{}
         {}
         ModifiableObserved(const ModifiableObserved&) = delete;
-        ModifiableObserved(ModifiableObserved&& other)
+        ModifiableObserved(ModifiableObserved&& other) noexcept
             : ObservedBase{std::move(other)}
             , contained_{std::move(other.contained_)}
         {
             update();
         };
         ModifiableObserved& operator=(const ModifiableObserved&) = delete;
-        ModifiableObserved& operator=(ModifiableObserved&& other)
+        ModifiableObserved& operator=(ModifiableObserved&& other) noexcept
         {
             if (this != &other)
             {
@@ -237,9 +276,10 @@ namespace Nui
             update();
             return *this;
         }
-        ~ModifiableObserved() = default;
+        ~ModifiableObserved() override = default;
 
         template <typename T = ContainedT>
+        requires std::is_constructible_v<ContainedT, T>
         explicit ModifiableObserved(T&& t)
             : ObservedBase{CustomEventContextFlag, &globalEventContext}
             , contained_{std::forward<T>(t)}
@@ -251,7 +291,8 @@ namespace Nui
         {}
 
         template <typename T = ContainedT>
-        explicit ModifiableObserved(CustomEventContextFlag_t, EventContext* ctx, T&& t)
+        requires std::is_constructible_v<ContainedT, T>
+        ModifiableObserved(CustomEventContextFlag_t, EventContext* ctx, T&& t)
             : ObservedBase{CustomEventContextFlag, ctx}
             , contained_{std::forward<T>(t)}
         {}
@@ -289,7 +330,8 @@ namespace Nui
         requires std::equality_comparable_with<ContainedT, T> && Fundamental<T> && Fundamental<ContainedT>
         ModifiableObserved& operator=(T&& t)
         {
-            return assignChecked(t);
+            assignChecked(std::forward<T>(t));
+            return *this;
         }
 
         template <typename T = ContainedT>
@@ -354,7 +396,9 @@ namespace Nui
         /**
          * @brief Sets the value without making an update.
          */
-        void assignWithoutUpdate(ContainedT&& t)
+        template <typename T>
+        requires std::constructible_from<ContainedT, T>
+        void assignWithoutUpdate(T&& t)
         {
             contained_ = std::forward<ContainedT>(t);
         }
@@ -401,6 +445,8 @@ namespace Nui
                 }
                 return *this;
             }
+            ~ReferenceWrapper() = default;
+            // NOLINTNEXTLINE(hicpp-explicit-conversions)
             operator T&()
             {
                 return *ref_;
@@ -432,15 +478,25 @@ namespace Nui
             {
                 return *ref_;
             }
-            void operator=(T&& val)
+            ReferenceWrapper& operator=(T&& val)
             {
                 *ref_ = std::move(val);
                 owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
+                return *this;
             }
-            void operator=(T const& val)
+            ReferenceWrapper& operator=(T const& val)
             {
                 *ref_ = val;
                 owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
+                return *this;
+            }
+            bool operator==(ReferenceWrapper const& other) const
+            {
+                return *ref_ == *other.ref_;
+            }
+            bool operator==(T const& other) const
+            {
+                return *ref_ == other;
             }
 
           protected:
@@ -477,6 +533,7 @@ namespace Nui
                 , pos_{pos}
                 , ptr_{ptr}
             {}
+            // NOLINTNEXTLINE(hicpp-explicit-conversions)
             operator T&()
             {
                 return *ptr_;
@@ -508,10 +565,11 @@ namespace Nui
             {
                 return *ptr_;
             }
-            void operator=(T* ptr)
+            PointerWrapper& operator=(T* ptr)
             {
                 ptr_ = ptr;
                 owner_->insertRangeChecked(pos_, pos_, RangeOperationType::Modify);
+                return *this;
             }
 
           protected:
@@ -539,6 +597,7 @@ namespace Nui
             IteratorWrapper(IteratorWrapper&&) = default;
             IteratorWrapper& operator=(IteratorWrapper const&) = default;
             IteratorWrapper& operator=(IteratorWrapper&&) = default;
+            ~IteratorWrapper() = default;
             IteratorWrapper& operator+=(difference_type n)
             {
                 it_ += n;
@@ -688,6 +747,7 @@ namespace Nui
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
+        requires std::constructible_from<ContainerT, T>
         explicit ObservedContainer(T&& t)
             : ModifiableObserved<ContainerT>{std::forward<T>(t)}
             , rangeContext_{std::make_shared<RangeEventContext>()}
@@ -1322,6 +1382,7 @@ namespace Nui
             : ObservedContainer<std::set<Parameters...>>{RangeEventContext{true}}
         {}
         template <typename T = std::set<Parameters...>>
+        requires std::constructible_from<std::set<Parameters...>, T>
         explicit Observed(T&& t)
             : ObservedContainer<std::set<Parameters...>>{std::forward<T>(t), RangeEventContext{true}}
         {}
@@ -1351,6 +1412,7 @@ namespace Nui
             : ObservedContainer<std::list<Parameters...>>{RangeEventContext{true}}
         {}
         template <typename T = std::list<Parameters...>>
+        requires std::constructible_from<std::list<Parameters...>, T>
         explicit Observed(T&& t)
             : ObservedContainer<std::list<Parameters...>>{std::forward<T>(t), RangeEventContext{true}}
         {}
@@ -1486,17 +1548,17 @@ namespace Nui
                 : observed_{&observed}
             {}
 
-            inline T const& value() const
+            T const& value() const
             {
                 return observed_->value();
             }
 
-            inline void attachEvent(auto eventId) const
+            void attachEvent(auto eventId) const
             {
                 observed_->attachEvent(eventId);
             }
 
-            inline void detachEvent(auto eventId) const
+            void detachEvent(auto eventId) const
             {
                 observed_->detachEvent(eventId);
             }
