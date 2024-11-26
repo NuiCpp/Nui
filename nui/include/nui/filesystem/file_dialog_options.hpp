@@ -20,6 +20,7 @@ namespace Nui::FileDialog
     };
 
 // This way aggregate initialization can be done without needing to add extra braces
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define COMMON_DIALOG_OPTIONS() \
     std::optional<std::string> title = std::nullopt; \
     std::optional<std::filesystem::path> defaultPath = std::nullopt; \
