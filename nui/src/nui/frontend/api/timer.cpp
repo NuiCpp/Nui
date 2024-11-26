@@ -18,13 +18,13 @@ namespace Nui
         stop();
     }
     //---------------------------------------------------------------------------------------------------------------------
-    TimerHandle::TimerHandle(TimerHandle&& other)
+    TimerHandle::TimerHandle(TimerHandle&& other) noexcept
         : id_{other.id_}
     {
         other.id_ = -1;
     }
     //---------------------------------------------------------------------------------------------------------------------
-    TimerHandle& TimerHandle::operator=(TimerHandle&& other)
+    TimerHandle& TimerHandle::operator=(TimerHandle&& other) noexcept
     {
         id_ = other.id_;
         other.id_ = -1;
