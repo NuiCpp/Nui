@@ -18,7 +18,6 @@
 #include <string>
 #include <cassert>
 #include <set>
-#include <memory>
 
 namespace Nui
 {
@@ -36,26 +35,47 @@ namespace Nui
         {}
         virtual ~ObservedBase() = default;
         ObservedBase(ObservedBase const&) = delete;
-        ObservedBase(ObservedBase&& other)
+        ObservedBase(ObservedBase&& other) noexcept
             : eventContext_{other.eventContext_}
             , attachedEvents_{}
             , attachedOneshotEvents_{}
         {
             // events are outside the value logic of the observed class. the contained value is moved, but the events
             // are merged.
-            for (auto& event : other.attachedEvents_)
-                attachedEvents_.push_back(std::move(event));
-            for (auto& event : other.attachedOneshotEvents_)
-                attachedOneshotEvents_.push_back(std::move(event));
+            try
+            {
+                attachedEvents_.reserve(attachedEvents_.size() + other.attachedEvents_.size());
+                attachedOneshotEvents_.reserve(attachedOneshotEvents_.size() + other.attachedOneshotEvents_.size());
+
+                for (auto& event : other.attachedEvents_)
+                    attachedEvents_.push_back(std::move(event));
+                for (auto& event : other.attachedOneshotEvents_)
+                    attachedOneshotEvents_.push_back(std::move(event));
+            }
+            catch (...)
+            {
+                std::terminate();
+            }
         }
         ObservedBase& operator=(ObservedBase const&) = delete;
-        ObservedBase& operator=(ObservedBase&& other)
+        ObservedBase& operator=(ObservedBase&& other) noexcept
         {
             eventContext_ = other.eventContext_;
-            for (auto& event : other.attachedEvents_)
-                attachedEvents_.push_back(std::move(event));
-            for (auto& event : other.attachedOneshotEvents_)
-                attachedOneshotEvents_.push_back(std::move(event));
+            try
+            {
+                attachedEvents_.reserve(attachedEvents_.size() + other.attachedEvents_.size());
+                attachedOneshotEvents_.reserve(attachedOneshotEvents_.size() + other.attachedOneshotEvents_.size());
+
+                for (auto& event : other.attachedEvents_)
+                    attachedEvents_.push_back(std::move(event));
+                for (auto& event : other.attachedOneshotEvents_)
+                    attachedOneshotEvents_.push_back(std::move(event));
+            }
+            catch (...)
+            {
+                std::terminate();
+            }
+
             return *this;
         }
 
@@ -1438,8 +1458,8 @@ namespace Nui
         return observedValue;
     }
     template <typename T>
-    inline auto
-    operator--(ModifiableObserved<T>& observedValue, int) -> Detail::PickFirst_t<T, decltype(std::declval<T>()--)>
+    inline auto operator--(ModifiableObserved<T>& observedValue, int)
+        -> Detail::PickFirst_t<T, decltype(std::declval<T>()--)>
     {
         auto tmp = observedValue.value();
         --observedValue.value();
