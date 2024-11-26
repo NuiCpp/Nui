@@ -3,8 +3,8 @@
 #include <nui/feature_test.hpp>
 #include <nui/utility/iterator_accessor.hpp>
 #include <nui/event_system/observed_value.hpp>
+#include <nui/event_system/observed_value_combinator.hpp>
 
-#include <iterator>
 #include <utility>
 
 #ifdef NUI_HAS_STD_RANGES
@@ -49,7 +49,7 @@ namespace Nui
             : observedValues_{std::move(observedValues)}
             , rangeLike_{std::move(rangeLike)}
         {}
-        UnoptimizedRange(CopyableRangeLike&& rangeLike)
+        explicit UnoptimizedRange(CopyableRangeLike&& rangeLike)
         requires(sizeof...(ObservedValues) == 0)
             : observedValues_{}
             , rangeLike_{std::move(rangeLike)}
