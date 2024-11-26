@@ -75,8 +75,7 @@ namespace Nui
 
         std::tuple<Detail::ObservedAddReference_t<ObservedValues>...>&& observedValues() &&
         {
-            return std::move(
-                const_cast<std::tuple<Detail::ObservedAddReference_t<ObservedValues>...>&>(observedValues_));
+            return std::move(observedValues_);
         }
 
         bool isAnyExpired() const
@@ -98,7 +97,7 @@ namespace Nui
         }
 
       protected:
-        const std::tuple<Detail::ObservedAddReference_t<ObservedValues>...> observedValues_;
+        std::tuple<Detail::ObservedAddReference_t<ObservedValues>...> observedValues_;
     };
 
     template <typename... ObservedValues>
@@ -135,7 +134,7 @@ namespace Nui
         }
 
       protected:
-        const RendererType generator_;
+        RendererType generator_;
     };
 
     template <typename RendererType, typename... ObservedValues>
@@ -145,7 +144,7 @@ namespace Nui
       public:
         using ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>::
             ObservedValueCombinatorWithGenerator;
-        ObservedValueCombinatorWithPropertyGenerator(
+        explicit ObservedValueCombinatorWithPropertyGenerator(
             ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>&& other)
             : ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>{std::move(other)}
         {}
