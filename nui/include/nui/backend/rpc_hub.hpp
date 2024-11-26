@@ -12,7 +12,6 @@
 #include <string>
 #include <tuple>
 #include <utility>
-#include <thread>
 #include <functional>
 #include <unordered_map>
 #include <mutex>
@@ -40,7 +39,7 @@ namespace Nui
             template <typename FunctionT>
             constexpr static auto wrapFunction(FunctionT&& func)
             {
-                return [func = std::move(func)](nlohmann::json const& args) mutable {
+                return [func = std::forward<FunctionT>(func)](nlohmann::json const& args) mutable {
                     func(args);
                 };
             }
@@ -52,7 +51,7 @@ namespace Nui
             template <typename FunctionT>
             constexpr static auto wrapFunction(FunctionT&& func)
             {
-                return [func = std::move(func)](nlohmann::json const& args) mutable {
+                return [func = std::forward<FunctionT>(func)](nlohmann::json const& args) mutable {
                     func(extractJsonMember<ArgsTypes>(args[Is])...);
                 };
             }
@@ -78,7 +77,7 @@ namespace Nui
     class RpcHub
     {
       public:
-        RpcHub(Window& window);
+        explicit RpcHub(Window& window);
         ~RpcHub() = default;
         RpcHub(const RpcHub&) = delete;
         RpcHub& operator=(const RpcHub&) = delete;
@@ -153,13 +152,15 @@ namespace Nui
         template <typename Arg>
         void callRemote(std::string const& name, Arg&& arg) const
         {
-            nlohmann::json j = arg;
-            callRemoteImpl(name, std::move(j));
+            nlohmann::json json = std::forward<Arg>(arg);
+            callRemoteImpl(name, json);
         }
         void callRemote(std::string const& name, nlohmann::json const& json) const
         {
             callRemoteImpl(name, json);
         }
+        // I dont want to remove this overload in case there are some rvalue nlohmanns?
+        // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
         void callRemote(std::string const& name, nlohmann::json&& json) const
         {
             callRemoteImpl(name, json);
@@ -238,10 +239,7 @@ namespace Nui
                              }}})
                     .first->second.get();
             }
-            else
-            {
-                return iter->second.get();
-            }
+            return iter->second.get();
         }
 
       private:
