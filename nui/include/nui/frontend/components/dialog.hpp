@@ -2,7 +2,6 @@
 
 #include <nui/frontend/element_renderer.hpp>
 #include <nui/frontend/event_system/observed_value.hpp>
-#include <nui/frontend/event_system/observed_value.hpp>
 #include <nui/frontend/dom/element.hpp>
 
 #include <functional>
@@ -33,9 +32,9 @@ namespace Nui::Components
         struct ConstructionArgs
         {
             std::optional<std::string> className{std::nullopt};
-            std::string title{""};
-            std::string body{""};
-            std::string buttonClassName{""};
+            std::string title{};
+            std::string body{};
+            std::string buttonClassName{};
             ButtonConfiguration buttonConfiguration{ButtonConfiguration::Ok};
             std::function<void(Button)> onButtonClicked = [](Button) {};
         };
@@ -45,7 +44,7 @@ namespace Nui::Components
          *
          * @param args The intial values for the dialog.
          */
-        DialogController(ConstructionArgs&& args);
+        explicit DialogController(ConstructionArgs&& args);
 
         /**
          * @brief Shows the dialog as a modal dialog (blocks the UI).

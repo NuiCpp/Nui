@@ -1,5 +1,8 @@
 #pragma once
 
+#include <vector>
+#include <memory>
+
 namespace Nui::Detail
 {
     template <typename ElementT>

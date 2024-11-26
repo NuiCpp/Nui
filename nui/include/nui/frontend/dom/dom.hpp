@@ -4,7 +4,7 @@
 #include <nui/frontend/elements/impl/html_element.hpp>
 #include <nui/frontend/dom/element.hpp>
 
-#include <optional>
+#include <memory>
 
 namespace Nui::Dom
 {

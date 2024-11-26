@@ -78,7 +78,7 @@ namespace Nui::Dom
         Element& operator=(Element const&) = delete;
         Element& operator=(Element&&) = delete;
 
-        ~Element()
+        ~Element() override
         {
             clearChildren();
             destroy_(element_);
@@ -277,8 +277,7 @@ namespace Nui::Dom
         {
             if (where >= children_.size())
                 return appendElement(element);
-            else
-                return insert(begin() + static_cast<decltype(children_)::difference_type>(where), element);
+            return insert(begin() + static_cast<decltype(children_)::difference_type>(where), element);
         }
 
         auto& operator[](std::size_t index)

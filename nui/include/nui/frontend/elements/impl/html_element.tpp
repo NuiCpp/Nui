@@ -36,6 +36,7 @@ namespace Nui
     }
 }
 
+// NOLINTBEGIN
 #define NUI_MAKE_HTML_ELEMENT_RENAME(NAME, HTML_ACTUAL) \
     struct NAME : ::Nui::HtmlElement \
     { \
@@ -62,3 +63,4 @@ namespace Nui
     }
 
 #define NUI_DECLARE_HTML_ELEMENT(NAME) NUI_DECLARE_HTML_ELEMENT_RENAME(NAME, #NAME)
+// NOLINTEND
