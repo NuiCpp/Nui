@@ -1,3 +1,8 @@
+#include <nui/frontend/val.hpp>
+
+#include <type_traits>
+#include <cstddef>
+
 namespace Nui
 {
     class HtmlElement;

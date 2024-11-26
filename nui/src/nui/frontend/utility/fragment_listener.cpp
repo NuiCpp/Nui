@@ -16,7 +16,8 @@ namespace Nui
             fragment = Nui::val::global("location")["hash"].as<std::string>();
         else
             fragment = "";
-        if (fragment.front() == '#')
+
+        if (fragment.value().front() == '#')
             fragment.erase(0, 1);
 
         Nui::val::global("window").call<void>(

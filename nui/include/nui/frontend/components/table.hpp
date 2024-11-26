@@ -10,9 +10,7 @@
 #include <nui/frontend/element_renderer.hpp>
 
 #include <string>
-#include <optional>
 #include <functional>
-#include <memory>
 #include <vector>
 
 namespace Nui::Components

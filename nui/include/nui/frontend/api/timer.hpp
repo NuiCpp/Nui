@@ -12,11 +12,11 @@ namespace Nui
     {
       public:
         TimerHandle();
-        TimerHandle(int32_t id);
+        explicit TimerHandle(int32_t id);
         TimerHandle(const TimerHandle&) = delete;
-        TimerHandle(TimerHandle&& other);
+        TimerHandle(TimerHandle&& other) noexcept;
         TimerHandle& operator=(const TimerHandle&) = delete;
-        TimerHandle& operator=(TimerHandle&& other);
+        TimerHandle& operator=(TimerHandle&& other) noexcept;
 
         ~TimerHandle();
 

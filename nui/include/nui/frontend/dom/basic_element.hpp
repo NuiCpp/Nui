@@ -17,6 +17,10 @@ namespace Nui::Dom
             : element_{std::move(val)}
         {}
         virtual ~BasicElement() = default;
+        BasicElement(BasicElement const&) = default;
+        BasicElement(BasicElement&&) noexcept = default;
+        BasicElement& operator=(BasicElement const&) = default;
+        BasicElement& operator=(BasicElement&&) noexcept = default;
 
         Nui::val const& val() const
         {
@@ -26,14 +30,17 @@ namespace Nui::Dom
         {
             return element_;
         }
+        // NOLINTNEXTLINE(hicpp-explicit-conversions)
         operator Nui::val const&() const
         {
             return element_;
         }
+        // NOLINTNEXTLINE(hicpp-explicit-conversions)
         operator Nui::val&()
         {
             return element_;
         }
+        // NOLINTNEXTLINE(hicpp-explicit-conversions)
         operator Nui::val&&() &&
         {
             return std::move(element_);

@@ -10,7 +10,13 @@ namespace Nui
     {
         virtual bool call(std::size_t eventId) = 0;
         virtual bool valid() const = 0;
+
         virtual ~EventImpl() = default;
+        EventImpl() = default;
+        EventImpl(EventImpl const&) = default;
+        EventImpl(EventImpl&&) = default;
+        EventImpl& operator=(EventImpl const&) = default;
+        EventImpl& operator=(EventImpl&&) = default;
     };
 
     struct TwoFunctorEventImpl : public EventImpl
@@ -39,7 +45,7 @@ namespace Nui
     class Event
     {
       public:
-        Event(
+        explicit Event(
             std::function<bool(std::size_t eventId)> action,
             std::function<bool()> valid =
                 [] {
@@ -51,8 +57,9 @@ namespace Nui
         Event(Event&&) = default;
         Event& operator=(Event const&) = delete;
         Event& operator=(Event&&) = default;
+        ~Event() = default;
 
-        operator bool() const
+        explicit operator bool() const
         {
             return impl_->valid();
         }

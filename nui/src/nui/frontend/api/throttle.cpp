@@ -27,14 +27,15 @@ namespace Nui
         }
     }
     //---------------------------------------------------------------------------------------------------------------------
-    ThrottledFunction::ThrottledFunction(ThrottledFunction&& other)
+    ThrottledFunction::ThrottledFunction(ThrottledFunction&& other) noexcept
         : id_(other.id_)
+        , calledWhenReady_{other.calledWhenReady_}
         , func_(std::move(other.func_))
     {
         other.id_ = -1;
     }
     //---------------------------------------------------------------------------------------------------------------------
-    ThrottledFunction& ThrottledFunction::operator=(ThrottledFunction&& other)
+    ThrottledFunction& ThrottledFunction::operator=(ThrottledFunction&& other) noexcept
     {
         id_ = other.id_;
         func_ = std::move(other.func_);
