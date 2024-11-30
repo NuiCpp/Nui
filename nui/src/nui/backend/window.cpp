@@ -461,8 +461,8 @@ namespace Nui
             }
             if (msg.message == WM_APP)
             {
-                auto f = reinterpret_cast<std::function<void()>*>(msg.lParam);
-                ScopeExit se{[f]() {
+                auto* f = reinterpret_cast<std::function<void()>*>(msg.lParam);
+                ScopeExit se{[f]() noexcept {
                     // yuck! but this is from webview internals
                     delete f;
                 }};
@@ -679,7 +679,7 @@ namespace Nui
 
         if (wv23 == nullptr)
             throw std::runtime_error("Could not get interface to set mapping.");
-        auto releaseInterface = Nui::ScopeExit{[wv23] {
+        auto releaseInterface = Nui::ScopeExit{[wv23]() noexcept {
             wv23->Release();
         }};
 

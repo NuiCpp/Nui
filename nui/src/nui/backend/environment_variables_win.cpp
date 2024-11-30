@@ -12,7 +12,7 @@ namespace Nui
         auto* envStrings = GetEnvironmentStrings();
         if (envStrings == nullptr)
             return {};
-        auto remover = ScopeExit{[&envStrings]() {
+        auto remover = ScopeExit{[&envStrings]() noexcept {
             FreeEnvironmentStrings(envStrings);
         }};
         // var1=value1\0var2=value2\0\0
