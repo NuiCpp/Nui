@@ -57,10 +57,10 @@ extern "C" {
         // const auto scheme = std::string_view{webkit_uri_scheme_request_get_scheme(request)};
         const auto uri = std::string_view{webkit_uri_scheme_request_get_uri(request)};
 
-        auto exitError = Nui::ScopeExit{[&] {
+        auto exitError = Nui::ScopeExit{[&]() noexcept {
             auto* error =
                 g_error_new(WEBKIT_DOWNLOAD_ERROR_DESTINATION, 1, "Invalid custom scheme / Host name mapping.");
-            auto freeError = Nui::ScopeExit{[error] {
+            auto freeError = Nui::ScopeExit{[error]() noexcept {
                 g_error_free(error);
             }};
             webkit_uri_scheme_request_finish_error(request, error);
@@ -84,7 +84,7 @@ extern "C" {
                 auto* stream = webkit_uri_scheme_request_get_http_body(request);
                 if (stream == nullptr)
                     return std::string{};
-                Nui::ScopeExit deleteStream = Nui::ScopeExit{[stream] {
+                Nui::ScopeExit deleteStream = Nui::ScopeExit{[stream]() noexcept {
                     g_input_stream_close(stream, nullptr, nullptr);
                 }};
 
@@ -94,10 +94,10 @@ extern "C" {
                 GError* error = NULL;
                 gchar* data = g_data_input_stream_read_upto(dataInputStream, "", 0, &length, NULL, &error);
 
-                Nui::ScopeExit freeData = Nui::ScopeExit{[data] {
+                Nui::ScopeExit freeData = Nui::ScopeExit{[data]() noexcept {
                     g_free(data);
                 }};
-                Nui::ScopeExit freeError = Nui::ScopeExit{[error] {
+                Nui::ScopeExit freeError = Nui::ScopeExit{[error]() noexcept {
                     g_error_free(error);
                 }};
 

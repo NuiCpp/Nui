@@ -158,8 +158,6 @@ namespace Nui::MacOs
 
     id wkWebViewConfigurationFromOptions(HostNameMappingInfo const* mappingInfo, WindowOptions const& options)
     {
-        std::vector<Nui::ScopeExit<std::function<void()>>> cleaners;
-
         auto const* opts = &options;
         std::optional<WindowOptions> optCopy;
         if (options.folderMappingScheme)
