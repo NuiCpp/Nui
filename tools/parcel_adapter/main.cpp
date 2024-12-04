@@ -21,7 +21,7 @@ std::string readFile(std::ifstream& ifs)
 void disablePolyfillIfNotSet(nlohmann::json& alias, std::string_view aliasName)
 {
     if (!alias.contains(aliasName))
-        alias[aliasName] = false;
+        alias[std::string{aliasName}] = false;
 }
 
 void addNuiAlias(nlohmann::json& alias)
@@ -58,7 +58,8 @@ int main(int argc, char** argv)
     {
         std::cout << "Expected 3 argument: <package_in.json> <package_out.json> <target-name>, but got " << argc - 1
                   << "\n";
-        std::cout << "Usage: " << argv[0] << " <package_in.json> <package_out.json> <target-name>" << "\n";
+        std::cout << "Usage: " << argv[0] << " <package_in.json> <package_out.json> <target-name>"
+                  << "\n";
         return 1;
     }
 
