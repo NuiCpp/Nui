@@ -19,6 +19,7 @@
 #include <set>
 #include <concepts>
 #include <iterator>
+#include <exception>
 
 namespace Nui
 {
