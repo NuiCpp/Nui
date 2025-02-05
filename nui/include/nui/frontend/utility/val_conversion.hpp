@@ -57,9 +57,9 @@ namespace Nui
     template <typename T>
     Nui::val convertToVal(std::map<std::string, T> const& map);
     template <typename T>
-    Nui::val convertToVal(std::unique_ptr<T> const& map);
+    Nui::val convertToVal(std::unique_ptr<T> const& ptr);
     template <typename T>
-    Nui::val convertToVal(std::shared_ptr<T> const& map);
+    Nui::val convertToVal(std::shared_ptr<T> const& ptr);
     inline Nui::val convertToVal(long long)
     {
         throw std::runtime_error("Cannot convert long long to val");

@@ -130,6 +130,9 @@ function(nui_add_emscripten_target)
         set(PATCH_DOTENV_COMMAND COMMAND cmake -E true)
     endif()
 
+    get_target_property(TARGET_CXX_STANDARD ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} CXX_STANDARD)
+    message(STATUS "C++ standard of frontend subproject: ${TARGET_CXX_STANDARD}")
+
     include(ExternalProject)
     ExternalProject_Add(
         "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten"
@@ -137,6 +140,7 @@ function(nui_add_emscripten_target)
         # emscripten cmake with passed down Release/Debug build type
         CONFIGURE_COMMAND
             ${EMCMAKE} cmake
+                "-DCMAKE_CXX_STANDARD=${TARGET_CXX_STANDARD}"
                 ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS}
                 "-DNUI_NPM=${NUI_NPM}"
                 "-DNUI_NODE=${NUI_NODE}"

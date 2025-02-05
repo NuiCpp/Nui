@@ -1,6 +1,6 @@
 include(GoogleTest)
 
-find_package(Boost REQUIRED)
+find_package(Boost CONFIG REQUIRED)
 
 add_executable(inline_parser-tests
     tests.cpp
