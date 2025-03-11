@@ -1,24 +1,9 @@
-if(UNIX)
-    add_custom_command(
-        OUTPUT "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten"
-        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" install latest --build=Release
-        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" activate latest
-        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/emscripten-src"
-    )
-else()
-    add_custom_command(
-        OUTPUT "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten"
-        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" install latest --build=Release
-        COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcc" --generate-config
-        COMMAND $<TARGET_FILE:patch-emscripten-config>
-            "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten"
-            "${CMAKE_BINARY_DIR}/_deps/binaryen_release-src"
-            "${CMAKE_BINARY_DIR}/_deps/emscripten-src/java/bin/java.exe"
-            # Not patching node
-            # "${NUI_NODE}"
-        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/emscripten-src"
-    )
-endif()
+add_custom_command(
+    OUTPUT "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten"
+    COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" install latest --build=Release
+    COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" activate latest
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/emscripten-src"
+)
 
 add_custom_target(
     emscripten-setup
