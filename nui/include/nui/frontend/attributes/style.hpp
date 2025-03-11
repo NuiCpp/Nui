@@ -228,7 +228,7 @@ namespace Nui::Attributes
 
     inline namespace Literals
     {
-        static constexpr StyleProperty operator"" _style(char const* name, std::size_t)
+        static constexpr StyleProperty operator""_style(char const* name, std::size_t)
         {
             return StyleProperty{name};
         };
