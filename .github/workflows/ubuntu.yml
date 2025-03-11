@@ -1,27 +1,33 @@
-name: Ubuntu 22
+name: Ubuntu
 
 on:
   push:
-    branches: ["main", "devel"]
+    branches:
+      - main
+      - devel
+      - 'feat/*'
+      - 'fix/*'
   pull_request:
     branches: ["main", "devel"]
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
-  BUILD_TYPE: Debug
+  BUILD_TYPE: Release
 
 jobs:
-  ubuntu:
-    # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
-    # You can convert this to a matrix build if you need cross-platform coverage.
-    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-    runs-on: ubuntu-22.04
+  compiler_matrix:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        cxx_standard: [20, 23]
+        clang_version: ["17", "18", "19", "20"]
 
     steps:
       - uses: actions/checkout@v3
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: libwebkit2gtk-4.0-dev libcurl4-openssl-dev libcrypto++-dev ninja-build
+          # clang uses libtinfo, which apparently is in ncurses?
+          packages: libwebkit2gtk-4.1-dev ncurses libcurl4-openssl-dev libcrypto++-dev ninja-build
 
       - name: Install boost
         uses: MarkusJx/install-boost@v2.4.1
@@ -30,9 +36,16 @@ jobs:
           # REQUIRED: Specify the required boost version
           # A list of supported versions can be found here:
           # https://github.com/MarkusJx/prebuilt-boost/blob/main/versions-manifest.json
-          boost_version: 1.81.0
+          boost_version: 1.87.0
           # OPTIONAL: Specify a platform version
           platform_version: 22.04
+
+      - name: Install clang
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh ${{ matrix.clang_version }}
+          sudo apt-get install -y clang-${{ matrix.clang_version }} lld-${{ matrix.clang_version }} libc++-${{ matrix.clang_version }}-dev libc++abi-${{ matrix.clang_version }}-dev
 
       - name: Tool Version Dump
         run: |
@@ -44,7 +57,7 @@ jobs:
         run: sudo ln -s /usr/include/locale.h /usr/include/xlocale.h
 
       - name: Configure CMake
-        run: cmake -B ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}} -G"Ninja" -DNUI_ENABLE_TESTS=on -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DNUI_BUILD_EXAMPLES=on -DCMAKE_CXX_FLAGS="-stdlib=libc++" -DCMAKE_CXX_EXTENSIONS=on -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_LINKER=lld -DCMAKE_CXX_STANDARD=20
+        run: cmake -B ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}} -G"Ninja" -DNUI_ENABLE_TESTS=on -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DNUI_BUILD_EXAMPLES=on -DCMAKE_CXX_FLAGS="-stdlib=libc++" -DCMAKE_CXX_EXTENSIONS=on -DCMAKE_CXX_COMPILER=clang++-${{ matrix.clang_version }} -DCMAKE_C_COMPILER=clang-${{ matrix.clang_version }} -DCMAKE_LINKER=lld-${{ matrix.clang_version }} -DCMAKE_CXX_STANDARD=${{ matrix.cxx_standard }}
         env:
           Boost_ROOT: ${{ steps.install-boost.outputs.BOOST_ROOT }}
 
