@@ -3,7 +3,6 @@ if(UNIX)
         OUTPUT "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten"
         COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" install latest --build=Release
         COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" activate latest
-        COMMAND $<TARGET_FILE:patch-acorn> "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/tools/acorn-optimizer.js"
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/_deps/emscripten-src"
     )
 else()
@@ -11,7 +10,6 @@ else()
         OUTPUT "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten"
         COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/emsdk" install latest --build=Release
         COMMAND "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/emcc" --generate-config
-        COMMAND $<TARGET_FILE:patch-acorn> "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/tools/acorn-optimizer.js"
         COMMAND $<TARGET_FILE:patch-emscripten-config>
             "${CMAKE_BINARY_DIR}/_deps/emscripten-src/upstream/emscripten/.emscripten"
             "${CMAKE_BINARY_DIR}/_deps/binaryen_release-src"
@@ -131,6 +129,15 @@ function(nui_add_emscripten_target)
     endif()
 
     get_target_property(TARGET_CXX_STANDARD ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} CXX_STANDARD)
+
+    if (NOT TARGET_CXX_STANDARD)
+        if (CMAKE_CXX_STANDARD)
+            set(TARGET_CXX_STANDARD ${CMAKE_CXX_STANDARD})
+        else()
+            set(TARGET_CXX_STANDARD 20)
+        endif()
+    endif()
+
     message(STATUS "C++ standard of frontend subproject: ${TARGET_CXX_STANDARD}")
 
     include(ExternalProject)
