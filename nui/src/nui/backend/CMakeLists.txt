@@ -31,6 +31,7 @@ target_link_libraries(
     PRIVATE
         project-settings
     PUBLIC
+        traits-library
         fmt
         webview-iface
         portable_file_dialogs

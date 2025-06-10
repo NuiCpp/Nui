@@ -11,7 +11,7 @@ target_link_libraries(
     PUBLIC
         nui-events
         boost_preprocessor
-        libcpppre
+        traits-library
         mplex
         interval-tree
         boost_describe
