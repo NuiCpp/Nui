@@ -3,19 +3,19 @@ namespace Nui::Tests::Engine
     template <typename T>
     requires Callable<T>
     Function::Function(T&& function)
-        : callable_{Detail::FunctionSignature_t<FunctionArgumentTypes_t<T>>{
+        : callable_{Detail::FunctionSignature_t<typename Traits::FunctionTraits<T>::ArgsTuple>{
               [function = std::forward<T>(function)](auto&&... args) mutable {
-                  if constexpr (std::is_same_v<FunctionReturnType_t<T>, void>)
+                  if constexpr (std::is_same_v<typename Traits::FunctionTraits<T>::ReturnType, void>)
                       return function(std::forward<decltype(args)>(args)...), emscripten::val{};
                   else
                       return emscripten::val{function(std::forward<decltype(args)>(args)...)};
               }}}
         , signature_{[]() -> std::string {
-            using argumentTuple = FunctionArgumentTypes_t<T>;
+            using FunctionAnalyzed = Traits::FunctionTraits<T>;
             std::string signature = "emscripten::val(";
-            if constexpr (std::tuple_size_v<argumentTuple> > 0)
+            if constexpr (FunctionAnalyzed::arity > 0)
             {
-                signature += Detail::TupleTypePrint<argumentTuple>::toString();
+                signature += Detail::TupleTypePrint<typename FunctionAnalyzed::ArgsTuple>::toString();
             }
             signature += ")";
             return signature;

@@ -2,9 +2,9 @@
 
 #include <nui/frontend/val.hpp>
 
+#include <traits/functions.hpp>
 #include <nui/frontend/api/console.hpp>
 #include <nui/frontend/utility/functions.hpp>
-#include <nui/utility/meta/function_traits.hpp>
 #include <nui/frontend/utility/val_conversion.hpp>
 #include <nui/shared/on_destroy.hpp>
 
@@ -39,7 +39,7 @@ namespace Nui
             template <typename FunctionT>
             constexpr static auto wrapFunction(FunctionT&& func)
             {
-                return [func = std::move(func)](Nui::val const& args) mutable {
+                return [func = std::forward<FunctionT>(func)](Nui::val const& args) mutable {
                     func(args);
                 };
             }
@@ -51,7 +51,7 @@ namespace Nui
             template <typename FunctionT>
             constexpr static auto wrapFunction(FunctionT&& func)
             {
-                return [func = std::move(func)](Nui::val const& arg) mutable {
+                return [func = std::forward<FunctionT>(func)](Nui::val const& arg) mutable {
                     func(extractMember<ArgType>(arg));
                 };
             }
@@ -63,7 +63,7 @@ namespace Nui
             template <typename FunctionT>
             constexpr static auto wrapFunction(FunctionT&& func)
             {
-                return [func = std::move(func)](Nui::val const& args) mutable {
+                return [func = std::forward<FunctionT>(func)](Nui::val const& args) mutable {
                     func(extractMember<ArgsTypes>(args[Is])...);
                 };
             }
@@ -81,8 +81,8 @@ namespace Nui
         template <typename FunctionT>
         struct FunctionWrapper
             : public FunctionWrapperImpl2<
-                  FunctionReturnType_t<std::decay_t<FunctionT>>,
-                  FunctionArgumentTypes_t<std::decay_t<FunctionT>>>
+                  typename Traits::FunctionTraits<std::decay_t<FunctionT>>::ReturnType,
+                  typename Traits::FunctionTraits<std::decay_t<FunctionT>>::ArgsTuple>
         {};
     }
 
@@ -103,8 +103,7 @@ namespace Nui
                 }
                 if (backChannel_.empty())
                     return callable_(convertToVal(args)...);
-                else
-                    return callable_(convertToVal(backChannel_), convertToVal(args)...);
+                return callable_(convertToVal(backChannel_), convertToVal(args)...);
             }
             auto operator()(Nui::val val) const
             {
@@ -116,8 +115,7 @@ namespace Nui
                 }
                 if (backChannel_.empty())
                     return callable_(val);
-                else
-                    return callable_(convertToVal(backChannel_), val);
+                return callable_(convertToVal(backChannel_), val);
             }
 
             bool isValid() const
@@ -130,7 +128,7 @@ namespace Nui
                 return isValid();
             }
 
-            RemoteCallable(std::string name)
+            explicit RemoteCallable(std::string name)
                 : name_{std::move(name)}
                 , backChannel_{}
                 , callable_{Nui::val::undefined()}
@@ -236,9 +234,9 @@ namespace Nui
             Nui::val::global("nui_rpc")["frontend"].set(
                 tempIdString,
                 Nui::bind(
-                    [func = Detail::FunctionWrapper<FunctionT>::wrapFunction(std::forward<FunctionT>(func)),
+                    [funcInner = Detail::FunctionWrapper<FunctionT>::wrapFunction(std::forward<FunctionT>(func)),
                      tempIdString](Nui::val param) mutable {
-                        func(param);
+                        funcInner(param);
                         Nui::val::global("nui_rpc")["frontend"].delete_(tempIdString);
                     },
                     std::placeholders::_1));
@@ -263,9 +261,9 @@ namespace Nui
             Nui::val::global("nui_rpc")["frontend"].set(
                 name.c_str(),
                 Nui::bind(
-                    [func = Detail::FunctionWrapper<FunctionT>::wrapFunction(std::forward<FunctionT>(func))](
+                    [funcInner = Detail::FunctionWrapper<FunctionT>::wrapFunction(std::forward<FunctionT>(func))](
                         Nui::val param) mutable {
-                        func(param);
+                        funcInner(param);
                     },
                     std::placeholders::_1));
         }
@@ -291,7 +289,7 @@ namespace Nui
             AutoUnregister()
                 : OnDestroy{[]() {}}
             {}
-            AutoUnregister(std::string name)
+            explicit AutoUnregister(std::string name)
                 : OnDestroy{[name = std::move(name)]() {
                     unregisterFunction(name);
                 }}
@@ -299,11 +297,11 @@ namespace Nui
             ~AutoUnregister() = default;
 
             AutoUnregister(AutoUnregister const&) = delete;
-            AutoUnregister(AutoUnregister&& other)
+            AutoUnregister(AutoUnregister&& other) noexcept
                 : OnDestroy{std::move(other)}
             {}
             AutoUnregister& operator=(AutoUnregister const&) = delete;
-            AutoUnregister& operator=(AutoUnregister&& other)
+            AutoUnregister& operator=(AutoUnregister&& other) noexcept
             {
                 OnDestroy::operator=(std::move(other));
                 return *this;

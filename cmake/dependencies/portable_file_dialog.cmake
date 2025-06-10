@@ -10,5 +10,6 @@ if(NUI_FETCH_PORTABLE_FILE_DIALOG)
         GIT_TAG        ${NUI_PORTABLE_FILE_DIALOG_TAG}
     )
 
+    set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
     FetchContent_MakeAvailable(portable_file_dialogs)
 endif()

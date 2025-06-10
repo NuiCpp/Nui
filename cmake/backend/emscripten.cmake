@@ -22,7 +22,7 @@ function(nui_add_emscripten_target)
 
     cmake_parse_arguments(
         NUI_ADD_EMSCRIPTEN_TARGET_ARGS
-        "DISABLE_BIN2HPP;DISABLE_PARCEL_ADAPTER;ENABLE_TAILWIND;ENABLE_DOTENV"
+        "DISABLE_BIN2HPP;DISABLE_PARCEL_ADAPTER;ENABLE_TAILWIND;ENABLE_DOTENV;CONFIGURE_ALWAYS"
         "TARGET;PREJS;SOURCE_DIR;BIN2HPP_ENCODING"
         "CMAKE_OPTIONS"
         ${ARGN}
@@ -125,22 +125,33 @@ function(nui_add_emscripten_target)
 
     message(STATUS "C++ standard of frontend subproject: ${TARGET_CXX_STANDARD}")
 
+    set(CONFIGURE_COMMAND_PART
+        ${EMCMAKE} cmake
+            "-DCMAKE_CXX_STANDARD=${TARGET_CXX_STANDARD}"
+            ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS}
+            "-DNUI_NPM=${NUI_NPM}"
+            "-DNUI_NODE=${NUI_NODE}"
+            "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+            -DNUI_INLINE_EXTRACTOR_TARGET_FILE=$<TARGET_FILE:inline-parser>
+            -DNUI_INLINE_INJECTOR_TARGET_FILE=$<TARGET_FILE:inline-injector>
+            -DNUI_MODULE_BUILD_DIR=${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}
+            "${SOURCE_DIR}"
+    )
+    if(NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CONFIGURE_ALWAYS)
+        set(CONFIGURE_COMMAND ${CONFIGURE_COMMAND_PART})
+    else()
+        set(CONFIGURE_COMMAND
+            ${EMCMAKE} cmake -E md5sum "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/CMakeCache.txt" ||
+            ${CONFIGURE_COMMAND_PART}
+        )
+    endif()
+
     include(ExternalProject)
     ExternalProject_Add(
         "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten"
         SOURCE_DIR "${SOURCE_DIR}"
         # emscripten cmake with passed down Release/Debug build type
-        CONFIGURE_COMMAND
-            ${EMCMAKE} cmake
-                "-DCMAKE_CXX_STANDARD=${TARGET_CXX_STANDARD}"
-                ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS}
-                "-DNUI_NPM=${NUI_NPM}"
-                "-DNUI_NODE=${NUI_NODE}"
-                "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
-                -DNUI_INLINE_EXTRACTOR_TARGET_FILE=$<TARGET_FILE:inline-parser>
-                -DNUI_INLINE_INJECTOR_TARGET_FILE=$<TARGET_FILE:inline-injector>
-                -DNUI_MODULE_BUILD_DIR=${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}
-                "${SOURCE_DIR}"
+        CONFIGURE_COMMAND ${CONFIGURE_COMMAND}
         # copy over package.json and fill parcel options that do not exist on it
         ${BUILD_COMMAND}
         # patch .env file if needed

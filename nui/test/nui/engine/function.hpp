@@ -1,14 +1,11 @@
 #pragma once
 
-#include <nui/utility/meta/function_traits.hpp>
+#include <traits/functions.hpp>
 
-#include <pre/type_traits/function_traits.hpp>
-#include <pre/functional/to_std_function.hpp>
 #include <boost/type_index.hpp>
 
 #include <functional>
 #include <any>
-#include <optional>
 #include <concepts>
 #include <iostream>
 
@@ -103,9 +100,7 @@ namespace Nui::Tests::Engine
 
     template <typename T>
     concept Callable = requires(T t) {
-        {
-            typename Detail::FunctionTypesImpl<T>::deduced{}
-        } -> std::same_as<Detail::FunctionYes>;
+        { typename Detail::FunctionTypesImpl<T>::deduced{} } -> std::same_as<Detail::FunctionYes>;
     };
 
     class Function
@@ -116,6 +111,7 @@ namespace Nui::Tests::Engine
         Function(Function&&) = default;
         Function& operator=(const Function&) = default;
         Function& operator=(Function&&) = default;
+        ~Function() = default;
 
         template <typename T>
         requires Callable<T>
@@ -129,6 +125,8 @@ namespace Nui::Tests::Engine
 
         void print(int indent) const
         {
+            for (int i = 0; i < indent; ++i)
+                std::cout << "  ";
             std::cout << signature_;
         }
 

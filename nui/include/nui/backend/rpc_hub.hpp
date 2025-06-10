@@ -2,9 +2,10 @@
 
 #include <nui/window.hpp>
 #include <nui/data_structures/selectables_registry.hpp>
-#include <nui/utility/meta/function_traits.hpp>
 #include <nui/utility/meta/pick_first.hpp>
 #include <nui/shared/on_destroy.hpp>
+
+#include <traits/functions.hpp>
 #include <nlohmann/json.hpp>
 #include <fmt/format.h>
 
@@ -69,8 +70,8 @@ namespace Nui
         template <typename FunctionT>
         struct FunctionWrapper
             : public FunctionWrapperImpl2<
-                  FunctionReturnType_t<std::decay_t<FunctionT>>,
-                  FunctionArgumentTypes_t<std::decay_t<FunctionT>>>
+                  typename Traits::FunctionTraits<std::decay_t<FunctionT>>::ReturnType,
+                  typename Traits::FunctionTraits<std::decay_t<FunctionT>>::ArgsTuple>
         {};
     }
 

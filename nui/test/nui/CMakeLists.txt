@@ -8,7 +8,7 @@ target_include_directories(nui-frontend-mocked PUBLIC emscripten_mock ${CMAKE_CU
 find_package(Boost CONFIG REQUIRED)
 
 target_link_libraries(nui-frontend-mocked PUBLIC
-    libcpppre
+    traits-library
     mplex
     interval-tree
     Boost::boost

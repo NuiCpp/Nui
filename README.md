@@ -52,3 +52,4 @@ Nui uses the following dependencies:
 - nlohmann/json https://github.com/nlohmann/json - [MIT LICENSE](https://github.com/nlohmann/json/blob/develop/LICENSE.MIT)
 - portable-file-dialogs https://github.com/samhocevar/portable-file-dialogs - [WTFPL LICENSE](https://github.com/samhocevar/portable-file-dialogs/blob/main/COPYING)
 - 5cript/roar https://github.com/5cript/roar - [BSL-1.0 LICENSE](https://github.com/5cript/roar/blob/master/LICENSE)
+- Nui/traits https://github.com/NuiCpp/traits - [CC0-1.0 LICENSE](https://github.com/NuiCpp/traits/blob/main/LICENSE)

@@ -10,11 +10,11 @@
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 
+#include <traits/functions.hpp>
+
 #include <boost/preprocessor/repetition/repeat.hpp>
 #include <boost/preprocessor/punctuation/comma_if.hpp>
 #include <boost/preprocessor/stringize.hpp>
-
-#include <pre/type_traits/function_traits.hpp>
 
 #ifndef JS_BIND_MAX_ARITY
 /**
@@ -98,9 +98,8 @@ namespace Nui
     emscripten::val bind(F&& f, Args&&... args)
     {
         using emscripten::val;
-        using pre::type_traits::function_traits;
 
-        using result_type = typename function_traits<std::decay_t<F>>::result_type;
+        using result_type = typename Traits::FunctionTraits<std::decay_t<F>>::ReturnType;
         auto bind_result = std::bind(std::forward<decltype(f)>(f), JS_BIND_DETAIL_FWD(args)...);
 
         using callback_t =
