@@ -24,7 +24,7 @@ target_include_directories(
 )
 nui_set_project_warnings(nui-backend)
 
-find_package(Boost CONFIG 1.80.0 REQUIRED COMPONENTS system)
+include("${CMAKE_CURRENT_LIST_DIR}/../../../../cmake/dependencies/boost.cmake")
 
 target_link_libraries(
     nui-backend
