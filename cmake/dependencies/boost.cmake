@@ -1,5 +1,5 @@
 if (CMAKE_VERSION VERSION_LESS "3.30")
-    find_package(Boost 1.81.0 REQUIRED COMPONENTS system iostreams)
+    find_package(Boost 1.81.0 REQUIRED COMPONENTS iostreams)
 else()
-    find_package(Boost CONFIG 1.81.0 REQUIRED COMPONENTS system iostreams)
+    find_package(Boost CONFIG 1.81.0 REQUIRED COMPONENTS iostreams)
 endif()
