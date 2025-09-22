@@ -42,7 +42,7 @@ jobs:
 
       - name: Install clang
         run: |
-          wget https://apt.llvm.org/llvm.sh
+          curl -LO https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
           sudo ./llvm.sh ${{ matrix.clang_version }}
           sudo apt-get install -y clang-${{ matrix.clang_version }} lld-${{ matrix.clang_version }} libc++-${{ matrix.clang_version }}-dev libc++abi-${{ matrix.clang_version }}-dev
