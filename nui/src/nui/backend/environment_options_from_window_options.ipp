@@ -8,13 +8,13 @@ namespace Nui
 
         if (options.browserArguments)
         {
-            const auto wideArgs = widenString(*options.browserArguments);
+            const auto wideArgs = utf8ToUtf16<std::wstring, std::string>(*options.browserArguments);
             environmentOptions->put_AdditionalBrowserArguments(wideArgs.c_str());
         }
 
         if (options.language)
         {
-            const auto wideLanguage = widenString(*options.language);
+            const auto wideLanguage = utf8ToUtf16<std::wstring, std::string>(*options.language);
             environmentOptions->put_Language(wideLanguage.c_str());
         }
 
@@ -32,7 +32,7 @@ namespace Nui
 
             for (const auto& customScheme : options.customSchemes)
             {
-                wideSchemes.push_back(widenString(customScheme.scheme));
+                wideSchemes.push_back(utf8ToUtf16<std::wstring, std::string>(customScheme.scheme));
                 customSchemeRegistrations.push_back(
                     Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(wideSchemes.back().c_str()));
                 auto& customSchemeRegistration = customSchemeRegistrations.back();
@@ -40,7 +40,7 @@ namespace Nui
                 allowedOrigins.push_back({});
                 allowedOrigins.back().reserve(customScheme.allowedOrigins.size());
                 for (const auto& allowedOrigin : customScheme.allowedOrigins)
-                    allowedOrigins.back().push_back(widenString(allowedOrigin));
+                    allowedOrigins.back().push_back(utf8ToUtf16<std::wstring, std::string>(allowedOrigin));
 
                 allowedOriginsRaw.push_back({});
                 allowedOriginsRaw.back().reserve(allowedOrigins.back().size());

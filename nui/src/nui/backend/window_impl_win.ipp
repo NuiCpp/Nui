@@ -39,7 +39,7 @@ namespace Nui
 
         for (auto const& customScheme : options.customSchemes)
         {
-            const std::wstring filter = widenString(customScheme.scheme + ":*");
+            const std::wstring filter = utf8ToUtf16<std::wstring, std::string>(customScheme.scheme + ":*");
 
             auto result = webView->AddWebResourceRequestedFilter(
                 filter.c_str(), static_cast<COREWEBVIEW2_WEB_RESOURCE_CONTEXT>(NuiCoreWebView2WebResourceContext::All));
@@ -79,7 +79,7 @@ namespace Nui
             webViewRequest->get_Uri(&uri);
             std::wstring uriW{uri};
             CoTaskMemFree(uri);
-            return shortenString(uriW);
+            return utf16ToUtf8<std::wstring, std::string>(uriW);
         }();
 
         const auto customScheme = [&schemes, &uri]() -> std::optional<CustomScheme> {
@@ -126,7 +126,8 @@ namespace Nui
 
         std::wstring responseHeaders;
         for (auto const& [key, value] : responseData.headers)
-            responseHeaders += widenString(key) + L": " + widenString(value) + L"\r\n";
+            responseHeaders += utf8ToUtf16<std::wstring, std::string>(key) + L": " +
+                utf8ToUtf16<std::wstring, std::string>(value) + L"\r\n";
         if (!responseHeaders.empty())
         {
             responseHeaders.pop_back();
@@ -137,7 +138,7 @@ namespace Nui
         stream.Attach(SHCreateMemStream(
             reinterpret_cast<const BYTE*>(responseData.body.data()), static_cast<UINT>(responseData.body.size())));
 
-        const auto phrase = widenString(responseData.reasonPhrase);
+        const auto phrase = utf8ToUtf16<std::wstring, std::string>(responseData.reasonPhrase);
         result = environment->CreateWebResourceResponse(
             stream.Get(), responseData.statusCode, phrase.c_str(), responseHeaders.c_str(), &response);
 
@@ -191,7 +192,9 @@ namespace Nui
                         CoTaskMemFree(name);
                         CoTaskMemFree(value);
 
-                        headersMap.emplace(shortenString(nameW), shortenString(valueW));
+                        headersMap.emplace(
+                            utf16ToUtf8<std::wstring, std::string>(nameW),
+                            utf16ToUtf8<std::wstring, std::string>(valueW));
 
                         BOOL hasNext = FALSE;
                         if (FAILED(iterator->MoveNext(&hasNext)) || !hasNext)
@@ -206,7 +209,7 @@ namespace Nui
                     webViewRequest->get_Method(&method);
                     std::wstring methodW{method};
                     CoTaskMemFree(method);
-                    return shortenString(methodW);
+                    return utf16ToUtf8<std::wstring, std::string>(methodW);
                 }(),
             .resourceContext = static_cast<NuiCoreWebView2WebResourceContext>(resourceContext),
         };

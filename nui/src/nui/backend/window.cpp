@@ -3,8 +3,7 @@
 #include <nui/backend/filesystem/special_paths.hpp>
 #include <nui/backend/filesystem/file_dialog.hpp>
 #include <nui/utility/scope_exit.hpp>
-#include <nui/utility/widen.hpp>
-#include <nui/utility/scope_exit.hpp>
+#include <nui/utility/utf.hpp>
 #include <nui/data_structures/selectables_registry.hpp>
 #include <nui/screen.hpp>
 #include "load_file.hpp"
@@ -347,7 +346,7 @@ namespace Nui
                 windowsServeThroughAuthority = std::string{windowsServeAuthority};
             const auto authority = *windowsServeThroughAuthority;
 
-            const std::wstring filter = widenString("https://"s + authority + "/index.html");
+            const auto filter = utf8ToUtf16<std::wstring, std::string>("https://"s + authority + "/index.html");
 
             auto result = webView->AddWebResourceRequestedFilter(
                 filter.c_str(), static_cast<COREWEBVIEW2_WEB_RESOURCE_CONTEXT>(NuiCoreWebView2WebResourceContext::All));
@@ -370,7 +369,7 @@ namespace Nui
                             webViewRequest->get_Uri(&uri);
                             std::wstring uriW{uri};
                             CoTaskMemFree(uri);
-                            return shortenString(uriW);
+                            return utf16ToUtf8<std::wstring, std::string>(uriW);
                         }();
 
                         if (uri != compareUri)
@@ -697,8 +696,8 @@ namespace Nui
                 break;
         }
 
-        const auto wideHost = widenString(hostName);
-        const auto widePath = widenString(folderPath.string());
+        const auto wideHost = utf8ToUtf16<std::wstring, std::string>(hostName);
+        const auto widePath = utf8ToUtf16<std::wstring, std::string>(folderPath.string());
         wv23->SetVirtualHostNameToFolderMapping(wideHost.c_str(), widePath.c_str(), nativeAccessKind);
 #elif defined(__APPLE__)
         (void)accessKind;
