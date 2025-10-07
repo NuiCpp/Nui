@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(nui VERSION 0.10.2)
+project(nui VERSION 1.1.0)
 
 set(NUI_SOURCE_DIRECTORY ${CMAKE_CURRENT_LIST_DIR} CACHE INTERNAL "NUI source directory")
 
@@ -15,6 +15,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/fmt.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/describe.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/mp11.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/nui_traits.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/utfcpp.cmake)
 if (EMSCRIPTEN)
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/frontend/emscripten.cmake)
 else()
