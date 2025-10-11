@@ -107,6 +107,8 @@ namespace Nui
     class ObservedValueCombinatorWithGenerator : public ObservedValueCombinatorBase<ObservedValues...>
     {
       public:
+        using RendererTypeNoRef = std::decay_t<RendererType>;
+
         constexpr ObservedValueCombinatorWithGenerator(
             std::tuple<Detail::ObservedAddReference_t<ObservedValues>...> observedValues,
             RendererType generator)
@@ -124,17 +126,17 @@ namespace Nui
             return generator_();
         }
 
-        RendererType generator() const&
+        RendererTypeNoRef generator() const&
         {
             return generator_;
         }
-        RendererType generator() &&
+        RendererTypeNoRef generator() &&
         {
             return std::move(generator_);
         }
 
       protected:
-        RendererType generator_;
+        RendererTypeNoRef generator_;
     };
 
     template <typename RendererType, typename... ObservedValues>
@@ -163,19 +165,19 @@ namespace Nui
 
         template <typename RendererType>
         requires std::invocable<RendererType>
-        constexpr ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>
+        constexpr ObservedValueCombinatorWithGenerator<std::decay_t<RendererType>, ObservedValues...>
         generate(RendererType&& generator)
         {
-            return ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...>{
+            return ObservedValueCombinatorWithGenerator<std::decay_t<RendererType>, ObservedValues...>{
                 observedValues_, std::forward<RendererType>(generator)};
         }
 
         template <typename RendererType>
         requires std::invocable<RendererType>
-        constexpr ObservedValueCombinatorWithPropertyGenerator<RendererType, ObservedValues...>
+        constexpr ObservedValueCombinatorWithPropertyGenerator<std::decay_t<RendererType>, ObservedValues...>
         generateProperty(RendererType&& generator)
         {
-            return ObservedValueCombinatorWithPropertyGenerator<RendererType, ObservedValues...>{
+            return ObservedValueCombinatorWithPropertyGenerator<std::decay_t<RendererType>, ObservedValues...>{
                 observedValues_, std::forward<RendererType>(generator)};
         }
     };

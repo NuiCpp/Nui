@@ -299,9 +299,10 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
 
-        render(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(
-            div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(
-                div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}())))))))))))))))))))))))))))))))))))))))))));
+        render(
+            div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(
+                div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(
+                    div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}(div{}())))))))))))))))))))))))))))))))))))))))))));
     }
 
     TEST_F(TestRender, StableElementIsNotRerendered)
@@ -759,18 +760,19 @@ namespace Nui::Tests
 
         Nui::Observed<std::vector<std::string>> range{std::vector<std::string>{"A", "B", "C", "D"}};
 
-        render(body{
-            class_ = "range-parent",
-        }(range.map([](long long, auto const& element) {
-            return div{
-                class_ = "range-child",
-                id = element,
-            }([]() -> Nui::ElementRenderer {
-                return span{
-                    class_ = "range-child-child",
-                }();
-            });
-        })));
+        render(
+            body{
+                class_ = "range-parent",
+            }(range.map([](long long, auto const& element) {
+                return div{
+                    class_ = "range-child",
+                    id = element,
+                }([]() -> Nui::ElementRenderer {
+                    return span{
+                        class_ = "range-child-child",
+                    }();
+                });
+            })));
 
         auto children = Nui::val::global("document")["body"]["children"].as<Nui::Tests::Engine::Array>();
         ASSERT_EQ(children.size(), range.value().size());
@@ -900,5 +902,18 @@ namespace Nui::Tests
         globalEventContext.executeActiveEventsImmediately();
 
         EXPECT_EQ(nested["textContent"].as<std::string>(), "Goodbye");
+    }
+
+    TEST_F(TestRender, CanUseLvalueLambdaForGenerate)
+    {
+        using Nui::Elements::body;
+
+        auto lambda = [this]() -> std::string {
+            (void)this;
+            return "Hello";
+        };
+        Observed<bool> bla{true};
+
+        render(body{}(observe(bla).generate(lambda)));
     }
 }

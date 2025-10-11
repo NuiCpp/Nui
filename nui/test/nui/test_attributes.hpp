@@ -764,4 +764,20 @@ namespace Nui::Tests
         other = false;
         EXPECT_NO_FATAL_FAILURE(globalEventContext.executeActiveEventsImmediately());
     }
+
+    TEST_F(TestAttributes, CanUseLvalueLambdaForGenerate)
+    {
+        using Nui::Elements::body;
+        using Nui::Attributes::class_;
+
+        auto lambda = [this]() -> std::string {
+            (void)this;
+            return "Hello";
+        };
+        Observed<bool> bla{true};
+
+        render(body{class_ = observe(bla).generate(lambda)}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "Hello");
+    }
 }
