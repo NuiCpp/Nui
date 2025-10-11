@@ -17,7 +17,6 @@
 #include <tuple>
 #include <string>
 #include <sstream>
-#include <optional>
 
 namespace Nui::Attributes
 {
@@ -167,11 +166,19 @@ namespace Nui::Attributes
     struct StyleProperty
     {
         char const* name;
-        constexpr StyleProperty(char const* name)
+        constexpr explicit StyleProperty(char const* name)
             : name{name}
         {}
+
+        StyleProperty& operator=(StyleProperty const&) = delete;
+        StyleProperty& operator=(StyleProperty&&) noexcept = delete;
+        StyleProperty(StyleProperty const&) = default;
+        StyleProperty(StyleProperty&&) noexcept = default;
+        ~StyleProperty() = default;
+
         // TODO: optimize following functions:
-        auto operator=(char const* value)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
+        auto operator=(char const* value) const
         {
             return StylePropertyImpl{
                 [name_ = std::string{name}, value = std::string{value}]() {
@@ -179,7 +186,8 @@ namespace Nui::Attributes
                 },
                 nullptr};
         }
-        auto operator=(std::string value)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
+        auto operator=(std::string value) const
         {
             return StylePropertyImpl{
                 [name_ = std::string{name}, value = std::move(value)]() {
@@ -187,7 +195,8 @@ namespace Nui::Attributes
                 },
                 nullptr};
         }
-        auto operator=(Observed<std::string> const& observedValue)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
+        auto operator=(Observed<std::string> const& observedValue) const
         {
             return StylePropertyImpl{
                 [name_ = std::string{name}, &observedValue]() {
@@ -195,7 +204,8 @@ namespace Nui::Attributes
                 },
                 observedValue};
         }
-        auto operator=(std::weak_ptr<Observed<std::string>>&& observedValue)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
+        auto operator=(std::weak_ptr<Observed<std::string>>&& observedValue) const
         {
             return StylePropertyImpl{
                 [name_ = std::string{name}, observedValue = std::weak_ptr{observedValue.lock()}]() {
@@ -205,7 +215,8 @@ namespace Nui::Attributes
                 },
                 std::move(observedValue)};
         }
-        auto operator=(std::shared_ptr<Observed<std::string>> observedValue)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
+        auto operator=(std::shared_ptr<Observed<std::string>> observedValue) const
         {
             return StylePropertyImpl{
                 [name_ = std::string{name}, observedValue = std::weak_ptr{observedValue}]() {
@@ -216,7 +227,8 @@ namespace Nui::Attributes
                 std::move(observedValue)};
         }
         template <typename FunctionT, typename... ArgsT>
-        auto operator=(ObservedValueCombinatorWithGenerator<FunctionT, ArgsT...>&& combinator)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
+        auto operator=(ObservedValueCombinatorWithGenerator<FunctionT, ArgsT...>&& combinator) const
         {
             return StylePropertyImpl{
                 [name_ = std::string{name}, gen = combinator.generator()]() {
@@ -243,6 +255,7 @@ namespace Nui::Attributes
                 // TODO: better performing version:
                 std::stringstream sstr;
                 [&sstr](auto const& head, auto const&... tail) {
+                    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
                     using expander = int[];
                     const auto headStr = head();
                     sstr << headStr;
@@ -273,7 +286,7 @@ namespace Nui::Attributes
             Nui::Detail::TupleFilter_t<Detail::IsDynamicStyleProperty, Properties...>,
             Detail::StripPropertyObserved>;
 
-        constexpr Style(Properties&&... props)
+        constexpr explicit Style(Properties&&... props)
             : observedValues_{stripObserved(props...)}
             , generateStyle_{makeStyleGenerator<isStatic()>(std::forward<Properties>(props)...)}
         {}
@@ -305,19 +318,29 @@ namespace Nui::Attributes
 
     struct style_
     {
+        style_& operator=(style_&&) noexcept = delete;
+        style_& operator=(style_ const&) = delete;
+        style_() = default;
+        style_(style_&&) noexcept = default;
+        style_(style_ const&) = default;
+        ~style_() = default;
+
         template <typename U>
         requires(!IsObserved<std::decay_t<U>>)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(U&& val) const
         {
             return AttributeFactory{"style"}.operator=(std::forward<U>(val));
         }
         template <typename U>
         requires(IsObserved<std::decay_t<U>>)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(U& val) const
         {
             return AttributeFactory{"style"}.operator=(val);
         }
         template <typename... T>
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         auto operator=(Style<T...>&& style) const
         {
             if constexpr (Style<T...>::isStatic())
