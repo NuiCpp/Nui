@@ -126,7 +126,7 @@ namespace Nui
      * @param view The string_view to convert.
      * @return Nui::val The converted val.
      */
-    Nui::val convertToVal(std::string_view view);
+    Nui::val convertToVal(std::string_view value);
 
     /**
      * @brief Converts a vector to Nui::val.
@@ -549,7 +549,7 @@ namespace Nui
             boost::mp11::mp_for_each<Members>([&](auto&& memAccessor) {
                 if (val.hasOwnProperty(memAccessor.name))
                 {
-                    if constexpr (!Detail::IsOptional<decltype(obj.*memAccessor.pointer)>::value)
+                    if constexpr (!Detail::IsOptional<std::decay_t<decltype(obj.*memAccessor.pointer)>>::value)
                     {
                         if (val[memAccessor.name].isNull() || val[memAccessor.name].isUndefined())
                         {
@@ -563,7 +563,7 @@ namespace Nui
                 }
                 else
                 {
-                    if constexpr (Detail::IsOptional<decltype(obj.*memAccessor.pointer)>::value)
+                    if constexpr (Detail::IsOptional<std::decay_t<decltype(obj.*memAccessor.pointer)>>::value)
                     {
                         // If the member is optional and not present, set to nullopt:
                         obj.*memAccessor.pointer = std::nullopt;
