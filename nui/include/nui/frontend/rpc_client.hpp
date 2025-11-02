@@ -236,7 +236,21 @@ namespace Nui
                 Nui::bind(
                     [funcInner = Detail::FunctionWrapper<FunctionT>::wrapFunction(std::forward<FunctionT>(func)),
                      tempIdString](Nui::val param) mutable {
-                        funcInner(param);
+                        try
+                        {
+                            funcInner(param);
+                        }
+                        catch (std::exception const& exc)
+                        {
+                            // If you see this, never let an exception bubble up from your rpc function!
+                            Console::error("Caught exception leaving rpc function '{}': {}", tempIdString, exc.what());
+                        }
+                        catch (...)
+                        {
+                            // If you see this, never let an exception bubble up from your rpc function!
+                            // Also, please only throw things that derive from std::exception!
+                            Console::error("Caught unknown exception leaving rpc function '{}'", tempIdString);
+                        }
                         Nui::val::global("nui_rpc")["frontend"].delete_(tempIdString);
                     },
                     std::placeholders::_1));
@@ -261,9 +275,23 @@ namespace Nui
             Nui::val::global("nui_rpc")["frontend"].set(
                 name.c_str(),
                 Nui::bind(
-                    [funcInner = Detail::FunctionWrapper<FunctionT>::wrapFunction(std::forward<FunctionT>(func))](
-                        Nui::val param) mutable {
-                        funcInner(param);
+                    [funcInner = Detail::FunctionWrapper<FunctionT>::wrapFunction(std::forward<FunctionT>(func)),
+                     name](Nui::val param) mutable {
+                        try
+                        {
+                            funcInner(param);
+                        }
+                        catch (std::exception const& exc)
+                        {
+                            // If you see this, never let an exception bubble up from your rpc function!
+                            Console::error("Caught exception leaving rpc function '{}': {}", name, exc.what());
+                        }
+                        catch (...)
+                        {
+                            // If you see this, never let an exception bubble up from your rpc function!
+                            // Also, please only throw things that derive from std::exception!
+                            Console::error("Caught unknown exception leaving rpc function '{}'", name);
+                        }
                     },
                     std::placeholders::_1));
         }
