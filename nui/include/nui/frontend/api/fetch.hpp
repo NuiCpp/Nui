@@ -6,7 +6,7 @@
 #include <functional>
 #include <optional>
 
-namespace Nui
+namespace Nui::WebApi
 {
     /**
      * @brief Simplified fetch, that uses curl in the backend to fetch data.

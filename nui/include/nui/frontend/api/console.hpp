@@ -4,7 +4,7 @@
 
 #include <nui/frontend/val.hpp>
 
-namespace Nui
+namespace Nui::WebApi
 {
     class Console
     {

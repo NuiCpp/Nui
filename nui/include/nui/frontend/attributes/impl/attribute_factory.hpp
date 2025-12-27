@@ -10,6 +10,12 @@
 
 #include <nui/frontend/val.hpp>
 
+#include <traits/functions.hpp>
+
+#include <concepts>
+#include <memory>
+#include <functional>
+
 namespace Nui::Attributes
 {
     namespace Detail
@@ -20,18 +26,19 @@ namespace Nui::Attributes
             T const& obs,
             std::function<bool(std::shared_ptr<ElementT> const&)> onLock)
         {
-            const auto eventId = globalEventContext.registerEvent(Event{
-                [element, obs, onLock = std::move(onLock)](auto eventId) {
-                    if (auto shared = element.lock(); shared)
-                    {
-                        return onLock(shared);
-                    }
-                    obs.detachEvent(eventId);
-                    return false;
-                },
-                [element]() {
-                    return !element.expired();
-                }});
+            const auto eventId = globalEventContext.registerEvent(
+                Event{
+                    [element, obs, onLock = std::move(onLock)](auto eventId) {
+                        if (auto shared = element.lock(); shared)
+                        {
+                            return onLock(shared);
+                        }
+                        obs.detachEvent(eventId);
+                        return false;
+                    },
+                    [element]() {
+                        return !element.expired();
+                    }});
             obs.attachEvent(eventId);
             return eventId;
         }
@@ -61,6 +68,24 @@ namespace Nui::Attributes
                         return true;
                     }});
         }
+
+        template <typename FunctionT>
+        struct IsCallableByExplicitConstructionOfValImpl
+        {
+            static constexpr bool value = false;
+        };
+
+        template <typename FunctionT>
+        requires Traits::IsCallableOfArity<FunctionT, 1>
+        struct IsCallableByExplicitConstructionOfValImpl<FunctionT>
+        {
+            static constexpr bool value =
+                std::is_constructible_v<typename Traits::FunctionTraits<FunctionT>::template Argument<0>, Nui::val>;
+        };
+
+        template <typename FunctionCallableByExplicitConstructionOfVal>
+        concept IsCallableByExplicitConstructionOfVal =
+            IsCallableByExplicitConstructionOfValImpl<std::decay_t<FunctionCallableByExplicitConstructionOfVal>>::value;
     }
 
     class PropertyFactory
@@ -110,25 +135,26 @@ namespace Nui::Attributes
                     if (!shared)
                         return EventContext::invalidEventId;
 
-                    const auto eventId = globalEventContext.registerEvent(Event{
-                        [name, element, obsWeak = std::weak_ptr{shared}](auto eventId) {
-                            auto obsShared = obsWeak.lock();
-                            if (!obsShared)
-                            {
+                    const auto eventId = globalEventContext.registerEvent(
+                        Event{
+                            [name, element, obsWeak = std::weak_ptr{shared}](auto eventId) {
+                                auto obsShared = obsWeak.lock();
+                                if (!obsShared)
+                                {
+                                    return false;
+                                }
+                                if (auto shared = element.lock(); shared)
+                                {
+                                    shared->setProperty(name, obsShared->value());
+                                    return true;
+                                }
+                                obsShared->detachEvent(eventId);
                                 return false;
-                            }
-                            if (auto shared = element.lock(); shared)
-                            {
-                                shared->setProperty(name, obsShared->value());
-                                return true;
-                            }
-                            obsShared->detachEvent(eventId);
-                            return false;
-                        },
-                        [element, obsWeak = std::weak_ptr{shared}]() {
-                            return !element.expired() && !obsWeak.expired();
-                        },
-                    });
+                            },
+                            [element, obsWeak = std::weak_ptr{shared}]() {
+                                return !element.expired() && !obsWeak.expired();
+                            },
+                        });
                     shared->attachEvent(eventId);
                     return eventId;
                 },
@@ -232,6 +258,23 @@ namespace Nui::Attributes
             };
         }
 
+        template <typename FunctionT>
+        requires Detail::IsCallableByExplicitConstructionOfVal<FunctionT>
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
+        Attribute operator=(FunctionT func) const
+        {
+            return Attribute{
+                [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
+                    element.setProperty(name, [func](Nui::val val) {
+                        func(
+                            std::decay_t<typename Traits::FunctionTraits<FunctionT>::template Argument<0>>{
+                                std::move(val)});
+                        globalEventContext.executeActiveEventsImmediately();
+                    });
+                },
+            };
+        }
+
       private:
         char const* name_;
     };
@@ -256,7 +299,8 @@ namespace Nui::Attributes
 
         template <typename U>
         requires(
-            !IsObservedLike<std::decay_t<U>> && !std::invocable<U, Nui::val> && !std::invocable<U> &&
+            !IsObservedLike<std::decay_t<U>> && !std::invocable<U, Nui::val> &&
+            !Detail::IsCallableByExplicitConstructionOfVal<U> && !std::invocable<U> &&
             !Nui::Detail::IsProperty<std::decay_t<U>>)
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(U val) const
@@ -283,25 +327,26 @@ namespace Nui::Attributes
                     if (!shared)
                         return EventContext::invalidEventId;
 
-                    const auto eventId = globalEventContext.registerEvent(Event{
-                        [name, element, obsWeak = std::weak_ptr{shared}](auto eventId) {
-                            auto obsShared = obsWeak.lock();
-                            if (!obsShared)
-                            {
+                    const auto eventId = globalEventContext.registerEvent(
+                        Event{
+                            [name, element, obsWeak = std::weak_ptr{shared}](auto eventId) {
+                                auto obsShared = obsWeak.lock();
+                                if (!obsShared)
+                                {
+                                    return false;
+                                }
+                                if (auto shared = element.lock(); shared)
+                                {
+                                    shared->setAttribute(name, obsShared->value());
+                                    return true;
+                                }
+                                obsShared->detachEvent(eventId);
                                 return false;
-                            }
-                            if (auto shared = element.lock(); shared)
-                            {
-                                shared->setAttribute(name, obsShared->value());
-                                return true;
-                            }
-                            obsShared->detachEvent(eventId);
-                            return false;
-                        },
-                        [element, obsWeak = std::weak_ptr{shared}]() {
-                            return !element.expired() && !obsWeak.expired();
-                        },
-                    });
+                            },
+                            [element, obsWeak = std::weak_ptr{shared}]() {
+                                return !element.expired() && !obsWeak.expired();
+                            },
+                        });
                     shared->attachEvent(eventId);
                     return eventId;
                 },
@@ -381,25 +426,26 @@ namespace Nui::Attributes
                     if (!shared)
                         return EventContext::invalidEventId;
 
-                    const auto eventId = globalEventContext.registerEvent(Event{
-                        [name, element, obsWeak = std::weak_ptr{shared}](auto eventId) {
-                            auto obsShared = obsWeak.lock();
-                            if (!obsShared)
-                            {
+                    const auto eventId = globalEventContext.registerEvent(
+                        Event{
+                            [name, element, obsWeak = std::weak_ptr{shared}](auto eventId) {
+                                auto obsShared = obsWeak.lock();
+                                if (!obsShared)
+                                {
+                                    return false;
+                                }
+                                if (auto shared = element.lock(); shared)
+                                {
+                                    shared->setProperty(name, obsShared->value());
+                                    return true;
+                                }
+                                obsShared->detachEvent(eventId);
                                 return false;
-                            }
-                            if (auto shared = element.lock(); shared)
-                            {
-                                shared->setProperty(name, obsShared->value());
-                                return true;
-                            }
-                            obsShared->detachEvent(eventId);
-                            return false;
-                        },
-                        [element, obsWeak = std::weak_ptr{shared}]() {
-                            return !element.expired() && !obsWeak.expired();
-                        },
-                    });
+                            },
+                            [element, obsWeak = std::weak_ptr{shared}]() {
+                                return !element.expired() && !obsWeak.expired();
+                            },
+                        });
                     shared->attachEvent(eventId);
                     return eventId;
                 },
@@ -411,7 +457,9 @@ namespace Nui::Attributes
         }
 
         template <typename U>
-        requires(!IsObservedLike<std::decay_t<U>> && !std::invocable<U, Nui::val> && !std::invocable<U>)
+        requires(
+            !IsObservedLike<std::decay_t<U>> && !std::invocable<U, Nui::val> &&
+            !Detail::IsCallableByExplicitConstructionOfVal<U> && !std::invocable<U>)
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(Nui::Detail::Property<U> const& prop) const
         {
@@ -482,6 +530,23 @@ namespace Nui::Attributes
             };
         }
 
+        template <typename FunctionT>
+        requires Detail::IsCallableByExplicitConstructionOfVal<FunctionT>
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
+        Attribute operator=(FunctionT func) const
+        {
+            return Attribute{
+                [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
+                    element.setProperty(name, [func](Nui::val val) {
+                        func(
+                            std::decay_t<typename Traits::FunctionTraits<FunctionT>::template Argument<0>>{
+                                std::move(val)});
+                        globalEventContext.executeActiveEventsImmediately();
+                    });
+                },
+            };
+        }
+
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(Nui::Detail::Property<std::function<void(Nui::val)>> func) const
         {
@@ -502,6 +567,23 @@ namespace Nui::Attributes
                 [name = name(), func = std::move(func.prop)](Dom::ChildlessElement& element) {
                     element.setProperty(name, [func](Nui::val const&) {
                         func();
+                        globalEventContext.executeActiveEventsImmediately();
+                    });
+                },
+            };
+        }
+
+        template <typename FunctionT>
+        requires Detail::IsCallableByExplicitConstructionOfVal<FunctionT>
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
+        Attribute operator=(Nui::Detail::Property<FunctionT> func) const
+        {
+            return Attribute{
+                [name = name(), func = std::move(func.prop)](Dom::ChildlessElement& element) {
+                    element.setProperty(name, [func](Nui::val val) {
+                        func(
+                            std::decay_t<typename Traits::FunctionTraits<FunctionT>::template Argument<0>>{
+                                std::move(val)});
                         globalEventContext.executeActiveEventsImmediately();
                     });
                 },
@@ -550,6 +632,23 @@ namespace Nui::Attributes
                 [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
                     element.addEventListener(name, [func](Nui::val val) {
                         func(std::move(val));
+                        globalEventContext.executeActiveEventsImmediately();
+                    });
+                },
+            };
+        }
+
+        template <typename FunctionT>
+        requires Detail::IsCallableByExplicitConstructionOfVal<FunctionT>
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
+        Attribute operator=(FunctionT func) const
+        {
+            return Attribute{
+                [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
+                    element.addEventListener(name, [func](Nui::val val) {
+                        func(
+                            std::decay_t<typename Traits::FunctionTraits<FunctionT>::template Argument<0>>{
+                                std::move(val)});
                         globalEventContext.executeActiveEventsImmediately();
                     });
                 },

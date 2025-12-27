@@ -332,7 +332,7 @@ namespace emscripten
 #ifdef NUI_TEST_DEBUG_PRINT
             std::cout << "val::new_()\n";
 #endif
-            return withValueDo([... args = std::forward<List>(args)](auto& value) {
+            return withValueDo([... args = std::forward<List>(args)](auto& value) -> val {
                 if (value.type() == Nui::Tests::Engine::Value::Type::Object)
                 {
                     auto& obj = value.template as<Nui::Tests::Engine::Object&>();
@@ -341,14 +341,10 @@ namespace emscripten
                         return obj["constructor"].template as<Nui::Tests::Engine::Function&>()(
                             std::forward<List>(args)...);
                     }
-                    else
-                    {
-                        Nui::Tests::Engine::warn("val::new_: object has no constructor");
-                        return Nui::Tests::Engine::Object{};
-                    }
+                    Nui::Tests::Engine::warn("val::new_: object has no constructor");
+                    return Nui::Tests::Engine::Object{};
                 }
-                else
-                    throw std::runtime_error{"val::new_: value is not an object"};
+                throw std::runtime_error{"val::new_: value is not an object"};
             });
         }
         void delete_(std::string const& key)

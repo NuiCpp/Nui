@@ -6,7 +6,7 @@
 
 #include <nui/frontend/val.hpp>
 
-namespace Nui
+namespace Nui::WebApi
 {
     void fetch(
         std::string const& uri,

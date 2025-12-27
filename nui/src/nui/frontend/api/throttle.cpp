@@ -71,16 +71,18 @@ namespace Nui
                         });
                 }
 
-                callback(ThrottledFunction{
-                    throttleId,
-                    callWhenReady,
-                    [throttleId, toWrap]() {
-                        RpcClient::getRemoteCallableWithBackChannel("Nui::mayCallThrottled", [&toWrap](bool mayCall) {
-                            if (mayCall)
-                                toWrap();
-                        })(throttleId);
-                    },
-                });
+                callback(
+                    ThrottledFunction{
+                        throttleId,
+                        callWhenReady,
+                        [throttleId, toWrap]() {
+                            RpcClient::getRemoteCallableWithBackChannel(
+                                "Nui::mayCallThrottled", [&toWrap](bool mayCall) {
+                                    if (mayCall)
+                                        toWrap();
+                                })(throttleId);
+                        },
+                    });
             })(milliseconds, callWhenReady);
     }
     // #####################################################################################################################

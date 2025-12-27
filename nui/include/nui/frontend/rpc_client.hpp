@@ -98,7 +98,7 @@ namespace Nui
                 using namespace std::string_literals;
                 if (!resolve())
                 {
-                    Console::error("Remote callable with name '"s + name_ + "' is undefined");
+                    WebApi::Console::error("Remote callable with name '"s + name_ + "' is undefined");
                     return Nui::val::undefined();
                 }
                 if (backChannel_.empty())
@@ -110,7 +110,7 @@ namespace Nui
                 using namespace std::string_literals;
                 if (!resolve())
                 {
-                    Console::error("Remote callable with name '"s + name_ + "' is undefined");
+                    WebApi::Console::error("Remote callable with name '"s + name_ + "' is undefined");
                     return Nui::val::undefined();
                 }
                 if (backChannel_.empty())
@@ -225,7 +225,7 @@ namespace Nui
             using namespace std::string_literals;
             if (Nui::val::global("nui_rpc").isUndefined())
             {
-                Console::error("rpc was not setup by backend"s);
+                WebApi::Console::error("rpc was not setup by backend"s);
                 return {};
             }
             auto tempId = Nui::val::global("nui_rpc")["tempId"].as<uint32_t>() + 1;
@@ -243,13 +243,14 @@ namespace Nui
                         catch (std::exception const& exc)
                         {
                             // If you see this, never let an exception bubble up from your rpc function!
-                            Console::error("Caught exception leaving rpc function '{}': {}", tempIdString, exc.what());
+                            WebApi::Console::error(
+                                "Caught exception leaving rpc function '{}': {}", tempIdString, exc.what());
                         }
                         catch (...)
                         {
                             // If you see this, never let an exception bubble up from your rpc function!
                             // Also, please only throw things that derive from std::exception!
-                            Console::error("Caught unknown exception leaving rpc function '{}'", tempIdString);
+                            WebApi::Console::error("Caught unknown exception leaving rpc function '{}'", tempIdString);
                         }
                         Nui::val::global("nui_rpc")["frontend"].delete_(tempIdString);
                     },
@@ -269,7 +270,7 @@ namespace Nui
             using namespace std::string_literals;
             if (Nui::val::global("nui_rpc").isUndefined())
             {
-                Console::error("rpc was not setup by backend"s);
+                WebApi::Console::error("rpc was not setup by backend"s);
                 return;
             }
             Nui::val::global("nui_rpc")["frontend"].set(
@@ -284,13 +285,13 @@ namespace Nui
                         catch (std::exception const& exc)
                         {
                             // If you see this, never let an exception bubble up from your rpc function!
-                            Console::error("Caught exception leaving rpc function '{}': {}", name, exc.what());
+                            WebApi::Console::error("Caught exception leaving rpc function '{}': {}", name, exc.what());
                         }
                         catch (...)
                         {
                             // If you see this, never let an exception bubble up from your rpc function!
                             // Also, please only throw things that derive from std::exception!
-                            Console::error("Caught unknown exception leaving rpc function '{}'", name);
+                            WebApi::Console::error("Caught unknown exception leaving rpc function '{}'", name);
                         }
                     },
                     std::placeholders::_1));
@@ -306,7 +307,7 @@ namespace Nui
             using namespace std::string_literals;
             if (Nui::val::global("nui_rpc").isUndefined())
             {
-                Console::error("rpc was not setup by backend"s);
+                WebApi::Console::error("rpc was not setup by backend"s);
                 return;
             }
             Nui::val::global("nui_rpc")["frontend"].delete_(name.c_str());
