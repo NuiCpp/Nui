@@ -9,6 +9,8 @@ set(NUI_FRONTEND_SOURCES_RELATIVE
     api/dom_rect.cpp
     api/abort_signal.cpp
     api/abort_controller.cpp
+    api/resize_observer.cpp
+    api/resize_observer_entry.cpp
     attributes/impl/attribute.cpp
     components/dialog.cpp
     dom/dom.cpp

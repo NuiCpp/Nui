@@ -22,6 +22,8 @@ namespace emscripten
     class val
     {
       public:
+        struct iterator;
+
         auto withValueDo(auto&& fn) -> decltype(auto)
         {
             return fn(Nui::Tests::Engine::allValues[*referenced_value_]);
@@ -338,8 +340,7 @@ namespace emscripten
                     auto& obj = value.template as<Nui::Tests::Engine::Object&>();
                     if (obj.has("constructor"))
                     {
-                        return obj["constructor"].template as<Nui::Tests::Engine::Function&>()(
-                            std::forward<List>(args)...);
+                        return obj["constructor"].template as<Nui::Tests::Engine::Function&>()(args...);
                     }
                     Nui::Tests::Engine::warn("val::new_: object has no constructor");
                     return Nui::Tests::Engine::Object{};
@@ -454,6 +455,13 @@ namespace emscripten
             });
         }
 
+        iterator begin() const;
+        // our iterators are sentinel-based range iterators; use nullptr as the end sentinel
+        constexpr nullptr_t end() const
+        {
+            return nullptr;
+        }
+
       private:
         template <typename T>
         friend std::vector<T> vecFromJSArray(val const& v);
@@ -464,6 +472,51 @@ namespace emscripten
       private:
         std::shared_ptr<Nui::Tests::Engine::ReferenceType> referenced_value_;
     };
+
+    struct val::iterator
+    {
+        iterator() = delete;
+        // Make sure iterator is only moveable, not copyable as it represents a mutable state.
+        iterator(iterator&&) = default;
+        iterator(iterator const&) = delete;
+        ~iterator() = default;
+        explicit iterator(val v)
+            : v_(std::move(v))
+            , cur_value_{}
+            , index_{0}
+        {
+            this->operator++();
+        }
+        iterator& operator=(iterator&&) = default;
+        iterator& operator=(const iterator&) = delete;
+        val&& operator*()
+        {
+            return std::move(cur_value_);
+        }
+        const val& operator*() const
+        {
+            return cur_value_;
+        }
+        void operator++()
+        {
+            cur_value_ = v_[static_cast<int>(index_)];
+            ++index_;
+        }
+        bool operator!=(nullptr_t) const
+        {
+            return cur_value_.handle() != nullptr;
+        }
+
+      private:
+        val v_;
+        val cur_value_;
+        std::size_t index_;
+    };
+
+    inline val::iterator val::begin() const
+    {
+        return val::iterator{*this};
+    }
 
     template <typename T>
     std::vector<T> vecFromJSArray(val const& v)
