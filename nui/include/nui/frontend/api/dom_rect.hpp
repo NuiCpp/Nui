@@ -20,6 +20,39 @@ namespace Nui::WebApi
         void width(double newWidth);
         void height(double newHeight);
 
+        double x() const
+        {
+            return DomRectReadOnly::x();
+        }
+        double y() const
+        {
+            return DomRectReadOnly::y();
+        }
+        double width() const
+        {
+            return DomRectReadOnly::width();
+        }
+        double height() const
+        {
+            return DomRectReadOnly::height();
+        }
+        double top() const
+        {
+            return DomRectReadOnly::top();
+        }
+        double right() const
+        {
+            return DomRectReadOnly::right();
+        }
+        double bottom() const
+        {
+            return DomRectReadOnly::bottom();
+        }
+        double left() const
+        {
+            return DomRectReadOnly::left();
+        }
+
         static DomRect fromRect();
         static DomRect fromRect(RectObject);
     };
