@@ -11,6 +11,11 @@ set(NUI_FRONTEND_SOURCES_RELATIVE
     api/abort_controller.cpp
     api/resize_observer.cpp
     api/resize_observer_entry.cpp
+    api/data_transfer_item_list.cpp
+    api/data_transfer.cpp
+    api/drag_event.cpp
+    api/file_list.cpp
+    api/file.cpp
     attributes/impl/attribute.cpp
     components/dialog.cpp
     dom/dom.cpp
