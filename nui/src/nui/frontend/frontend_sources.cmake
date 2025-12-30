@@ -2,6 +2,21 @@ set(NUI_FRONTEND_SOURCES_RELATIVE
     api/fetch.cpp
     api/throttle.cpp
     api/timer.cpp
+    api/event.cpp
+    api/ui_event.cpp
+    api/keyboard_event.cpp
+    api/mouse_event.cpp
+    api/dom_rect_readonly.cpp
+    api/dom_rect.cpp
+    api/abort_signal.cpp
+    api/abort_controller.cpp
+    api/resize_observer.cpp
+    api/resize_observer_entry.cpp
+    api/data_transfer_item_list.cpp
+    api/data_transfer.cpp
+    api/drag_event.cpp
+    api/file_list.cpp
+    api/file.cpp
     attributes/impl/attribute.cpp
     components/dialog.cpp
     dom/dom.cpp
@@ -14,6 +29,7 @@ set(NUI_FRONTEND_SOURCES_RELATIVE
     window.cpp
     screen.cpp
     environment_variables.cpp
+    val_wrapper.cpp
 )
 
 set(NUI_FRONTEND_SOURCES "")
