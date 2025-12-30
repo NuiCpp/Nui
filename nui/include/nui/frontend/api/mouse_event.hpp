@@ -1,6 +1,6 @@
 #pragma once
 
-#include <nui/frontend/api/event.hpp>
+#include <nui/frontend/api/ui_event.hpp>
 
 namespace Nui::WebApi
 {
@@ -9,7 +9,7 @@ namespace Nui::WebApi
      *
      * @see https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent
      */
-    class MouseEvent : public Event
+    class MouseEvent : public UiEvent
     {
       public:
         explicit MouseEvent(Nui::val event);

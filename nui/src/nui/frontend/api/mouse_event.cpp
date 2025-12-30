@@ -3,7 +3,7 @@
 namespace Nui::WebApi
 {
     MouseEvent::MouseEvent(Nui::val event)
-        : Event{std::move(event)}
+        : UiEvent{std::move(event)}
     {}
 
     bool MouseEvent::altKey() const

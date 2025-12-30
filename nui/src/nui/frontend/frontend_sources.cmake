@@ -3,6 +3,7 @@ set(NUI_FRONTEND_SOURCES_RELATIVE
     api/throttle.cpp
     api/timer.cpp
     api/event.cpp
+    api/ui_event.cpp
     api/keyboard_event.cpp
     api/mouse_event.cpp
     api/dom_rect_readonly.cpp

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <nui/frontend/api/event.hpp>
+#include <nui/frontend/api/ui_event.hpp>
 
 namespace Nui::WebApi
 {
@@ -9,7 +9,7 @@ namespace Nui::WebApi
      *
      * @see https://developer.mozilla.org/en-US/docs/Web/API/Element/keyup_event
      */
-    class KeyboardEvent : public Event
+    class KeyboardEvent : public UiEvent
     {
       public:
         explicit KeyboardEvent(Nui::val event);

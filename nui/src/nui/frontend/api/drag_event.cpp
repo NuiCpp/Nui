@@ -3,7 +3,7 @@
 namespace Nui::WebApi
 {
     DragEvent::DragEvent(Nui::val dragEvent)
-        : ValWrapper{std::move(dragEvent)}
+        : UiEvent{std::move(dragEvent)}
     {}
 
     std::optional<DataTransfer> DragEvent::dataTransfer() const
