@@ -2,6 +2,7 @@
 
 #include <nui/frontend/api/resize_observer_entry.hpp>
 #include <nui/frontend/val_wrapper.hpp>
+#include <nui/utility/move_detector.hpp>
 
 #include <functional>
 
@@ -17,6 +18,12 @@ namespace Nui::WebApi
       public:
         explicit ResizeObserver(
             std::function<void(std::vector<ResizeObserverEntry> const&, ResizeObserver const&)> callback);
+        ~ResizeObserver() override;
+        ResizeObserver(ResizeObserver const&) = delete;
+        ResizeObserver(ResizeObserver&&) noexcept = default;
+        ResizeObserver& operator=(ResizeObserver const&) = delete;
+        ResizeObserver& operator=(ResizeObserver&&) noexcept = default;
+
         explicit ResizeObserver(Nui::val event);
 
         /**
@@ -62,6 +69,7 @@ namespace Nui::WebApi
         void unobserve(Nui::val target) const;
 
       private:
+        Nui::MoveDetector moveDetector_;
         std::function<void(std::vector<ResizeObserverEntry> const&, ResizeObserver const&)> callback_;
     };
 }
