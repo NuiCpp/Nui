@@ -171,6 +171,7 @@ namespace Nui
     {
       public:
         using value_type = ContainedT;
+        using observed_type = ContainedT;
 
       public:
         class ModificationProxy
@@ -710,6 +711,7 @@ namespace Nui
     class ObservedContainer : public ModifiableObserved<ContainerT>
     {
       public:
+        using observed_type = ContainerT;
         friend class ContainerWrapUtility::ReferenceWrapper<typename ContainerT::value_type, ContainerT>;
         friend class ContainerWrapUtility::PointerWrapper<typename ContainerT::value_type, ContainerT>;
 
@@ -1282,6 +1284,7 @@ namespace Nui
     class Observed : public ModifiableObserved<T>
     {
       public:
+        using observed_type = T;
         using ModifiableObserved<T>::ModifiableObserved;
         using ModifiableObserved<T>::operator=;
         using ModifiableObserved<T>::operator->;
@@ -1301,10 +1304,11 @@ namespace Nui
     class Observed<std::vector<Parameters...>> : public ObservedContainer<std::vector<Parameters...>>
     {
       public:
+        static constexpr auto isRandomAccess = true;
         using ObservedContainer<std::vector<Parameters...>>::ObservedContainer;
         using ObservedContainer<std::vector<Parameters...>>::operator=;
         using ObservedContainer<std::vector<Parameters...>>::operator->;
-        static constexpr auto isRandomAccess = true;
+        using observed_type = std::vector<Parameters...>;
 
         Observed<std::vector<Parameters...>>& operator=(std::vector<Parameters...> const& contained)
         {
@@ -1321,10 +1325,11 @@ namespace Nui
     class Observed<std::deque<Parameters...>> : public ObservedContainer<std::deque<Parameters...>>
     {
       public:
+        static constexpr auto isRandomAccess = true;
         using ObservedContainer<std::deque<Parameters...>>::ObservedContainer;
         using ObservedContainer<std::deque<Parameters...>>::operator=;
         using ObservedContainer<std::deque<Parameters...>>::operator->;
-        static constexpr auto isRandomAccess = true;
+        using observed_type = std::deque<Parameters...>;
 
         Observed<std::deque<Parameters...>>& operator=(std::deque<Parameters...> const& contained)
         {
@@ -1341,10 +1346,11 @@ namespace Nui
     class Observed<std::basic_string<Parameters...>> : public ObservedContainer<std::basic_string<Parameters...>>
     {
       public:
+        static constexpr auto isRandomAccess = true;
         using ObservedContainer<std::basic_string<Parameters...>>::ObservedContainer;
         using ObservedContainer<std::basic_string<Parameters...>>::operator=;
         using ObservedContainer<std::basic_string<Parameters...>>::operator->;
-        static constexpr auto isRandomAccess = true;
+        using observed_type = std::basic_string<Parameters...>;
 
         Observed<std::basic_string<Parameters...>>& operator=(std::basic_string<Parameters...> const& contained)
         {
@@ -1373,10 +1379,11 @@ namespace Nui
     class Observed<std::set<Parameters...>> : public ObservedContainer<std::set<Parameters...>>
     {
       public:
+        static constexpr auto isRandomAccess = false;
         using ObservedContainer<std::set<Parameters...>>::ObservedContainer;
         using ObservedContainer<std::set<Parameters...>>::operator=;
         using ObservedContainer<std::set<Parameters...>>::operator->;
-        static constexpr auto isRandomAccess = false;
+        using observed_type = std::set<Parameters...>;
 
       public:
         Observed()
@@ -1403,10 +1410,11 @@ namespace Nui
     class Observed<std::list<Parameters...>> : public ObservedContainer<std::list<Parameters...>>
     {
       public:
+        static constexpr auto isRandomAccess = false;
         using ObservedContainer<std::list<Parameters...>>::ObservedContainer;
         using ObservedContainer<std::list<Parameters...>>::operator=;
         using ObservedContainer<std::list<Parameters...>>::operator->;
-        static constexpr auto isRandomAccess = false;
+        using observed_type = std::list<Parameters...>;
 
       public:
         Observed()
@@ -1436,6 +1444,7 @@ namespace Nui
       public:
         using ObservedBase::ObservedBase;
         using ObservedBase::operator=;
+        using observed_type = void;
 
         void modify() const
         {

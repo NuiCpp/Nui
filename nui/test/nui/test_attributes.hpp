@@ -780,4 +780,26 @@ namespace Nui::Tests
 
         EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "Hello");
     }
+
+    TEST_F(TestAttributes, GeneratorCanTakeObservedValuesAsArguments)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::class_;
+
+        Observed<std::string> classPart1{"Hello"};
+        Observed<std::string> classPart2{"World"};
+
+        render(
+            div{class_ = observe(classPart1, classPart2)
+                             .generate([](std::string const& part1, std::string const& part2) -> std::string {
+                                 return part1 + " " + part2;
+                             })}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "Hello World");
+
+        classPart1 = "Goodbye";
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "Goodbye World");
+    }
 }

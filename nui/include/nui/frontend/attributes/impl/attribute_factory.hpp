@@ -21,24 +21,21 @@ namespace Nui::Attributes
     namespace Detail
     {
         template <typename ElementT, typename T>
-        EventContext::EventIdType changeEventHandler(
-            std::weak_ptr<ElementT> element,
-            T const& obs,
-            std::function<bool(std::shared_ptr<ElementT> const&)> onLock)
+        EventContext::EventIdType changeEventHandler(std::weak_ptr<ElementT> element, T const& obs, auto onLock)
         {
             const auto eventId = globalEventContext.registerEvent(
                 Event{
                     [element, obs, onLock = std::move(onLock)](auto eventId) {
                         if (auto shared = element.lock(); shared)
-                        {
-                            return onLock(shared);
-                        }
+                            return onLock(*shared);
+
                         obs.detachEvent(eventId);
                         return false;
                     },
                     [element]() {
                         return !element.expired();
-                    }});
+                    },
+                });
             obs.attachEvent(eventId);
             return eventId;
         }
@@ -46,27 +43,19 @@ namespace Nui::Attributes
         template <typename ElementT, typename T>
         EventContext::EventIdType defaultAttributeEvent(std::weak_ptr<ElementT> element, T const& obs, char const* name)
         {
-            return changeEventHandler(
-                element,
-                obs,
-                std::function<bool(std::shared_ptr<ElementT> const&)>{
-                    [name, obs](std::shared_ptr<ElementT> const& shared) {
-                        shared->setAttribute(name, obs.value());
-                        return true;
-                    }});
+            return changeEventHandler(element, obs, [name = name, obs](ElementT& element) {
+                element.setAttribute(name, obs.value());
+                return true;
+            });
         }
 
         template <typename ElementT, typename T>
         EventContext::EventIdType defaultPropertyEvent(std::weak_ptr<ElementT> element, T const& obs, char const* name)
         {
-            return changeEventHandler(
-                element,
-                obs,
-                std::function<bool(std::shared_ptr<ElementT> const&)>{
-                    [name, obs](std::shared_ptr<ElementT> const& shared) {
-                        shared->setProperty(name, obs.value());
-                        return true;
-                    }});
+            return changeEventHandler(element, obs, [name = name, obs](ElementT& element) {
+                element.setProperty(name, obs.value());
+                return true;
+            });
         }
 
         template <typename FunctionT>
