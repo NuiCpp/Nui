@@ -14,9 +14,8 @@ namespace Nui
     class FixedString
     {
       public:
-        constexpr FixedString()
-        {}
-        constexpr FixedString(char const* s)
+        constexpr FixedString() = default;
+        constexpr explicit FixedString(char const* s)
         {
             for (unsigned i = 0; i != Size; ++i)
                 m_buffer[i] = s[i];
@@ -44,7 +43,8 @@ namespace Nui
         {
             auto const* s1 = &m_buffer[0];
             auto const* s2 = &other.m_buffer[0];
-            unsigned char c1, c2;
+            unsigned char c1;
+            unsigned char c2;
             do
             {
                 c1 = static_cast<unsigned char>(*s1++);

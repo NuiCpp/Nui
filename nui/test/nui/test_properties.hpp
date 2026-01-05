@@ -186,14 +186,13 @@ namespace Nui::Tests
         EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
     }
 
-    TEST_F(TestProperties, PropertyCanBeCString)
+    TEST_F(TestProperties, PropertyCanBeLiteralString)
     {
         using Nui::Elements::div;
         using Nui::Attributes::id;
+        using namespace Nui::Attributes::Literals;
 
-        char const* idValue{"A"};
-
-        render(div{id = property(idValue)}());
+        render(div{"id"_prop = "A"}());
         EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
     }
 
