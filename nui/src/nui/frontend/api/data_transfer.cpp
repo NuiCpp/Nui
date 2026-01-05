@@ -61,7 +61,7 @@ namespace Nui::WebApi
         std::vector<std::string> result;
         Nui::val typesVal = val_["types"];
         const auto length = typesVal["length"].as<int>();
-        result.reserve(length);
+        result.reserve(static_cast<std::size_t>(length));
         for (int i = 0; i < length; ++i)
             result.push_back(typesVal[i].as<std::string>());
 
