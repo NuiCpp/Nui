@@ -12,6 +12,7 @@ target_link_libraries(
         nui-events
         boost_preprocessor
         traits-library
+        fmt::fmt
         mplex
         interval-tree
         boost_describe

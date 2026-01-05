@@ -33,7 +33,7 @@ target_link_libraries(
         utf8cpp
     PUBLIC
         traits-library
-        fmt
+        fmt::fmt
         webview-iface
         portable_file_dialogs
         nlohmann_json::nlohmann_json
