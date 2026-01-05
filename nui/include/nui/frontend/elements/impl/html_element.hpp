@@ -14,6 +14,7 @@
 #include <nui/concepts.hpp>
 #include <nui/utility/scope_exit.hpp>
 
+#include <traits/functions.hpp>
 #include <nui/frontend/val.hpp>
 
 #include <vector>
@@ -88,7 +89,7 @@ namespace Nui
         }
 
       private:
-        template <typename... ObservedValues, std::invocable GeneratorT>
+        template <typename... ObservedValues, Traits::IsCallable GeneratorT>
         auto reactiveRender(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& elementRenderer) &&
         {
             return [self = this->clone(),
@@ -102,10 +103,27 @@ namespace Nui
 
                 auto&& createdSelf = renderElement(gen, parentElement, self);
 
+                using RenderInvokeResultType = Traits::FunctionTraits<decltype(elementRenderer)>::ReturnType;
+                auto render = [](auto& elementRenderer, auto const& observedValues) {
+                    if constexpr (Traits::FunctionTraits<std::decay_t<decltype(elementRenderer)>>::arity == 0)
+                    {
+                        return elementRenderer();
+                    }
+                    else
+                    {
+                        return std::apply(
+                            [&](auto const&... observed) {
+                                return elementRenderer(observed.value()...);
+                            },
+                            observedValues.observedValues());
+                    }
+                };
+
                 if (gen.type == RendererType::Inplace)
                 {
                     *childrenRefabricator = [observedValues,
                                              elementRenderer,
+                                             render,
                                              fragmentContext = Detail::FragmentContext<ElementType>{},
                                              createdSelfWeak = std::weak_ptr<ElementType>(createdSelf),
                                              childrenRefabricator]() mutable {
@@ -121,16 +139,24 @@ namespace Nui
                         Detail::makeChildrenUpdateEvent(observedValues, childrenRefabricator, createdSelfWeak);
 
                         // regenerate children
-                        if constexpr ((std::is_same_v<decltype(elementRenderer()), std::string>))
-                            parent->setTextContent(elementRenderer());
+                        if constexpr ((std::is_same_v<RenderInvokeResultType, std::string>))
+                            parent->setTextContent(render(elementRenderer, observedValues));
+                        else if constexpr ((std::is_same_v<RenderInvokeResultType, std::optional<std::string>>))
+                        {
+                            const auto result = render(elementRenderer, observedValues);
+                            if (result)
+                                parent->setTextContent(*result);
+                        }
                         else
-                            fragmentContext.push(elementRenderer()(*parent, Renderer{.type = RendererType::Fragment}));
+                            fragmentContext.push(render(elementRenderer, observedValues)(
+                                *parent, Renderer{.type = RendererType::Fragment}));
                     };
                 }
                 else
                 {
                     *childrenRefabricator = [observedValues,
                                              elementRenderer,
+                                             render,
                                              createdSelfWeak = std::weak_ptr<ElementType>(createdSelf),
                                              childrenRefabricator]() mutable {
                         auto parent = createdSelfWeak.lock();
@@ -142,14 +168,19 @@ namespace Nui
 
                         // clear children
                         parent->clearChildren();
-
                         Detail::makeChildrenUpdateEvent(observedValues, childrenRefabricator, createdSelfWeak);
 
                         // regenerate children
-                        if constexpr ((std::is_same_v<decltype(elementRenderer()), std::string>))
-                            parent->setTextContent(elementRenderer());
+                        if constexpr ((std::is_same_v<RenderInvokeResultType, std::string>))
+                            parent->setTextContent(render(elementRenderer, observedValues));
+                        else if constexpr ((std::is_same_v<RenderInvokeResultType, std::optional<std::string>>))
+                        {
+                            const auto result = render(elementRenderer, observedValues);
+                            if (result)
+                                parent->setTextContent(*result);
+                        }
                         else
-                            elementRenderer()(*parent, Renderer{.type = RendererType::Append});
+                            render(elementRenderer, observedValues)(*parent, Renderer{.type = RendererType::Append});
                     };
                 }
 
@@ -289,12 +320,12 @@ namespace Nui
         }
 
         // Reactive functions:
-        template <typename... ObservedValues, std::invocable GeneratorT>
+        template <typename... ObservedValues, Traits::IsCallable GeneratorT>
         auto operator()(ObservedValueCombinatorWithGenerator<GeneratorT, ObservedValues...> combinator) &&
         {
             return std::move(*this).operator()(std::move(combinator).split(), std::move(combinator).generator());
         }
-        template <typename... ObservedValues, std::invocable GeneratorT>
+        template <typename... ObservedValues, Traits::IsCallable GeneratorT>
         auto operator()(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& elementRenderer) &&
         {
             return std::move(*this).reactiveRender(
