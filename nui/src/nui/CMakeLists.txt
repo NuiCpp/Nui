@@ -1,4 +1,5 @@
 add_subdirectory(event_system)
+
 if (EMSCRIPTEN)
     add_subdirectory(frontend)
 else()
