@@ -59,22 +59,22 @@ namespace Nui::Attributes
         }
 
         template <typename FunctionT>
-        struct IsCallableByExplicitConstructionOfValImpl
+        struct CallableByExplicitConstructionOfValImpl
         {
             static constexpr bool value = false;
         };
 
         template <typename FunctionT>
-        requires Traits::IsCallableOfArity<FunctionT, 1>
-        struct IsCallableByExplicitConstructionOfValImpl<FunctionT>
+        requires Traits::CallableOfArity<FunctionT, 1>
+        struct CallableByExplicitConstructionOfValImpl<FunctionT>
         {
             static constexpr bool value =
                 std::is_constructible_v<typename Traits::FunctionTraits<FunctionT>::template Argument<0>, Nui::val>;
         };
 
         template <typename FunctionCallableByExplicitConstructionOfVal>
-        concept IsCallableByExplicitConstructionOfVal =
-            IsCallableByExplicitConstructionOfValImpl<std::decay_t<FunctionCallableByExplicitConstructionOfVal>>::value;
+        concept CallableByExplicitConstructionOfVal =
+            CallableByExplicitConstructionOfValImpl<std::decay_t<FunctionCallableByExplicitConstructionOfVal>>::value;
     }
 
     class PropertyFactory
@@ -248,7 +248,7 @@ namespace Nui::Attributes
         }
 
         template <typename FunctionT>
-        requires Detail::IsCallableByExplicitConstructionOfVal<FunctionT>
+        requires Detail::CallableByExplicitConstructionOfVal<FunctionT>
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(FunctionT func) const
         {
@@ -289,7 +289,7 @@ namespace Nui::Attributes
         template <typename U>
         requires(
             !IsObservedLike<std::decay_t<U>> && !std::invocable<U, Nui::val> &&
-            !Detail::IsCallableByExplicitConstructionOfVal<U> && !std::invocable<U> &&
+            !Detail::CallableByExplicitConstructionOfVal<U> && !std::invocable<U> &&
             !Nui::Detail::IsProperty<std::decay_t<U>>)
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(U val) const
@@ -448,7 +448,7 @@ namespace Nui::Attributes
         template <typename U>
         requires(
             !IsObservedLike<std::decay_t<U>> && !std::invocable<U, Nui::val> &&
-            !Detail::IsCallableByExplicitConstructionOfVal<U> && !std::invocable<U>)
+            !Detail::CallableByExplicitConstructionOfVal<U> && !std::invocable<U>)
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(Nui::Detail::Property<U> const& prop) const
         {
@@ -520,7 +520,7 @@ namespace Nui::Attributes
         }
 
         template <typename FunctionT>
-        requires Detail::IsCallableByExplicitConstructionOfVal<FunctionT>
+        requires Detail::CallableByExplicitConstructionOfVal<FunctionT>
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(FunctionT func) const
         {
@@ -563,7 +563,7 @@ namespace Nui::Attributes
         }
 
         template <typename FunctionT>
-        requires Detail::IsCallableByExplicitConstructionOfVal<FunctionT>
+        requires Detail::CallableByExplicitConstructionOfVal<FunctionT>
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(Nui::Detail::Property<FunctionT> func) const
         {
@@ -628,7 +628,7 @@ namespace Nui::Attributes
         }
 
         template <typename FunctionT>
-        requires Detail::IsCallableByExplicitConstructionOfVal<FunctionT>
+        requires Detail::CallableByExplicitConstructionOfVal<FunctionT>
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(FunctionT func) const
         {

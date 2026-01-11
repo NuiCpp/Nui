@@ -89,7 +89,7 @@ namespace Nui
         }
 
       private:
-        template <typename... ObservedValues, Traits::IsCallable GeneratorT>
+        template <typename... ObservedValues, Traits::Callable GeneratorT>
         auto reactiveRender(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& elementRenderer) &&
         {
             return [self = this->clone(),
@@ -320,12 +320,12 @@ namespace Nui
         }
 
         // Reactive functions:
-        template <typename... ObservedValues, Traits::IsCallable GeneratorT>
+        template <typename... ObservedValues, Traits::Callable GeneratorT>
         auto operator()(ObservedValueCombinatorWithGenerator<GeneratorT, ObservedValues...> combinator) &&
         {
             return std::move(*this).operator()(std::move(combinator).split(), std::move(combinator).generator());
         }
-        template <typename... ObservedValues, Traits::IsCallable GeneratorT>
+        template <typename... ObservedValues, Traits::Callable GeneratorT>
         auto operator()(ObservedValueCombinator<ObservedValues...> observedValues, GeneratorT&& elementRenderer) &&
         {
             return std::move(*this).reactiveRender(
