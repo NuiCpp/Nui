@@ -12,3 +12,7 @@ nui_fetch_dependency(
     GIT_REPOSITORY ${NUI_NLOHMANN_JSON_GIT_REPOSITORY}
     GIT_TAG ${NUI_NLOHMANN_JSON_GIT_TAG}
 )
+
+if (NUI_JSON_DIAGNOSTICS)
+    target_compile_definitions(nlohmann_json INTERFACE JSON_DIAGNOSTICS=1)
+endif()

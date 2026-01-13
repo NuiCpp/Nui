@@ -186,14 +186,13 @@ namespace Nui::Tests
         EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
     }
 
-    TEST_F(TestProperties, PropertyCanBeCString)
+    TEST_F(TestProperties, PropertyCanBeLiteralString)
     {
         using Nui::Elements::div;
         using Nui::Attributes::id;
+        using namespace Nui::Attributes::Literals;
 
-        char const* idValue{"A"};
-
-        render(div{id = property(idValue)}());
+        render(div{"id"_prop = "A"}());
         EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
     }
 
@@ -348,5 +347,47 @@ namespace Nui::Tests
         globalEventContext.executeActiveEventsImmediately();
 
         EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
+    }
+
+    TEST_F(TestProperties, GeneratorCanTakeObservedValuesAsArguments)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        Observed<std::string> classPart1{"Hello"};
+        Observed<std::string> classPart2{"World"};
+
+        render(
+            div{id = property(observe(classPart1, classPart2)
+                                  .generate([](std::string const& part1, std::string const& part2) -> std::string {
+                                      return part1 + " " + part2;
+                                  }))}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "Hello World");
+
+        classPart1 = "Goodbye";
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "Goodbye World");
+    }
+
+    TEST_F(TestProperties, GeneratorCanTakeObservedValuesAsArgumentsAlternate)
+    {
+        using Nui::Elements::input;
+        using Nui::Attributes::value;
+        using Nui::property;
+
+        Observed<std::string> observed{"Hello"};
+
+        render(input{value = observe(observed).generateProperty([&observed](std::string const& observedValue) {
+            return observedValue + " World";
+        })}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["value"].as<std::string>(), "Hello World");
+
+        observed = "Goodbye";
+        Nui::globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["value"].as<std::string>(), "Goodbye World");
     }
 }

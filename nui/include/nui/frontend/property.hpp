@@ -1,5 +1,6 @@
 #include <nui/frontend/event_system/observed_value.hpp>
 #include <nui/frontend/event_system/observed_value_combinator.hpp>
+#include <nui/utility/string_literal.hpp>
 
 #include <concepts>
 #include <functional>
@@ -78,10 +79,17 @@ namespace Nui
     }
 
     template <typename U>
-    requires(!IsObservedLike<std::decay_t<U>> && !std::invocable<U> && !std::invocable<U, Nui::val>)
+    requires(
+        !IsObservedLike<std::decay_t<U>> && !std::invocable<U> && !std::invocable<U, Nui::val> &&
+        !std::is_same_v<U, char const*>)
     Detail::Property<std::decay_t<U>> property(U val)
     {
         return Detail::Property<std::decay_t<U>>{.prop = std::move(val)};
+    }
+
+    inline Detail::Property<char const*> property(StringLiteral val)
+    {
+        return Detail::Property<char const*>{.prop = val.c_str};
     }
 
     template <typename RendererType, typename... ObservedValues>

@@ -2,7 +2,7 @@
 
 #include <nui/data_structures/selectables_registry.hpp>
 
-#include <boost/asio/deadline_timer.hpp>
+#include <boost/asio/system_timer.hpp>
 
 #include <chrono>
 #include <memory>
@@ -25,13 +25,12 @@ namespace Nui
                 std::chrono::milliseconds interval,
                 bool callWhenReady,
                 RpcHub* hub,
-                boost::asio::any_io_executor executor)
+                boost::asio::any_io_executor const& executor)
                 : guard_{}
                 , interval_{interval}
                 , lastCallTime_{std::chrono::high_resolution_clock::now() - 2 * interval}
-                , timer_{std::move(executor)}
+                , timer_{executor}
                 , callWhenReady_{callWhenReady}
-                , timerIsRunning_{false}
                 , hub_{hub}
                 , id_{std::numeric_limits<decltype(id_)>::max()}
             {}
@@ -40,6 +39,11 @@ namespace Nui
                 std::scoped_lock lock{guard_};
                 timer_.cancel();
             }
+            ThrottleInstance(ThrottleInstance const&) = delete;
+            ThrottleInstance& operator=(ThrottleInstance const&) = delete;
+            // because of mutex:
+            ThrottleInstance(ThrottleInstance&&) = delete;
+            ThrottleInstance& operator=(ThrottleInstance&&) = delete;
 
             bool mayCall()
             {
@@ -51,29 +55,27 @@ namespace Nui
                     lastCallTime_ = now;
                     return true;
                 }
-                else
-                {
-                    if (callWhenReady_ && !timerIsRunning_)
-                    {
-                        timerIsRunning_ = true;
-                        const auto waitingTime =
-                            std::chrono::duration_cast<std::chrono::milliseconds>(interval_ - timeSinceLastCall);
 
-                        timer_.expires_from_now(boost::posix_time::milliseconds(waitingTime.count()));
-                        timer_.async_wait([weak = weak_from_this()](const boost::system::error_code& error) {
-                            if (error)
-                                return;
-                            if (auto shared = weak.lock())
-                            {
-                                std::scoped_lock lock{shared->guard_};
-                                shared->timerIsRunning_ = false;
-                                shared->hub_->callRemote(shared->throttledCallWhenReadyWithId_);
-                                shared->lastCallTime_ = std::chrono::high_resolution_clock::now();
-                            }
-                        });
-                    }
-                    return false;
+                if (callWhenReady_ && !timerIsRunning_)
+                {
+                    timerIsRunning_ = true;
+                    const auto waitingTime =
+                        std::chrono::duration_cast<std::chrono::milliseconds>(interval_ - timeSinceLastCall);
+
+                    timer_.expires_after(std::chrono::milliseconds(waitingTime.count()));
+                    timer_.async_wait([weak = weak_from_this()](const boost::system::error_code& error) {
+                        if (error)
+                            return;
+                        if (auto shared = weak.lock())
+                        {
+                            std::scoped_lock lock{shared->guard_};
+                            shared->timerIsRunning_ = false;
+                            shared->hub_->callRemote(shared->throttledCallWhenReadyWithId_);
+                            shared->lastCallTime_ = std::chrono::high_resolution_clock::now();
+                        }
+                    });
                 }
+                return false;
             }
 
             void setId(Nui::SelectablesRegistry<ThrottleInstance>::IdType id)
@@ -87,17 +89,22 @@ namespace Nui
             std::recursive_mutex guard_;
             std::chrono::milliseconds interval_;
             std::chrono::high_resolution_clock::time_point lastCallTime_;
-            boost::asio::deadline_timer timer_;
+            boost::asio::system_timer timer_;
             bool callWhenReady_;
-            bool timerIsRunning_;
+            bool timerIsRunning_{false};
             Nui::RpcHub* hub_;
             Nui::SelectablesRegistry<ThrottleInstance>::IdType id_;
             std::string throttledCallWhenReadyWithId_;
         };
         using ThrottleStore = SelectablesRegistry<std::shared_ptr<ThrottleInstance>>;
 
+        // This will land in a unique_ptr and just defines the create/destroy functions. This has trampoline like
+        // characteristics.
         struct ThrottleStoreCreator
         {
+            friend RpcHub;
+
+          private:
             static void* create()
             {
                 return new ThrottleStore();
@@ -108,9 +115,13 @@ namespace Nui
             }
         };
 
-        ThrottleStore& getStore(auto& hub)
+        namespace
         {
-            return *static_cast<ThrottleStore*>(hub.template accessStateStore<ThrottleStoreCreator>(throttleStoreId));
+            ThrottleStore& getStore(auto& hub)
+            {
+                return *static_cast<ThrottleStore*>(
+                    hub.template accessStateStore<ThrottleStoreCreator>(throttleStoreId));
+            }
         }
     }
 
@@ -119,8 +130,9 @@ namespace Nui
         hub.registerFunction(
             "Nui::throttle", [&hub](std::string const& responseId, int32_t period, bool callWhenReady) {
                 auto& store = Detail::getStore(hub);
-                const auto id = store.append(std::make_shared<Detail::ThrottleInstance>(
-                    std::chrono::milliseconds(period), callWhenReady, &hub, hub.window().getExecutor()));
+                const auto id = store.append(
+                    std::make_shared<Detail::ThrottleInstance>(
+                        std::chrono::milliseconds(period), callWhenReady, &hub, hub.window().getExecutor()));
                 store[id]->setId(id);
                 hub.callRemote(responseId, id);
             });

@@ -13,6 +13,7 @@ target_link_libraries(nui-frontend-mocked PUBLIC
     interval-tree
     Boost::boost
     nui-events
+    fmt::fmt
 )
 target_compile_definitions(nui-frontend-mocked PRIVATE __EMSCRIPTEN__)
 target_compile_features(nui-frontend-mocked PUBLIC cxx_std_20)
@@ -30,6 +31,7 @@ add_executable(nui-tests
 )
 target_link_libraries(nui-tests PRIVATE
     nui-frontend-mocked
+    fmt::fmt
     gtest
     gmock
 )

@@ -21,24 +21,21 @@ namespace Nui::Attributes
     namespace Detail
     {
         template <typename ElementT, typename T>
-        EventContext::EventIdType changeEventHandler(
-            std::weak_ptr<ElementT> element,
-            T const& obs,
-            std::function<bool(std::shared_ptr<ElementT> const&)> onLock)
+        EventContext::EventIdType changeEventHandler(std::weak_ptr<ElementT> element, T const& obs, auto onLock)
         {
             const auto eventId = globalEventContext.registerEvent(
                 Event{
                     [element, obs, onLock = std::move(onLock)](auto eventId) {
                         if (auto shared = element.lock(); shared)
-                        {
-                            return onLock(shared);
-                        }
+                            return onLock(*shared);
+
                         obs.detachEvent(eventId);
                         return false;
                     },
                     [element]() {
                         return !element.expired();
-                    }});
+                    },
+                });
             obs.attachEvent(eventId);
             return eventId;
         }
@@ -46,46 +43,38 @@ namespace Nui::Attributes
         template <typename ElementT, typename T>
         EventContext::EventIdType defaultAttributeEvent(std::weak_ptr<ElementT> element, T const& obs, char const* name)
         {
-            return changeEventHandler(
-                element,
-                obs,
-                std::function<bool(std::shared_ptr<ElementT> const&)>{
-                    [name, obs](std::shared_ptr<ElementT> const& shared) {
-                        shared->setAttribute(name, obs.value());
-                        return true;
-                    }});
+            return changeEventHandler(element, obs, [name = name, obs](ElementT& element) {
+                element.setAttribute(name, obs.value());
+                return true;
+            });
         }
 
         template <typename ElementT, typename T>
         EventContext::EventIdType defaultPropertyEvent(std::weak_ptr<ElementT> element, T const& obs, char const* name)
         {
-            return changeEventHandler(
-                element,
-                obs,
-                std::function<bool(std::shared_ptr<ElementT> const&)>{
-                    [name, obs](std::shared_ptr<ElementT> const& shared) {
-                        shared->setProperty(name, obs.value());
-                        return true;
-                    }});
+            return changeEventHandler(element, obs, [name = name, obs](ElementT& element) {
+                element.setProperty(name, obs.value());
+                return true;
+            });
         }
 
         template <typename FunctionT>
-        struct IsCallableByExplicitConstructionOfValImpl
+        struct CallableByExplicitConstructionOfValImpl
         {
             static constexpr bool value = false;
         };
 
         template <typename FunctionT>
-        requires Traits::IsCallableOfArity<FunctionT, 1>
-        struct IsCallableByExplicitConstructionOfValImpl<FunctionT>
+        requires Traits::CallableOfArity<FunctionT, 1>
+        struct CallableByExplicitConstructionOfValImpl<FunctionT>
         {
             static constexpr bool value =
                 std::is_constructible_v<typename Traits::FunctionTraits<FunctionT>::template Argument<0>, Nui::val>;
         };
 
         template <typename FunctionCallableByExplicitConstructionOfVal>
-        concept IsCallableByExplicitConstructionOfVal =
-            IsCallableByExplicitConstructionOfValImpl<std::decay_t<FunctionCallableByExplicitConstructionOfVal>>::value;
+        concept CallableByExplicitConstructionOfVal =
+            CallableByExplicitConstructionOfValImpl<std::decay_t<FunctionCallableByExplicitConstructionOfVal>>::value;
     }
 
     class PropertyFactory
@@ -259,7 +248,7 @@ namespace Nui::Attributes
         }
 
         template <typename FunctionT>
-        requires Detail::IsCallableByExplicitConstructionOfVal<FunctionT>
+        requires Detail::CallableByExplicitConstructionOfVal<FunctionT>
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(FunctionT func) const
         {
@@ -300,7 +289,7 @@ namespace Nui::Attributes
         template <typename U>
         requires(
             !IsObservedLike<std::decay_t<U>> && !std::invocable<U, Nui::val> &&
-            !Detail::IsCallableByExplicitConstructionOfVal<U> && !std::invocable<U> &&
+            !Detail::CallableByExplicitConstructionOfVal<U> && !std::invocable<U> &&
             !Nui::Detail::IsProperty<std::decay_t<U>>)
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(U val) const
@@ -459,7 +448,7 @@ namespace Nui::Attributes
         template <typename U>
         requires(
             !IsObservedLike<std::decay_t<U>> && !std::invocable<U, Nui::val> &&
-            !Detail::IsCallableByExplicitConstructionOfVal<U> && !std::invocable<U>)
+            !Detail::CallableByExplicitConstructionOfVal<U> && !std::invocable<U>)
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(Nui::Detail::Property<U> const& prop) const
         {
@@ -531,7 +520,7 @@ namespace Nui::Attributes
         }
 
         template <typename FunctionT>
-        requires Detail::IsCallableByExplicitConstructionOfVal<FunctionT>
+        requires Detail::CallableByExplicitConstructionOfVal<FunctionT>
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(FunctionT func) const
         {
@@ -574,7 +563,7 @@ namespace Nui::Attributes
         }
 
         template <typename FunctionT>
-        requires Detail::IsCallableByExplicitConstructionOfVal<FunctionT>
+        requires Detail::CallableByExplicitConstructionOfVal<FunctionT>
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(Nui::Detail::Property<FunctionT> func) const
         {
@@ -639,7 +628,7 @@ namespace Nui::Attributes
         }
 
         template <typename FunctionT>
-        requires Detail::IsCallableByExplicitConstructionOfVal<FunctionT>
+        requires Detail::CallableByExplicitConstructionOfVal<FunctionT>
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute operator=(FunctionT func) const
         {

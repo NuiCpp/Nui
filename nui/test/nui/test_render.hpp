@@ -916,4 +916,45 @@ namespace Nui::Tests
 
         render(body{}(observe(bla).generate(lambda)));
     }
+
+    TEST_F(TestRender, CanUseMutableLambdaForGenerate)
+    {
+        using Nui::Elements::body;
+
+        auto lambda = [this]() mutable -> std::string {
+            (void)this;
+            return "Hello";
+        };
+        Observed<bool> bla{true};
+
+        render(body{}(observe(bla).generate(lambda)));
+    }
+
+    TEST_F(TestRender, GenerateLambdaCanTakeObservedValuesAsArgument)
+    {
+        using Nui::Elements::body;
+
+        auto lambda = [](bool arg) -> std::string {
+            return arg ? "Hello" : "Bye";
+        };
+        Observed<bool> bla{true};
+
+        render(body{}(observe(bla).generate(lambda)));
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["textContent"].as<std::string>(), "Hello");
+    }
+
+    TEST_F(TestRender, GenerateMutableLambdaCanTakeObservedValuesAsArgument)
+    {
+        using Nui::Elements::body;
+
+        auto lambda = [](bool arg) mutable -> std::string {
+            return arg ? "Hello" : "Bye";
+        };
+        Observed<bool> bla{true};
+
+        render(body{}(observe(bla).generate(lambda)));
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["textContent"].as<std::string>(), "Hello");
+    }
 }

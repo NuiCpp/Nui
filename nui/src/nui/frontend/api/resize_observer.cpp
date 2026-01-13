@@ -12,7 +12,6 @@ namespace Nui::WebApi
                          .new_(
                              Nui::bind(
                                  [this](Nui::val entriesVal, Nui::val) {
-                                     Nui::WebApi::Console::log("ResizeObserver callback invoked.");
                                      std::vector<ResizeObserverEntry> entries;
                                      for (auto const& entryVal : entriesVal)
                                      {
@@ -28,6 +27,14 @@ namespace Nui::WebApi
         : ValWrapper(std::move(event))
         , callback_{}
     {}
+    ResizeObserver::~ResizeObserver()
+    {
+        if (moveDetector_.wasMoved())
+            return;
+
+        if (!val_.isNull() && !val_.isUndefined())
+            disconnect();
+    }
     void ResizeObserver::disconnect() const
     {
         val_.call<void>("disconnect");

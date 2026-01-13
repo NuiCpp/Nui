@@ -14,6 +14,8 @@
 #include <mplex/functional/lift.hpp>
 #include <mplex/fundamental/integral.hpp>
 
+#include <fmt/format.h>
+
 #include <tuple>
 #include <string>
 #include <sstream>
@@ -176,13 +178,12 @@ namespace Nui::Attributes
         StyleProperty(StyleProperty&&) noexcept = default;
         ~StyleProperty() = default;
 
-        // TODO: optimize following functions:
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         auto operator=(char const* value) const
         {
             return StylePropertyImpl{
                 [name_ = std::string{name}, value = std::string{value}]() {
-                    return name_ + ":" + value;
+                    return fmt::format("{}:{}", name_, value);
                 },
                 nullptr};
         }
@@ -191,7 +192,18 @@ namespace Nui::Attributes
         {
             return StylePropertyImpl{
                 [name_ = std::string{name}, value = std::move(value)]() {
-                    return name_ + ":" + value;
+                    return fmt::format("{}:{}", name_, value);
+                },
+                nullptr};
+        }
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
+        auto operator=(std::optional<std::string> value) const
+        {
+            return StylePropertyImpl{
+                [name_ = std::string{name}, value = std::move(value)]() -> std::string {
+                    if (value)
+                        return fmt::format("{}:{}", name_, *value);
+                    return {};
                 },
                 nullptr};
         }
@@ -200,7 +212,7 @@ namespace Nui::Attributes
         {
             return StylePropertyImpl{
                 [name_ = std::string{name}, &observedValue]() {
-                    return name_ + ":" + observedValue.value();
+                    return fmt::format("{}:{}", name_, observedValue.value());
                 },
                 observedValue};
         }
@@ -210,7 +222,7 @@ namespace Nui::Attributes
             return StylePropertyImpl{
                 [name_ = std::string{name}, observedValue = std::weak_ptr{observedValue.lock()}]() {
                     if (auto shared = observedValue.lock(); shared)
-                        return name_ + ":" + shared->value();
+                        return fmt::format("{}:{}", name_, shared->value());
                     return std::string{};
                 },
                 std::move(observedValue)};
@@ -221,7 +233,7 @@ namespace Nui::Attributes
             return StylePropertyImpl{
                 [name_ = std::string{name}, observedValue = std::weak_ptr{observedValue}]() {
                     if (auto shared = observedValue.lock(); shared)
-                        return name_ + ":" + shared->value();
+                        return fmt::format("{}:{}", name_, shared->value());
                     return std::string{};
                 },
                 std::move(observedValue)};
@@ -232,7 +244,7 @@ namespace Nui::Attributes
         {
             return StylePropertyImpl{
                 [name_ = std::string{name}, gen = combinator.generator()]() {
-                    return name_ + ":" + gen();
+                    return fmt::format("{}:{}", name_, gen());
                 },
                 std::move(combinator)};
         }

@@ -12,6 +12,7 @@ target_link_libraries(
         nui-events
         boost_preprocessor
         traits-library
+        fmt::fmt
         mplex
         interval-tree
         boost_describe
@@ -22,3 +23,7 @@ nui_set_target_output_directories(nui-frontend)
 target_compile_features(nui-frontend PUBLIC cxx_std_20)
 set_target_properties(nui-frontend PROPERTIES CXX_STANDARD_REQUIRED OFF)
 set_target_properties(nui-frontend PROPERTIES CXX_EXTENSIONS OFF)
+
+if (NUI_JSON_DIAGNOSTICS)
+    target_compile_definitions(nui-frontend PUBLIC JSON_DIAGNOSTICS=1)
+endif()

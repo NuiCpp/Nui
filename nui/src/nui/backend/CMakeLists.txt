@@ -33,7 +33,7 @@ target_link_libraries(
         utf8cpp
     PUBLIC
         traits-library
-        fmt
+        fmt::fmt
         webview-iface
         portable_file_dialogs
         nlohmann_json::nlohmann_json
@@ -74,3 +74,7 @@ nui_set_target_output_directories(nui-backend)
 target_compile_features(nui-backend PUBLIC cxx_std_20)
 set_target_properties(nui-backend PROPERTIES CXX_STANDARD_REQUIRED OFF)
 set_target_properties(nui-backend PROPERTIES CXX_EXTENSIONS OFF)
+
+if (NUI_JSON_DIAGNOSTICS)
+    target_compile_definitions(nui-backend PUBLIC JSON_DIAGNOSTICS=1)
+endif()
