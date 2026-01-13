@@ -1057,10 +1057,11 @@ namespace Nui::Tests
         using namespace Nui::Attributes;
 
         auto doRender = [&](Nui::Observed<bool> const& constObserved) {
-            render(body{reference = parent}(
-                range(characters, constObserved), [&characters](long long i, auto const& element) {
-                    return div{}(std::string{element} + ":" + std::to_string(i));
-                }));
+            render(
+                body{reference = parent}(
+                    range(characters, constObserved), [&characters](long long i, auto const& element) {
+                        return div{}(std::string{element} + ":" + std::to_string(i));
+                    }));
         };
         doRender(other);
 
@@ -2001,5 +2002,426 @@ namespace Nui::Tests
 
         EXPECT_EQ(this->aggregateObservedCharList(vec), this->getChildrenBodyTextConcat(parent1));
         EXPECT_EQ(this->aggregateObservedCharList(vec), this->getChildrenBodyTextConcat(parent2));
+    }
+
+    TEST_F(TestRanges, CanHavePrefixElementsBeforeRange)
+    {
+        Nui::val parent;
+
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        // clang-format off
+        render(
+            body{reference = parent}(
+                range(vec).before(
+                    div{}("Prefix1"),
+                    div{}("Prefix2")
+                ),
+                [&vec](long long i, auto const& element) {
+                    return div{}(std::string{element});
+                }
+            )
+        );
+        // clang-format on
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(vec.size() + 2));
+        EXPECT_EQ(parent["children"][0]["textContent"].as<std::string>(), "Prefix1");
+        EXPECT_EQ(parent["children"][1]["textContent"].as<std::string>(), "Prefix2");
+        for (int i = 0; i != vec.size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i + 2]["textContent"].as<std::string>(), std::string{vec[i]});
+        }
+    }
+
+    TEST_F(TestRanges, CanHavePostifxElementsAfterRange)
+    {
+        Nui::val parent;
+
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        // clang-format off
+        render(
+            body{reference = parent}(
+                range(vec).after(
+                    div{}("Postfix1"),
+                    div{}("Postfix2")
+                ),
+                [&vec](long long i, auto const& element) {
+                    return div{}(std::string{element});
+                }
+            )
+        );
+        // clang-format on
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(vec.size() + 2));
+        for (int i = 0; i != vec.size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i]["textContent"].as<std::string>(), std::string{vec[i]});
+        }
+        EXPECT_EQ(parent["children"][vec.size()]["textContent"].as<std::string>(), "Postfix1");
+        EXPECT_EQ(parent["children"][vec.size() + 1]["textContent"].as<std::string>(), "Postfix2");
+    }
+
+    TEST_F(TestRanges, CanHavePostfixAndPrefixElements)
+    {
+        Nui::val parent;
+
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        // clang-format off
+        render(
+            body{reference = parent}(
+                range(vec)
+                    .before(
+                        div{}("Prefix1"),
+                        div{}("Prefix2")
+                    )
+                    .after(
+                        div{}("Postfix1"),
+                        div{}("Postfix2")
+                    ),
+                [&vec](long long i, auto const& element) {
+                    return div{}(std::string{element});
+                }
+            )
+        );
+        // clang-format on
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(vec.size() + 4));
+        EXPECT_EQ(parent["children"][0]["textContent"].as<std::string>(), "Prefix1");
+        EXPECT_EQ(parent["children"][1]["textContent"].as<std::string>(), "Prefix2");
+        for (int i = 0; i != vec.size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i + 2]["textContent"].as<std::string>(), std::string{vec[i]});
+        }
+        EXPECT_EQ(parent["children"][vec.size() + 2]["textContent"].as<std::string>(), "Postfix1");
+        EXPECT_EQ(parent["children"][vec.size() + 3]["textContent"].as<std::string>(), "Postfix2");
+    }
+
+    TEST_F(TestRanges, PrefixElementCanBeNil)
+    {
+        Nui::val parent;
+
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        // clang-format off
+        render(
+            body{reference = parent}(
+                range(vec).before(
+                    Nui::nil(),
+                    div{}("Prefix2")
+                ),
+                [&vec](long long i, auto const& element) {
+                    return div{}(std::string{element});
+                }
+            )
+        );
+        // clang-format on
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(vec.size() + 1));
+        EXPECT_EQ(parent["children"][0]["textContent"].as<std::string>(), "Prefix2");
+        for (int i = 0; i != vec.size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i + 1]["textContent"].as<std::string>(), std::string{vec[i]});
+        }
+    }
+
+    TEST_F(TestRanges, InsertInsertsAtCorrectPositionWithPrefix)
+    {
+        Nui::val parent;
+
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        // clang-format off
+        render(
+            body{reference = parent}(
+                range(vec).before(
+                    div{}("Prefix1"),
+                    div{}("Prefix2")
+                ),
+                [&vec](long long i, auto const& element) {
+                    return div{}(std::string{element});
+                }
+            )
+        );
+        // clang-format on
+
+        vec.insert(vec.begin() + 2, 'X');
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(vec.size() + 2));
+        EXPECT_EQ(parent["children"][0]["textContent"].as<std::string>(), "Prefix1");
+        EXPECT_EQ(parent["children"][1]["textContent"].as<std::string>(), "Prefix2");
+        for (int i = 0; i != vec.size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i + 2]["textContent"].as<std::string>(), std::string{vec[i]});
+        }
+    }
+
+    TEST_F(TestRanges, EraseErasesAtCorrectPositionWithPrefix)
+    {
+        Nui::val parent;
+
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        // clang-format off
+        render(
+            body{reference = parent}(
+                range(vec).before(
+                    div{}("Prefix1"),
+                    div{}("Prefix2")
+                ),
+                [&vec](long long i, auto const& element) {
+                    return div{}(std::string{element});
+                }
+            )
+        );
+        // clang-format on
+
+        vec.erase(vec.begin() + 1);
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(vec.size() + 2));
+        EXPECT_EQ(parent["children"][0]["textContent"].as<std::string>(), "Prefix1");
+        EXPECT_EQ(parent["children"][1]["textContent"].as<std::string>(), "Prefix2");
+        for (int i = 0; i != vec.size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i + 2]["textContent"].as<std::string>(), std::string{vec[i]});
+        }
+    }
+
+    TEST_F(TestRanges, ClearingRangeStillRendersPrefixes)
+    {
+        Nui::val parent;
+
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        // clang-format off
+        render(
+            body{reference = parent}(
+                range(vec).before(
+                    div{}("Prefix1"),
+                    div{}("Prefix2")
+                ),
+                [&vec](long long i, auto const& element) {
+                    return div{}(std::string{element});
+                }
+            )
+        );
+        // clang-format on
+
+        vec.clear();
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), 2);
+        EXPECT_EQ(parent["children"][0]["textContent"].as<std::string>(), "Prefix1");
+        EXPECT_EQ(parent["children"][1]["textContent"].as<std::string>(), "Prefix2");
+    }
+
+    TEST_F(TestRanges, ModificationIsPerformedAtRightLocationWithPrefixes)
+    {
+        Nui::val parent;
+
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        // clang-format off
+        render(
+            body{reference = parent}(
+                range(vec).before(
+                    div{}("Prefix1"),
+                    div{}("Prefix2")
+                ),
+                [&vec](long long i, auto const& element) {
+                    return div{}(std::string{element});
+                }
+            )
+        );
+        // clang-format on
+
+        vec[1] = 'X';
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(vec.size() + 2));
+        EXPECT_EQ(parent["children"][0]["textContent"].as<std::string>(), "Prefix1");
+        EXPECT_EQ(parent["children"][1]["textContent"].as<std::string>(), "Prefix2");
+        for (int i = 0; i != vec.size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i + 2]["textContent"].as<std::string>(), std::string{vec[i]});
+        }
+    }
+
+    TEST_F(TestRanges, ModificationIsPerformedAtRightLocationWithNilPrefix)
+    {
+        Nui::val parent;
+
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        // clang-format off
+        render(
+            body{reference = parent}(
+                range(vec).before(
+                    Nui::nil(),
+                    div{}("Prefix2")
+                ),
+                [&vec](long long i, auto const& element) {
+                    return div{}(std::string{element});
+                }
+            )
+        );
+        // clang-format on
+
+        vec[1] = 'X';
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(vec.size() + 1));
+        EXPECT_EQ(parent["children"][0]["textContent"].as<std::string>(), "Prefix2");
+        for (int i = 0; i != vec.size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i + 1]["textContent"].as<std::string>(), std::string{vec[i]});
+        }
+    }
+
+    TEST_F(TestRanges, EraseErasesAtCorrectPositionWithNilPrefix)
+    {
+        Nui::val parent;
+
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        // clang-format off
+        render(
+            body{reference = parent}(
+                range(vec).before(
+                    Nui::nil(),
+                    div{}("Prefix2")
+                ),
+                [&vec](long long i, auto const& element) {
+                    return div{}(std::string{element});
+                }
+            )
+        );
+        // clang-format on
+
+        vec.erase(vec.begin() + 1);
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(vec.size() + 1));
+        EXPECT_EQ(parent["children"][0]["textContent"].as<std::string>(), "Prefix2");
+        for (int i = 0; i != vec.size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i + 1]["textContent"].as<std::string>(), std::string{vec[i]});
+        }
+    }
+
+    TEST_F(TestRanges, InsertInsertsAtCorrectPositionWithNilPrefix)
+    {
+        Nui::val parent;
+
+        Observed<std::vector<char>> vec{{'A', 'B', 'C', 'D'}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        // clang-format off
+        render(
+            body{reference = parent}(
+                range(vec).before(
+                    Nui::nil(),
+                    div{}("Prefix2")
+                ),
+                [&vec](long long i, auto const& element) {
+                    return div{}(std::string{element});
+                }
+            )
+        );
+        // clang-format on
+
+        vec.insert(vec.begin() + 2, 'X');
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(vec.size() + 1));
+        EXPECT_EQ(parent["children"][0]["textContent"].as<std::string>(), "Prefix2");
+        for (int i = 0; i != vec.size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i + 1]["textContent"].as<std::string>(), std::string{vec[i]});
+        }
+    }
+
+    TEST_F(TestRanges, PrefixAndPostfixWorkWithUnoptimizedRange)
+    {
+        Nui::val parent;
+
+        std::vector<int> vec{1, 2, 3, 4, 5};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        // clang-format off
+        render(
+            body{reference = parent}(
+                range(vec)
+                    .before(
+                        div{}("Prefix1"),
+                        div{}("Prefix2")
+                    )
+                    .after(
+                        div{}("Postfix1"),
+                        div{}("Postfix2")
+                    ),
+                [&vec](long long i, auto const& element) {
+                    return div{}(std::to_string(element));
+                }
+            )
+        );
+        // clang-format on
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(vec.size() + 4));
+        EXPECT_EQ(parent["children"][0]["textContent"].as<std::string>(), "Prefix1");
+        EXPECT_EQ(parent["children"][1]["textContent"].as<std::string>(), "Prefix2");
+        for (int i = 0; i != vec.size(); ++i)
+        {
+            EXPECT_EQ(parent["children"][i + 2]["textContent"].as<std::string>(), std::to_string(vec[i]));
+        }
     }
 }
