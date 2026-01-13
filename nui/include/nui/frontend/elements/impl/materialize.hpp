@@ -1,3 +1,5 @@
+#pragma once
+
 #include <nui/frontend/val.hpp>
 
 #include <type_traits>

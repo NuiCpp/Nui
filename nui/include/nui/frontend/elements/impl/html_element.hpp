@@ -196,8 +196,10 @@ namespace Nui
             return [self = this->clone(),
                     rangeRenderer = std::make_shared<
                         Detail::RangeRenderer<std::decay_t<RangeType>, GeneratorT, RangeType::isRandomAccess>>(
-                        std::forward<RangeType>(valueRange).underlying(), std::forward<GeneratorT>(elementRenderer))](
-                       auto& parentElement, Renderer const& gen) mutable {
+                        std::forward<RangeType>(valueRange).underlying(),
+                        std::forward<GeneratorT>(elementRenderer),
+                        valueRange.ejectBefore(),
+                        valueRange.ejectAfter())](auto& parentElement, Renderer const& gen) mutable {
                 if (gen.type == RendererType::Inplace)
                     throw std::runtime_error("fragments are not supported for range generators");
 

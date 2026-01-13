@@ -20,6 +20,8 @@
 #include <concepts>
 #include <iterator>
 #include <exception>
+#include <unordered_map>
+#include <map>
 
 namespace Nui
 {
@@ -1434,6 +1436,50 @@ namespace Nui
         Observed<std::list<Parameters...>>& operator=(std::list<Parameters...>&& contained)
         {
             ObservedContainer<std::list<Parameters...>>::operator=(std::move(contained));
+            return *this;
+        }
+    };
+
+    template <typename... MapArgs>
+    class Observed<std::unordered_map<MapArgs...>> : public ModifiableObserved<std::unordered_map<MapArgs...>>
+    {
+      public:
+        static constexpr auto isRandomAccess = false;
+        using observed_type = std::unordered_map<MapArgs...>;
+        using ModifiableObserved<observed_type>::ModifiableObserved;
+        using ModifiableObserved<observed_type>::operator=;
+        using ModifiableObserved<observed_type>::operator->;
+
+        Observed& operator=(observed_type const& contained)
+        {
+            ModifiableObserved<observed_type>::operator=(contained);
+            return *this;
+        }
+        Observed& operator=(observed_type&& contained)
+        {
+            ModifiableObserved<observed_type>::operator=(std::move(contained));
+            return *this;
+        }
+    };
+
+    template <typename... MapArgs>
+    class Observed<std::map<MapArgs...>> : public ModifiableObserved<std::map<MapArgs...>>
+    {
+      public:
+        static constexpr auto isRandomAccess = false;
+        using observed_type = std::map<MapArgs...>;
+        using ModifiableObserved<observed_type>::ModifiableObserved;
+        using ModifiableObserved<observed_type>::operator=;
+        using ModifiableObserved<observed_type>::operator->;
+
+        Observed& operator=(observed_type const& contained)
+        {
+            ModifiableObserved<observed_type>::operator=(contained);
+            return *this;
+        }
+        Observed& operator=(observed_type&& contained)
+        {
+            ModifiableObserved<observed_type>::operator=(std::move(contained));
             return *this;
         }
     };
