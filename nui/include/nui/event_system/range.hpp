@@ -190,12 +190,50 @@ namespace Nui
         };
     }
 
-    template <typename ContainerT>
-    UnoptimizedRange<IteratorAccessor<ContainerT>> range(ContainerT& container)
+    template <typename... MapTemplateArgs, typename... Observed>
+    UnoptimizedRange<
+        IteratorAccessor<std::unordered_map<MapTemplateArgs...>>,
+        std::decay_t<Detail::ObservedAddReference_t<Observed>>...>
+    range(std::unordered_map<MapTemplateArgs...>& container, Observed&&... observed)
     {
-        return UnoptimizedRange<IteratorAccessor<ContainerT>>{
-            IteratorAccessor<ContainerT>{container},
+        return UnoptimizedRange<
+            IteratorAccessor<std::unordered_map<MapTemplateArgs...>>,
+            std::decay_t<Detail::ObservedAddReference_t<Observed>>...>{
+            ObservedValueCombinator{std::forward<Detail::ObservedAddReference_t<Observed>>(observed)...},
+            IteratorAccessor<std::unordered_map<MapTemplateArgs...>>{container},
         };
+    }
+
+    template <typename... MapTemplateArgs>
+    UnoptimizedRange<
+        IteratorAccessor<std::unordered_map<MapTemplateArgs...>>,
+        std::decay_t<Detail::ObservedAddReference_t<Nui::Observed<std::unordered_map<MapTemplateArgs...>>>>>
+    range(Nui::Observed<std::unordered_map<MapTemplateArgs...>>& container)
+    {
+        return range(container.value(), container);
+    }
+
+    template <typename... MapTemplateArgs, typename... Observed>
+    UnoptimizedRange<
+        IteratorAccessor<std::map<MapTemplateArgs...>>,
+        std::decay_t<Detail::ObservedAddReference_t<Observed>>...>
+    range(std::map<MapTemplateArgs...>& container, Observed&&... observed)
+    {
+        return UnoptimizedRange<
+            IteratorAccessor<std::map<MapTemplateArgs...>>,
+            std::decay_t<Detail::ObservedAddReference_t<Observed>>...>{
+            ObservedValueCombinator{std::forward<Detail::ObservedAddReference_t<Observed>>(observed)...},
+            IteratorAccessor<std::map<MapTemplateArgs...>>{container},
+        };
+    }
+
+    template <typename... MapTemplateArgs>
+    UnoptimizedRange<
+        IteratorAccessor<std::map<MapTemplateArgs...>>,
+        std::decay_t<Detail::ObservedAddReference_t<Nui::Observed<std::map<MapTemplateArgs...>>>>>
+    range(Nui::Observed<std::map<MapTemplateArgs...>>& container)
+    {
+        return range(container.value(), container);
     }
 
     template <typename ContainerT>

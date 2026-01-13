@@ -38,9 +38,9 @@ namespace Nui::Detail
             RendererVector&& before,
             RendererVector&& after)
             : elementRenderer_{std::forward<GeneratorT>(elementRenderer)}
-            , valueRange_{std::forward<ObservedAddMutableReference_t<ObservedType>>(observed)}
             , before_{std::move(before)}
             , after_{std::move(after)}
+            , valueRange_{std::forward<ObservedAddMutableReference_t<ObservedType>>(observed)}
         {}
         virtual ~BasicObservedRenderer() = default;
         BasicObservedRenderer(BasicObservedRenderer const&) = delete;

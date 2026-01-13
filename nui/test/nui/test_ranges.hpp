@@ -2424,4 +2424,66 @@ namespace Nui::Tests
             EXPECT_EQ(parent["children"][i + 2]["textContent"].as<std::string>(), std::to_string(vec[i]));
         }
     }
+
+    TEST_F(TestRanges, CanUseUnorderedMapForRange)
+    {
+        Nui::val parent;
+
+        Observed<std::unordered_map<int, char>> map{{{1, 'A'}, {2, 'B'}, {3, 'C'}}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(map), [&map](long index, auto const& element) {
+            return div{}(std::to_string(element.first) + ":" + std::string{element.second});
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(map->size()));
+        for (const auto& [key, value] : map.value())
+        {
+            bool found = false;
+            for (int i = 0; i != parent["children"]["length"].as<long long>(); ++i)
+            {
+                if (parent["children"][i]["textContent"].as<std::string>() ==
+                    std::to_string(key) + ":" + std::string{value})
+                {
+                    found = true;
+                    break;
+                }
+            }
+            EXPECT_TRUE(found);
+        }
+    }
+
+    TEST_F(TestRanges, CanUseMapForRange)
+    {
+        Nui::val parent;
+
+        Observed<std::map<int, char>> map{{{1, 'A'}, {2, 'B'}, {3, 'C'}}};
+
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        render(body{reference = parent}(range(map), [&map](long index, auto const& element) {
+            return div{}(std::to_string(element.first) + ":" + std::string{element.second});
+        }));
+
+        EXPECT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(map->size()));
+        for (const auto& [key, value] : map.value())
+        {
+            bool found = false;
+            for (int i = 0; i != parent["children"]["length"].as<long long>(); ++i)
+            {
+                if (parent["children"][i]["textContent"].as<std::string>() ==
+                    std::to_string(key) + ":" + std::string{value})
+                {
+                    found = true;
+                    break;
+                }
+            }
+            EXPECT_TRUE(found);
+        }
+    }
 }
