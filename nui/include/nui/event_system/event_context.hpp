@@ -85,6 +85,10 @@ namespace Nui
         {
             impl_->eventRegistry().clear();
         }
+        bool isExecutingEvents() const
+        {
+            return impl_->eventRegistry().isExecutingEvents();
+        }
 
       private:
         std::shared_ptr<EventEngine> impl_;
