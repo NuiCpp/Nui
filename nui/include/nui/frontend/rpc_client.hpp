@@ -8,6 +8,8 @@
 #include <nui/frontend/utility/val_conversion.hpp>
 #include <nui/shared/on_destroy.hpp>
 
+#include <fmt/format.h>
+
 #include <string>
 #include <cstdint>
 #include <tuple>
@@ -210,7 +212,8 @@ namespace Nui
         template <typename FunctionT>
         static auto getRemoteCallableWithBackChannel(std::string name, FunctionT&& func)
         {
-            return RemoteCallable{std::move(name), registerFunctionOnce(std::forward<FunctionT>(func))};
+            auto tempFn = registerFunctionOnce(std::forward<FunctionT>(func), name);
+            return RemoteCallable{std::move(name), std::move(tempFn)};
         }
 
         /**
@@ -220,7 +223,7 @@ namespace Nui
          * @return std::string The generated name of the function.
          */
         template <typename FunctionT>
-        static std::string registerFunctionOnce(FunctionT&& func)
+        static std::string registerFunctionOnce(FunctionT&& func, std::string const& functionAddendum = "")
         {
             using namespace std::string_literals;
             if (Nui::val::global("nui_rpc").isUndefined())
@@ -230,7 +233,7 @@ namespace Nui
             }
             auto tempId = Nui::val::global("nui_rpc")["tempId"].as<uint32_t>() + 1;
             Nui::val::global("nui_rpc").set("tempId", tempId);
-            const auto tempIdString = "temp_"s + std::to_string(tempId);
+            const auto tempIdString = fmt::format("temp_{}_{}", tempId, functionAddendum);
             Nui::val::global("nui_rpc")["frontend"].set(
                 tempIdString,
                 Nui::bind(

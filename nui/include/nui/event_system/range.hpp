@@ -1,11 +1,14 @@
 #pragma once
 
 #include <nui/feature_test.hpp>
+#include <nui/frontend/elements/impl/materialize.hpp>
 #include <nui/utility/iterator_accessor.hpp>
 #include <nui/event_system/observed_value.hpp>
 #include <nui/event_system/observed_value_combinator.hpp>
 
 #include <utility>
+#include <vector>
+#include <functional>
 
 #ifdef NUI_HAS_STD_RANGES
 #    include <ranges>
@@ -13,11 +16,79 @@
 
 namespace Nui
 {
+    namespace Dom
+    {
+        class Element;
+    }
+
+    template <typename Derived>
+    class BasicObservedRange
+    {
+      public:
+        BasicObservedRange() = default;
+        virtual ~BasicObservedRange() = default;
+        BasicObservedRange(BasicObservedRange const&) = default;
+        BasicObservedRange(BasicObservedRange&&) = default;
+        BasicObservedRange& operator=(BasicObservedRange const&) = default;
+        BasicObservedRange& operator=(BasicObservedRange&&) = default;
+
+        Derived& before(auto&& firstRenderer, auto&&... renderers) &
+        {
+            before_ = decltype(before_){
+                std::forward<decltype(firstRenderer)>(firstRenderer), std::forward<decltype(renderers)>(renderers)...};
+            return static_cast<Derived&>(*this);
+        }
+        Derived& after(auto&& firstRenderer, auto&&... renderers) &
+        {
+            after_ = decltype(after_){
+                std::forward<decltype(firstRenderer)>(firstRenderer), std::forward<decltype(renderers)>(renderers)...};
+            return static_cast<Derived&>(*this);
+        }
+
+        Derived&& before(auto&& firstRenderer, auto&&... renderers) &&
+        {
+            before_ = decltype(before_){
+                std::forward<decltype(firstRenderer)>(firstRenderer), std::forward<decltype(renderers)>(renderers)...};
+            return static_cast<Derived&&>(*this);
+        }
+        Derived&& after(auto&& firstRenderer, auto&&... renderers) &&
+        {
+            after_ = decltype(after_){
+                std::forward<decltype(firstRenderer)>(firstRenderer), std::forward<decltype(renderers)>(renderers)...};
+            return static_cast<Derived&&>(*this);
+        }
+
+        std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>> ejectBefore()
+        {
+            return std::move(before_);
+        }
+        std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>> ejectAfter()
+        {
+            return std::move(after_);
+        }
+
+        std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>> const& before() const
+        {
+            return before_;
+        }
+
+        std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>> const& after() const
+        {
+            return after_;
+        }
+
+      protected:
+        std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>> before_{};
+        std::vector<std::function<std::shared_ptr<Dom::Element>(Dom::Element&, Renderer const&)>> after_{};
+    };
+
     template <typename ObservedValue>
-    class ObservedRange
+    class ObservedRange : public BasicObservedRange<ObservedRange<ObservedValue>>
     {
       public:
         using ObservedType = ObservedValue;
+        using BasicObservedRange<ObservedRange<ObservedValue>>::before_;
+        using BasicObservedRange<ObservedRange<ObservedValue>>::after_;
 
         static constexpr bool isRandomAccess = ObservedType::isRandomAccess;
 
@@ -42,9 +113,12 @@ namespace Nui
     };
 
     template <typename CopyableRangeLike, typename... ObservedValues>
-    class UnoptimizedRange
+    class UnoptimizedRange : public BasicObservedRange<UnoptimizedRange<CopyableRangeLike, ObservedValues...>>
     {
       public:
+        using BasicObservedRange<UnoptimizedRange<CopyableRangeLike, ObservedValues...>>::before;
+        using BasicObservedRange<UnoptimizedRange<CopyableRangeLike, ObservedValues...>>::after;
+
         UnoptimizedRange(ObservedValueCombinator<ObservedValues...>&& observedValues, CopyableRangeLike&& rangeLike)
             : observedValues_{std::move(observedValues)}
             , rangeLike_{std::move(rangeLike)}
@@ -116,12 +190,50 @@ namespace Nui
         };
     }
 
-    template <typename ContainerT>
-    UnoptimizedRange<IteratorAccessor<ContainerT>> range(ContainerT& container)
+    template <typename... MapTemplateArgs, typename... Observed>
+    UnoptimizedRange<
+        IteratorAccessor<std::unordered_map<MapTemplateArgs...>>,
+        std::decay_t<Detail::ObservedAddReference_t<Observed>>...>
+    range(std::unordered_map<MapTemplateArgs...>& container, Observed&&... observed)
     {
-        return UnoptimizedRange<IteratorAccessor<ContainerT>>{
-            IteratorAccessor<ContainerT>{container},
+        return UnoptimizedRange<
+            IteratorAccessor<std::unordered_map<MapTemplateArgs...>>,
+            std::decay_t<Detail::ObservedAddReference_t<Observed>>...>{
+            ObservedValueCombinator{std::forward<Detail::ObservedAddReference_t<Observed>>(observed)...},
+            IteratorAccessor<std::unordered_map<MapTemplateArgs...>>{container},
         };
+    }
+
+    template <typename... MapTemplateArgs>
+    UnoptimizedRange<
+        IteratorAccessor<std::unordered_map<MapTemplateArgs...>>,
+        std::decay_t<Detail::ObservedAddReference_t<Nui::Observed<std::unordered_map<MapTemplateArgs...>>>>>
+    range(Nui::Observed<std::unordered_map<MapTemplateArgs...>>& container)
+    {
+        return range(container.value(), container);
+    }
+
+    template <typename... MapTemplateArgs, typename... Observed>
+    UnoptimizedRange<
+        IteratorAccessor<std::map<MapTemplateArgs...>>,
+        std::decay_t<Detail::ObservedAddReference_t<Observed>>...>
+    range(std::map<MapTemplateArgs...>& container, Observed&&... observed)
+    {
+        return UnoptimizedRange<
+            IteratorAccessor<std::map<MapTemplateArgs...>>,
+            std::decay_t<Detail::ObservedAddReference_t<Observed>>...>{
+            ObservedValueCombinator{std::forward<Detail::ObservedAddReference_t<Observed>>(observed)...},
+            IteratorAccessor<std::map<MapTemplateArgs...>>{container},
+        };
+    }
+
+    template <typename... MapTemplateArgs>
+    UnoptimizedRange<
+        IteratorAccessor<std::map<MapTemplateArgs...>>,
+        std::decay_t<Detail::ObservedAddReference_t<Nui::Observed<std::map<MapTemplateArgs...>>>>>
+    range(Nui::Observed<std::map<MapTemplateArgs...>>& container)
+    {
+        return range(container.value(), container);
     }
 
     template <typename ContainerT>
@@ -136,8 +248,7 @@ namespace Nui
     template <typename T, typename... Observed>
     UnoptimizedRange<
         std::ranges::subrange<std::ranges::iterator_t<T const>>,
-        std::decay_t<Detail::ObservedAddReference_t<Observed>>...>
-    range(T const& container, Observed&&... observed)
+        std::decay_t<Detail::ObservedAddReference_t<Observed>>...> range(T const& container, Observed&&... observed)
     {
         return UnoptimizedRange<
             std::ranges::subrange<std::ranges::iterator_t<T const>>,

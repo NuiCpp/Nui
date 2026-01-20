@@ -65,15 +65,18 @@ namespace Nui
 
         void executeEvent(EventIdType id)
         {
+            executingEvents_ = true;
             registry_.deselect(id, [](SelectablesRegistry<Event>::ItemWithId const& itemWithId) -> bool {
                 if (!itemWithId.item)
                     return false;
                 return itemWithId.item.value()(itemWithId.id);
             });
+            executingEvents_ = false;
         }
 
         void executeActiveEvents()
         {
+            executingEvents_ = true;
             registry_.deselectAll([](SelectablesRegistry<Event>::ItemWithId const& itemWithId) -> bool {
                 if (!itemWithId.item)
                     return false;
@@ -84,6 +87,7 @@ namespace Nui
                     return false;
                 return itemWithId.item.value()(itemWithId.id);
             });
+            executingEvents_ = false;
         }
 
         void cleanInvalidEvents()
@@ -112,8 +116,14 @@ namespace Nui
             afterEffects_.clear();
         }
 
+        bool isExecutingEvents() const
+        {
+            return executingEvents_;
+        }
+
       private:
         RegistryType registry_;
         RegistryType afterEffects_;
+        bool executingEvents_{false};
     };
 }
