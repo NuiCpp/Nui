@@ -163,20 +163,14 @@ namespace Microsoft
             extern "C" {
 // Location of the first and last entries for the linker generated list of pointers to CreatorMapEntry
 #ifdef _MSC_VER
-                __declspec(selectany) __declspec(allocate("minATL$__a"))
-#endif
-                    const CreatorMap* __pobjectentryfirst = nullptr;
+                __declspec(selectany) __declspec(allocate("minATL$__a")) const CreatorMap* __pobjectentryfirst =
+                    nullptr;
                 // Section m divides COM objects from WinRT objects
                 // - sections between a and m we store COM object info
                 // - sections between m+1 and z we store WinRT object info
-#ifdef _MSC_VER
-                __declspec(selectany) __declspec(allocate("minATL$__m"))
+                __declspec(selectany) __declspec(allocate("minATL$__m")) const CreatorMap* __pobjectentrymid = nullptr;
+                __declspec(selectany) __declspec(allocate("minATL$__z")) const CreatorMap* __pobjectentrylast = nullptr;
 #endif
-                    const CreatorMap* __pobjectentrymid = nullptr;
-#ifdef _MSC_VER
-                __declspec(selectany) __declspec(allocate("minATL$__z"))
-#endif
-                    const CreatorMap* __pobjectentrylast = nullptr;
             }
 
             // Base class used by all module classes.
@@ -245,17 +239,29 @@ namespace Microsoft
 
                 STDMETHOD_(const CreatorMap**, GetFirstEntryPointer)() const
                 {
+#ifdef _MSC_VER
                     return &__pobjectentryfirst;
+#else
+                    return nullptr;
+#endif
                 }
 
                 STDMETHOD_(const CreatorMap**, GetMidEntryPointer)() const
                 {
+#ifdef _MSC_VER
                     return &__pobjectentrymid;
+#else
+                    return nullptr;
+#endif
                 }
 
                 STDMETHOD_(const CreatorMap**, GetLastEntryPointer)() const
                 {
+#ifdef _MSC_VER
                     return &__pobjectentrylast;
+#else
+                    return nullptr;
+#endif
                 }
 
                 STDMETHOD_(SRWLOCK*, GetLock)() const
