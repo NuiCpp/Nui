@@ -229,6 +229,9 @@ namespace Nui
             try
             {
                 const auto obj = nlohmann::json::parse(msg);
+                if (!obj.contains("type") || obj["type"] != "rpc")
+                    return false; // Not RPC
+
                 if (!obj.contains("id"))
                     return impl_->onRpcError("Message does not contain a callback id!"), false;
 
@@ -510,8 +513,8 @@ namespace Nui
         std::scoped_lock lock{impl_->viewGuard};
         const auto primaryDisplay = Screen::getPrimaryDisplay();
         setPosition(
-            primaryDisplay.x() + (primaryDisplay.width() - impl_->width) / 2,
-            primaryDisplay.y() + (primaryDisplay.height() - impl_->height) / 2,
+            primaryDisplay.x() + ((primaryDisplay.width() - impl_->width) / 2),
+            primaryDisplay.y() + ((primaryDisplay.height() - impl_->height) / 2),
             true);
     }
     //---------------------------------------------------------------------------------------------------------------------
@@ -533,6 +536,7 @@ namespace Nui
                         }});
                         globalThis.nui_rpc.backend[name] = (...args) => {{
                             globalThis.external.invoke(JSON.stringify({{
+                                type: "rpc",
                                 name: name,
                                 id: id,
                                 args: [...args]
