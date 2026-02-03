@@ -392,7 +392,7 @@ namespace Nui
         throw std::invalid_argument("Use -sMEMORY64 to convert from val to long long");
     }
 
-    inline void convertFromVal(Nui::val const& val, unsigned long long& value)
+    inline void convertFromVal(Nui::val const&, unsigned long long&)
     {
         throw std::invalid_argument("Use -sMEMORY64 to convert from val to unsigned long long");
     }
