@@ -44,8 +44,7 @@ namespace emscripten
                   Nui::Tests::Engine::createValue(std::move(value)))}
         {}
         template <typename T>
-        requires Nui::Tests::Engine::Callable<T>
-        val(T value)
+        requires Nui::Tests::Engine::Callable<T> val(T value)
             : referenced_value_{std::make_shared<Nui::Tests::Engine::ReferenceType>(
                   Nui::Tests::Engine::createValue(Nui::Tests::Engine::Function{std::move(value)}))}
         {}
@@ -457,7 +456,7 @@ namespace emscripten
 
         iterator begin() const;
         // our iterators are sentinel-based range iterators; use nullptr as the end sentinel
-        constexpr nullptr_t end() const
+        constexpr std::nullptr_t end() const
         {
             return nullptr;
         }
@@ -502,7 +501,7 @@ namespace emscripten
             cur_value_ = v_[static_cast<int>(index_)];
             ++index_;
         }
-        bool operator!=(nullptr_t) const
+        bool operator!=(std::nullptr_t) const
         {
             return cur_value_.handle() != nullptr;
         }
