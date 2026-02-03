@@ -2,6 +2,8 @@
 
 #include <nui/frontend/api/ui_event.hpp>
 
+#include <optional>
+
 namespace Nui::WebApi
 {
     /**
