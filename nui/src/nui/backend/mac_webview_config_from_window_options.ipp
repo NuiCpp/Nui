@@ -71,14 +71,13 @@ namespace Nui::MacOs
 
             CustomSchemeRequest schemeRequest = {
                 .scheme = handler->scheme().scheme,
-                .getContent =
-                    [request]() {
-                        id body = msg_send<id>(request, "HTTPBody"_sel);
-                        if (!body)
-                            return std::string{};
-                        std::string bodyStr = msg_send<const char*>(body, "UTF8String"_sel);
-                        return bodyStr;
-                    },
+                .getContent = std::function<std::string()>{[request]() {
+                    id body = msg_send<id>(request, "HTTPBody"_sel);
+                    if (!body)
+                        return std::string{};
+                    std::string bodyStr = msg_send<const char*>(body, "UTF8String"_sel);
+                    return bodyStr;
+                }},
                 .headers =
                     [request]() {
                         std::unordered_multimap<std::string, std::string> headerMap;
@@ -163,14 +162,15 @@ namespace Nui::MacOs
         if (options.folderMappingScheme)
         {
             optCopy = options;
-            optCopy->customSchemes.push_back(CustomScheme{
-                .scheme = *options.folderMappingScheme,
-                .allowedOrigins = {"*"},
-                .onRequest =
-                    [mappingInfo](CustomSchemeRequest const& req) {
-                        return folderMappingResponseFromRequest(req, *mappingInfo);
-                    },
-            });
+            optCopy->customSchemes.push_back(
+                CustomScheme{
+                    .scheme = *options.folderMappingScheme,
+                    .allowedOrigins = {"*"},
+                    .onRequest =
+                        [mappingInfo](CustomSchemeRequest const& req) {
+                            return folderMappingResponseFromRequest(req, *mappingInfo);
+                        },
+                });
             opts = &*optCopy;
         }
 

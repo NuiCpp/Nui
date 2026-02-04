@@ -199,7 +199,6 @@ namespace Nui
     requires Detail::HasToVal<T>
     Nui::val convertToVal(T const& value);
 
-#if __POINTER_WIDTH__ == 64
     /**
      * @brief Converts a long long to Nui::val. This is only possible when 64bit WASM is enabled.
      *
@@ -215,16 +214,7 @@ namespace Nui
      * @return Nui::val The converted val.
      */
     Nui::val convertToVal(unsigned long long value);
-#else
-    inline Nui::val convertToVal(long long)
-    {
-        throw std::runtime_error("Use -sMEMORY64 to convert long long to val");
-    }
-    inline Nui::val convertToVal(unsigned long long)
-    {
-        throw std::runtime_error("Use -sMEMORY64 to convert unsigned long long to val");
-    }
-#endif
+
     /**
      * @brief Converts a monostate to Nui::val (interpreted as undefined)
      *
@@ -370,7 +360,6 @@ namespace Nui
     requires Detail::HasFromVal<T>
     void convertFromVal(Nui::val const& val, T& value);
 
-#if __POINTER_WIDTH__ == 64
     /**
      * @brief Converts a Nui::val to a long long. This is only possible when 64bit WASM is enabled.
      *
@@ -386,17 +375,6 @@ namespace Nui
      * @param value The variable to store the converted value.
      */
     void convertFromVal(Nui::val const& val, unsigned long long& value);
-#else
-    inline void convertFromVal(Nui::val const&, long long)
-    {
-        throw std::invalid_argument("Use -sMEMORY64 to convert from val to long long");
-    }
-
-    inline void convertFromVal(Nui::val const&, unsigned long long&)
-    {
-        throw std::invalid_argument("Use -sMEMORY64 to convert from val to unsigned long long");
-    }
-#endif
 
     template <typename T, class Bases, class Members, class Enable>
     Nui::val convertToVal(T const& obj)
@@ -508,7 +486,6 @@ namespace Nui
         return val;
     }
 
-#if __POINTER_WIDTH__ == 64
     inline Nui::val convertToVal(long long value)
     {
         return Nui::val{value};
@@ -517,7 +494,6 @@ namespace Nui
     {
         return Nui::val{value};
     }
-#endif
 
     template <typename T, class Members = boost::describe::describe_members<T, boost::describe::mod_any_access>>
     requires(!std::is_union_v<T> && !boost::describe::has_describe_bases<T>::value)
@@ -654,7 +630,6 @@ namespace Nui
         from_val(val, value);
     }
 
-#if __POINTER_WIDTH__ == 64
     inline void convertFromVal(Nui::val const& val, long long& value)
     {
         value = val.as<long long>();
@@ -663,5 +638,4 @@ namespace Nui
     {
         value = val.as<unsigned long long>();
     }
-#endif
 }

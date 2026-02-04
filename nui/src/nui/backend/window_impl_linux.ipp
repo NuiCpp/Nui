@@ -77,62 +77,63 @@ extern "C" {
             cmethod = "";
 
         auto const& schemeInfo = schemeContext->schemeInfo;
-        const auto responseObj = schemeInfo.onRequest(Nui::CustomSchemeRequest{
-            .scheme = schemeInfo.scheme,
-            .getContent = [request]() -> std::string {
+        const auto responseObj = schemeInfo.onRequest(
+            Nui::CustomSchemeRequest{
+                .scheme = schemeInfo.scheme,
+                .getContent = std::function<std::string()>{[request]() -> std::string {
 #if (WEBKIT_MAJOR_VERSION == 2 && WEBKIT_MINOR_VERSION >= 40) || WEBKIT_MAJOR_VERSION > 2
-                auto* stream = webkit_uri_scheme_request_get_http_body(request);
-                if (stream == nullptr)
-                    return std::string{};
-                Nui::ScopeExit deleteStream = Nui::ScopeExit{[stream]() noexcept {
-                    g_input_stream_close(stream, nullptr, nullptr);
-                }};
+                    auto* stream = webkit_uri_scheme_request_get_http_body(request);
+                    if (stream == nullptr)
+                        return std::string{};
+                    Nui::ScopeExit deleteStream = Nui::ScopeExit{[stream]() noexcept {
+                        g_input_stream_close(stream, nullptr, nullptr);
+                    }};
 
-                // read the ginputstream to string
-                GDataInputStream* dataInputStream = g_data_input_stream_new(stream);
-                gsize length;
-                GError* error = NULL;
-                gchar* data = g_data_input_stream_read_upto(dataInputStream, "", 0, &length, NULL, &error);
+                    // read the ginputstream to string
+                    GDataInputStream* dataInputStream = g_data_input_stream_new(stream);
+                    gsize length;
+                    GError* error = NULL;
+                    gchar* data = g_data_input_stream_read_upto(dataInputStream, "", 0, &length, NULL, &error);
 
-                Nui::ScopeExit freeData = Nui::ScopeExit{[data]() noexcept {
-                    g_free(data);
-                }};
-                Nui::ScopeExit freeError = Nui::ScopeExit{[error]() noexcept {
-                    g_error_free(error);
-                }};
+                    Nui::ScopeExit freeData = Nui::ScopeExit{[data]() noexcept {
+                        g_free(data);
+                    }};
+                    Nui::ScopeExit freeError = Nui::ScopeExit{[error]() noexcept {
+                        g_error_free(error);
+                    }};
 
-                if (error != NULL)
-                {
-                    freeData.disarm();
-                    return {};
-                }
-
-                freeError.disarm();
-                return std::string(data, length);
-#else
-                // Not implemented in earlier webkitgtk versions :(
-                return std::string{};
-#endif
-            },
-            .headers =
-                [request]() {
-                    auto* headers = webkit_uri_scheme_request_get_http_headers(request);
-                    auto headersMap = std::unordered_multimap<std::string, std::string>{};
-
-                    SoupMessageHeadersIter iter;
-                    const char *name, *value;
-
-                    soup_message_headers_iter_init(&iter, headers);
-                    while (soup_message_headers_iter_next(&iter, &name, &value))
+                    if (error != NULL)
                     {
-                        headersMap.insert({name, value});
+                        freeData.disarm();
+                        return {};
                     }
 
-                    return headersMap;
-                }(),
-            .uri = std::string{uri},
-            .method = std::string{cmethod},
-        });
+                    freeError.disarm();
+                    return std::string(data, length);
+#else
+                    // Not implemented in earlier webkitgtk versions :(
+                    return std::string{};
+#endif
+                }},
+                .headers =
+                    [request]() {
+                        auto* headers = webkit_uri_scheme_request_get_http_headers(request);
+                        auto headersMap = std::unordered_multimap<std::string, std::string>{};
+
+                        SoupMessageHeadersIter iter;
+                        const char *name, *value;
+
+                        soup_message_headers_iter_init(&iter, headers);
+                        while (soup_message_headers_iter_next(&iter, &name, &value))
+                        {
+                            headersMap.insert({name, value});
+                        }
+
+                        return headersMap;
+                    }(),
+                .uri = std::string{uri},
+                .method = std::string{cmethod},
+            });
 
         using Nui::GObjectReference;
 
@@ -218,18 +219,19 @@ namespace Nui
             registerSchemeHandler(scheme);
 
         if (options.folderMappingScheme)
-            registerSchemeHandler(CustomScheme{
-                .scheme = *options.folderMappingScheme,
-                .allowedOrigins = {"*"},
-                .onRequest =
-                    [weak = weak_from_base<Window::LinuxImplementation>()](CustomSchemeRequest const& req) {
-                        auto shared = weak.lock();
-                        if (!shared)
-                            return CustomSchemeResponse{.statusCode = 500, .body = "Window is dead"};
+            registerSchemeHandler(
+                CustomScheme{
+                    .scheme = *options.folderMappingScheme,
+                    .allowedOrigins = {"*"},
+                    .onRequest =
+                        [weak = weak_from_base<Window::LinuxImplementation>()](CustomSchemeRequest const& req) {
+                            auto shared = weak.lock();
+                            if (!shared)
+                                return CustomSchemeResponse{.statusCode = 500, .body = "Window is dead"};
 
-                        return folderMappingResponseFromRequest(req, shared->hostNameMappingInfo);
-                    },
-            });
+                            return folderMappingResponseFromRequest(req, shared->hostNameMappingInfo);
+                        },
+                });
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::LinuxImplementation::registerSchemeHandler(CustomScheme const& scheme)

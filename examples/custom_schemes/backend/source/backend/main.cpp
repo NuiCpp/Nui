@@ -29,7 +29,11 @@ int main(int, char** argv)
                 std::cout << "Headers: " << std::endl;
                 for (auto const& [key, value] : request.headers)
                     std::cout << "  " << key << ": " << value << std::endl;
-                std::cout << "Body: " << request.getContent() << std::endl;
+                std::visit(
+                    [&](auto&& getContentFunc) {
+                        std::cout << "Body: " << getContentFunc() << std::endl;
+                    },
+                    request.getContent);
                 return CustomSchemeResponse{
                     .statusCode = 200,
                     .reasonPhrase = "OK",
@@ -57,7 +61,11 @@ int main(int, char** argv)
                 std::cout << "Headers: " << std::endl;
                 for (auto const& [key, value] : request.headers)
                     std::cout << "  " << key << ": " << value << std::endl;
-                std::cout << "Body: " << request.getContent() << std::endl;
+                std::visit(
+                    [&](auto&& getContentFunc) {
+                        std::cout << "Body: " << getContentFunc() << std::endl;
+                    },
+                    request.getContent);
                 return CustomSchemeResponse{
                     .statusCode = 200,
                     .reasonPhrase = "OK",

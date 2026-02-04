@@ -57,7 +57,7 @@ namespace Nui
     struct CustomSchemeRequest
     {
         std::string scheme{};
-        std::function<std::string const&()> getContent{};
+        std::variant<std::function<std::string const&()>, std::function<std::string()>> getContent;
         std::unordered_multimap<std::string, std::string> headers{};
         std::string uri{};
         std::string method{};
