@@ -53,31 +53,32 @@ int main(int, char** argv)
     CustomScheme scheme2{
         .scheme = "nui2"s,
         .allowedOrigins = {"*"s},
-        .onRequest = [](CustomSchemeRequest const& request) -> std::string {
-            std::cout << "Request: " << request.scheme << std::endl;
-            std::cout << "URI: " << request.uri << std::endl;
-            std::cout << "Method: " << request.method << std::endl;
-            std::cout << "Headers: " << std::endl;
-            for (auto const& [key, value] : request.headers)
-                std::cout << "  " << key << ": " << value << std::endl;
-            std::visit(
-                [&](auto&& getContentFunc) {
-                    std::cout << "Body: " << getContentFunc() << std::endl;
-                },
-                request.getContent);
-            return CustomSchemeResponse{
-                .statusCode = 200,
-                .reasonPhrase = "OK",
-                .headers =
-                    {
-                        {"Content-Type"s, "text/plain"s},
-                        {"Access-Control-Allow-Origin"s, "null"s},
-                        {"Access-Control-Allow-Methods"s, "GET, POST, PUT, DELETE, OPTIONS"s},
-                        {"Access-Control-Allow-Headers"s, "*"s},
+        .onRequest =
+            [](CustomSchemeRequest const& request) {
+                std::cout << "Request: " << request.scheme << std::endl;
+                std::cout << "URI: " << request.uri << std::endl;
+                std::cout << "Method: " << request.method << std::endl;
+                std::cout << "Headers: " << std::endl;
+                for (auto const& [key, value] : request.headers)
+                    std::cout << "  " << key << ": " << value << std::endl;
+                std::visit(
+                    [&](auto&& getContentFunc) {
+                        std::cout << "Body: " << getContentFunc() << std::endl;
                     },
-                .body = "Hello World!",
-            };
-        },
+                    request.getContent);
+                return CustomSchemeResponse{
+                    .statusCode = 200,
+                    .reasonPhrase = "OK",
+                    .headers =
+                        {
+                            {"Content-Type"s, "text/plain"s},
+                            {"Access-Control-Allow-Origin"s, "null"s},
+                            {"Access-Control-Allow-Methods"s, "GET, POST, PUT, DELETE, OPTIONS"s},
+                            {"Access-Control-Allow-Headers"s, "*"s},
+                        },
+                    .body = "Hello World!",
+                };
+            },
         .treatAsSecure = true,
         .hasAuthorityComponent = true,
     };
