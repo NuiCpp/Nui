@@ -153,26 +153,28 @@ namespace Nui
     {
         return CustomSchemeRequest{
             .scheme = customScheme.scheme,
-            .getContent = [webViewRequest, contentMemo = std::string{}]() mutable -> std::string const& {
-                if (!contentMemo.empty())
-                    return contentMemo;
+            .getContent =
+                std::function<std::string const&()>{
+                    [webViewRequest, contentMemo = std::string{}]() mutable -> std::string const& {
+                        if (!contentMemo.empty())
+                            return contentMemo;
 
-                Microsoft::WRL::ComPtr<IStream> stream;
-                webViewRequest->get_Content(&stream);
+                        Microsoft::WRL::ComPtr<IStream> stream;
+                        webViewRequest->get_Content(&stream);
 
-                if (!stream)
-                    return contentMemo;
+                        if (!stream)
+                            return contentMemo;
 
-                // FIXME: Dont read the whole thing into memory, if possible via streaming.
-                ULONG bytesRead = 0;
-                do
-                {
-                    std::array<char, 1024> buffer;
-                    stream->Read(buffer.data(), 1024, &bytesRead);
-                    contentMemo.append(buffer.data(), bytesRead);
-                } while (bytesRead == 1024);
-                return contentMemo;
-            },
+                        // FIXME: Dont read the whole thing into memory, if possible via streaming.
+                        ULONG bytesRead = 0;
+                        do
+                        {
+                            std::array<char, 1024> buffer;
+                            stream->Read(buffer.data(), 1024, &bytesRead);
+                            contentMemo.append(buffer.data(), bytesRead);
+                        } while (bytesRead == 1024);
+                        return contentMemo;
+                    }},
             .headers =
                 [webViewRequest]() {
                     ICoreWebView2HttpRequestHeaders* headers;
