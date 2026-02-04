@@ -29,4 +29,11 @@ namespace Nui::WebApi
     {
         val_.call<void>("clear");
     }
+    std::optional<DataTransferItem> DataTransferItemList::operator[](int index) const
+    {
+        auto value = val_[index];
+        if (value.isNull() || value.isUndefined())
+            return std::nullopt;
+        return DataTransferItem{std::move(value)};
+    }
 }
