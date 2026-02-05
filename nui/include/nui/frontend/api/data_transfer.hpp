@@ -3,6 +3,8 @@
 #include <nui/frontend/val_wrapper.hpp>
 #include <nui/frontend/api/file_list.hpp>
 #include <nui/frontend/api/data_transfer_item_list.hpp>
+#include <nui/frontend/api/drop_effect.hpp>
+#include <nui/frontend/api/effect_allowed.hpp>
 
 #include <vector>
 #include <string>
@@ -10,7 +12,7 @@
 namespace Nui::WebApi
 {
     /**
-     * @see https://developer.mozilla.org/en-US/docs/Web/API/Event
+     * @see https://developer.mozilla.org/docs/Web/API/DataTransfer
      */
     class DataTransfer : public ValWrapper
     {
@@ -18,30 +20,11 @@ namespace Nui::WebApi
         DataTransfer();
         explicit DataTransfer(Nui::val dataTransfer);
 
-        enum class DropEffect
-        {
-            None,
-            Copy,
-            Move,
-            Link
-        };
         /**
          * @brief Gets the type of drag-and-drop operation currently selected or sets the operation to a new type.
          */
         DropEffect dropEffect() const;
 
-        enum class EffectAllowed
-        {
-            None,
-            Copy,
-            CopyLink,
-            CopyMove,
-            Link,
-            LinkMove,
-            Move,
-            All,
-            Uninitialized
-        };
         /**
          * @brief Provides all of the types of operations that are possible.
          */

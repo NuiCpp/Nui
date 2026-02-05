@@ -8,42 +8,16 @@ namespace Nui::WebApi
     DataTransfer::DataTransfer(Nui::val dataTransfer)
         : ValWrapper{std::move(dataTransfer)}
     {}
-    DataTransfer::DropEffect DataTransfer::dropEffect() const
+    DropEffect DataTransfer::dropEffect() const
     {
         const auto effect = val_["dropEffect"].as<std::string>();
-        if (effect == "none")
-            return DropEffect::None;
-        if (effect == "copy")
-            return DropEffect::Copy;
-        if (effect == "move")
-            return DropEffect::Move;
-        if (effect == "link")
-            return DropEffect::Link;
-        return DropEffect::None;
+        return dropEffectFromString(effect).value_or(DropEffect::None);
     }
 
-    DataTransfer::EffectAllowed DataTransfer::effectAllowed() const
+    EffectAllowed DataTransfer::effectAllowed() const
     {
         const auto effect = val_["effectAllowed"].as<std::string>();
-        if (effect == "none")
-            return EffectAllowed::None;
-        if (effect == "copy")
-            return EffectAllowed::Copy;
-        if (effect == "copyLink")
-            return EffectAllowed::CopyLink;
-        if (effect == "copyMove")
-            return EffectAllowed::CopyMove;
-        if (effect == "link")
-            return EffectAllowed::Link;
-        if (effect == "linkMove")
-            return EffectAllowed::LinkMove;
-        if (effect == "move")
-            return EffectAllowed::Move;
-        if (effect == "all")
-            return EffectAllowed::All;
-        if (effect == "uninitialized")
-            return EffectAllowed::Uninitialized;
-        return EffectAllowed::None;
+        return effectAllowedFromString(effect).value_or(EffectAllowed::None);
     }
 
     FileList DataTransfer::files() const

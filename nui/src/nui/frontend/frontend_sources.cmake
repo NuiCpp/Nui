@@ -14,9 +14,13 @@ set(NUI_FRONTEND_SOURCES_RELATIVE
     api/resize_observer_entry.cpp
     api/data_transfer_item_list.cpp
     api/data_transfer.cpp
+    api/data_transfer_item.cpp
     api/drag_event.cpp
     api/file_list.cpp
+    api/file_system_entry.cpp
     api/file.cpp
+    api/drop_effect.cpp
+    api/effect_allowed.cpp
     attributes/impl/attribute.cpp
     components/dialog.cpp
     dom/dom.cpp
