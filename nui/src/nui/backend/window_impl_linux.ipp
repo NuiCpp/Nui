@@ -244,8 +244,10 @@ namespace Nui
         entry->schemeInfo = scheme;
 
         schemes.push_back(scheme.scheme);
-        auto nativeWebView = static_cast<webview::browser_engine&>(*view).webview();
-        auto* webContext = webkit_web_view_get_context(WEBKIT_WEB_VIEW(nativeWebView));
+        auto nativeWebView = static_cast<webview::browser_engine&>(*view).widget();
+        if (!nativeWebView.has_value())
+            throw std::runtime_error("Could not get native webview for registering custom scheme handler!");
+        auto* webContext = webkit_web_view_get_context(WEBKIT_WEB_VIEW(nativeWebView.value()));
         webkit_web_context_register_uri_scheme(
             webContext, schemes.back().c_str(), &uriSchemeRequestCallback, entry.get(), &uriSchemeDestroyNotify);
     }
