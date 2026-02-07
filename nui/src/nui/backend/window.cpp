@@ -218,11 +218,10 @@ namespace Nui
         impl_->onRpcAliveMessage = options.onRpcAliveMessage;
 
 #ifdef __APPLE__
-        impl_->initialize(options.debug, [](void* options) {
-            wkWebViewCopyOptionsToConfig(
-                static_cast<id>(options),
-                &static_cast<MacOsImplementation*>(impl_.get())->hostNameMappingInfo,
-                options);
+        impl_->initialize(options.debug, [this, &options](void* opts) -> void* {
+            MacOs::wkWebViewCopyOptionsToConfig(
+                static_cast<id>(opts), &static_cast<MacOsImplementation*>(impl_.get())->hostNameMappingInfo, options);
+            return opts;
         });
 #elif defined(__linux__)
         impl_->initialize(options.debug, [](void*) -> void* {
@@ -517,19 +516,18 @@ namespace Nui
         if (result.has_value())
             SetWindowPos(reinterpret_cast<HWND>(result.value()), nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 #elif defined(__APPLE__)
-        using namespace webview::detail;
+        using namespace Nui::MacOs;
         auto result = impl_->view->window();
         if (!result.has_value())
             throw std::runtime_error("Could not get native window for setting position!");
         auto wnd = static_cast<id>(result.value());
         if (useFrameOrigin)
         {
-            objc::msg_send<void>(wnd, "setFrameOrigin:"_sel, CGPoint{static_cast<CGFloat>(x), static_cast<CGFloat>(y)});
+            msg_send<void>(wnd, "setFrameOrigin:"_sel, CGPoint{static_cast<CGFloat>(x), static_cast<CGFloat>(y)});
         }
         else
         {
-            objc::msg_send<void>(
-                wnd, "setFrameTopLeftPoint:"_sel, CGPoint{static_cast<CGFloat>(x), static_cast<CGFloat>(y)});
+            msg_send<void>(wnd, "setFrameTopLeftPoint:"_sel, CGPoint{static_cast<CGFloat>(x), static_cast<CGFloat>(y)});
         }
 #else
         (void)useFrameOrigin;

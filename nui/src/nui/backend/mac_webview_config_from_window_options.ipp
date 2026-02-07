@@ -155,7 +155,8 @@ namespace Nui::MacOs
         CustomScheme m_scheme;
     };
 
-    void wkWebViewCopyOptionsToConfig(id config, HostNameMappingInfo const* mappingInfo, WindowOptions const& options)
+    static void
+    wkWebViewCopyOptionsToConfig(id config, HostNameMappingInfo const* mappingInfo, WindowOptions const& options)
     {
         auto const* opts = &options;
         std::optional<WindowOptions> optCopy;
