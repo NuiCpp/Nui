@@ -11,7 +11,7 @@ namespace Nui::Dom
     class Dom
     {
       public:
-        Dom();
+        explicit Dom(std::optional<Nui::val> contentRoot = std::nullopt);
         Dom(const Dom&) = default;
         Dom(Dom&&) = default;
         Dom& operator=(const Dom&) = default;
