@@ -155,7 +155,8 @@ namespace Nui::MacOs
         CustomScheme m_scheme;
     };
 
-    id wkWebViewConfigurationFromOptions(HostNameMappingInfo const* mappingInfo, WindowOptions const& options)
+    static void
+    wkWebViewCopyOptionsToConfig(id config, HostNameMappingInfo const* mappingInfo, WindowOptions const& options)
     {
         auto const* opts = &options;
         std::optional<WindowOptions> optCopy;
@@ -174,7 +175,6 @@ namespace Nui::MacOs
             opts = &*optCopy;
         }
 
-        auto config = msg_send<id>("WKWebViewConfiguration"_cls, "new"_sel);
         NuiSchemeHandler::registerClass();
         for (auto const& scheme : opts->customSchemes)
         {
@@ -183,6 +183,5 @@ namespace Nui::MacOs
             auto* nsScheme = msg_send<id>("NSString"_cls, "stringWithUTF8String:"_sel, scheme.scheme.c_str());
             msg_send<void>(config, "setURLSchemeHandler:forURLScheme:"_sel, handler, nsScheme);
         }
-        return config;
     }
 }

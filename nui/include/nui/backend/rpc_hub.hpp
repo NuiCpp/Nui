@@ -243,6 +243,8 @@ namespace Nui
             return iter->second.get();
         }
 
+        void markRpcAsInitialized();
+
       private:
         void callRemoteImpl(std::string const& name, nlohmann::json const& json) const
         {

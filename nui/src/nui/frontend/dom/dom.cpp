@@ -5,8 +5,8 @@
 namespace Nui::Dom
 {
     // #####################################################################################################################
-    Dom::Dom()
-        : root_{std::make_shared<Element>(Nui::val::global("document")["body"])}
+    Dom::Dom(std::optional<Nui::val> contentRoot)
+        : root_{std::make_shared<Element>(contentRoot ? *contentRoot : Nui::val::global("document")["body"])}
     {}
     //---------------------------------------------------------------------------------------------------------------------
     Element& Dom::root()

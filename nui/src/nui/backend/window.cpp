@@ -8,7 +8,7 @@
 #include <nui/screen.hpp>
 #include "load_file.hpp"
 
-#include <webview.h>
+#include <webview/webview.h>
 #include <roar/mime_type.hpp>
 #include <fmt/format.h>
 #include <nlohmann/json.hpp>
@@ -121,6 +121,8 @@ namespace Nui
         int width;
         int height;
         std::function<void(std::string_view)> onRpcError;
+        std::function<void()> onRpcAliveMessage;
+        bool isRunning{false};
 
         virtual void registerSchemeHandlers(WindowOptions const& options) = 0;
 
@@ -133,6 +135,7 @@ namespace Nui
             , width{0}
             , height{0}
             , onRpcError{}
+            , onRpcAliveMessage{}
         {}
         virtual ~Implementation()
         {
@@ -140,9 +143,9 @@ namespace Nui
             pool.join();
         }
 
-        void initialize(bool debug, void* options)
+        void initialize(bool debug, std::function<void*(void*)> onConfigure)
         {
-            view = std::make_unique<webview::webview>(debug, nullptr, options);
+            view = std::make_unique<webview::webview>(debug, nullptr, std::move(onConfigure));
         }
 
         template <class Derived>
@@ -212,16 +215,25 @@ namespace Nui
         }
         else
             impl_->onRpcError = options.onRpcError;
+        impl_->onRpcAliveMessage = options.onRpcAliveMessage;
 
 #ifdef __APPLE__
-        impl_->initialize(
-            options.debug,
-            static_cast<void*>(MacOs::wkWebViewConfigurationFromOptions(
-                &static_cast<MacOsImplementation*>(impl_.get())->hostNameMappingInfo, options)));
+        impl_->initialize(options.debug, [this, &options](void* opts) -> void* {
+            MacOs::wkWebViewCopyOptionsToConfig(
+                static_cast<id>(opts), &static_cast<MacOsImplementation*>(impl_.get())->hostNameMappingInfo, options);
+            return opts;
+        });
 #elif defined(__linux__)
-        impl_->initialize(options.debug, nullptr);
+        impl_->initialize(options.debug, [](void*) -> void* {
+            return nullptr;
+        });
 #elif defined(_WIN32)
-        impl_->initialize(options.debug, webView2EnvironmentOptionsFromOptions(options).Get());
+        {
+            auto opts = webView2EnvironmentOptionsFromOptions(options);
+            impl_->initialize(options.debug, [&opts](void*) -> void* {
+                return opts.Get();
+            });
+        }
 #endif
 
         impl_->view->install_message_hook([this](std::string const& msg) {
@@ -229,6 +241,14 @@ namespace Nui
             try
             {
                 const auto obj = nlohmann::json::parse(msg);
+                auto type = obj.find("type");
+                if (type != obj.end() && type->is_string() && type->get<std::string>() == "rpc_alive")
+                {
+                    if (impl_->onRpcAliveMessage)
+                        impl_->onRpcAliveMessage();
+                    return false;
+                }
+
                 if (!obj.contains("id"))
                     return impl_->onRpcError("Message does not contain a callback id!"), false;
 
@@ -288,7 +308,7 @@ namespace Nui
         std::scoped_lock lock{impl_->viewGuard};
         impl_->width = width;
         impl_->height = height;
-        impl_->view->set_size(width, height, static_cast<int>(hint));
+        impl_->view->set_size(width, height, static_cast<webview_hint_t>(hint));
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setHtmlThroughFilesystem(std::string_view html)
@@ -333,7 +353,12 @@ namespace Nui
             using namespace std::string_literals;
 
             auto* winImpl = static_cast<WindowsImplementation*>(impl_.get());
-            auto* webView = static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(*impl_->view).webview());
+            auto webViewResult = static_cast<webview::browser_engine&>(*impl_->view).webview();
+
+            if (!webViewResult.has_value())
+                throw std::runtime_error("Could not get native webview for setHtml workaround!");
+
+            auto* webView = static_cast<ICoreWebView2*>(webViewResult.value());
 
             if (winImpl->setHtmlWorkaroundToken)
             {
@@ -435,6 +460,7 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::run()
     {
+        impl_->isRunning = true;
 #ifdef _WIN32
         auto* winImpl = static_cast<WindowsImplementation*>(impl_.get());
         MSG msg;
@@ -486,22 +512,37 @@ namespace Nui
         std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
         (void)useFrameOrigin;
-        SetWindowPos(reinterpret_cast<HWND>(impl_->view->window()), nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+        auto result = impl_->view->window();
+        if (result.has_value())
+            SetWindowPos(reinterpret_cast<HWND>(result.value()), nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 #elif defined(__APPLE__)
-        using namespace webview::detail;
-        auto wnd = static_cast<id>(impl_->view->window());
+        using namespace Nui::MacOs;
+        auto result = impl_->view->window();
+        if (!result.has_value())
+            throw std::runtime_error("Could not get native window for setting position!");
+        auto wnd = static_cast<id>(result.value());
         if (useFrameOrigin)
         {
-            objc::msg_send<void>(wnd, "setFrameOrigin:"_sel, CGPoint{static_cast<CGFloat>(x), static_cast<CGFloat>(y)});
+            msg_send<void>(wnd, "setFrameOrigin:"_sel, CGPoint{static_cast<CGFloat>(x), static_cast<CGFloat>(y)});
         }
         else
         {
-            objc::msg_send<void>(
-                wnd, "setFrameTopLeftPoint:"_sel, CGPoint{static_cast<CGFloat>(x), static_cast<CGFloat>(y)});
+            msg_send<void>(wnd, "setFrameTopLeftPoint:"_sel, CGPoint{static_cast<CGFloat>(x), static_cast<CGFloat>(y)});
         }
 #else
         (void)useFrameOrigin;
-        gtk_window_move(static_cast<GtkWindow*>(impl_->view->window()), x, y);
+#    if GTK_MAJOR_VERSION >= 4
+        (void)x;
+        (void)y;
+        throw std::runtime_error(
+            "Setting window position is impossible with GTK4, as gtk_window_move was removed and there is no "
+            "alternative. This is because of wayland, which does not have this concept.");
+#    else
+        auto result = impl_->view->window();
+        if (!result.has_value())
+            throw std::runtime_error("Could not get native window for setting position!");
+        gtk_window_move(static_cast<GtkWindow*>(result.value()), x, y);
+#    endif
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------
@@ -510,8 +551,8 @@ namespace Nui
         std::scoped_lock lock{impl_->viewGuard};
         const auto primaryDisplay = Screen::getPrimaryDisplay();
         setPosition(
-            primaryDisplay.x() + (primaryDisplay.width() - impl_->width) / 2,
-            primaryDisplay.y() + (primaryDisplay.height() - impl_->height) / 2,
+            primaryDisplay.x() + ((primaryDisplay.width() - impl_->width) / 2),
+            primaryDisplay.y() + ((primaryDisplay.height() - impl_->height) / 2),
             true);
     }
     //---------------------------------------------------------------------------------------------------------------------
@@ -529,22 +570,25 @@ namespace Nui
                         const name = "{}";
                         const id = "{}";
                         globalThis.nui_rpc = (globalThis.nui_rpc || {{
-                            frontend: {{}}, backend: {{}}, tempId: 0
+                            frontend: {{}}, backend: {{}}, tempId: 0, initialized: false
                         }});
                         globalThis.nui_rpc.backend[name] = (...args) => {{
-                            globalThis.external.invoke(JSON.stringify({{
+                            globalThis.__webview__.post(JSON.stringify({{
+                                type: "rpc",
                                 name: name,
                                 id: id,
                                 args: [...args]
-                            }}))
+                            }}));
                         }};
                     }})();
                 )",
                 name,
                 name);
 
-            impl_->view->init(script);
-            impl_->view->eval(script);
+            if (!impl_->isRunning)
+                impl_->view->init(script);
+            else
+                impl_->view->eval(script);
         });
     }
     //--------------------------------------------------------------------------------------------------------------------
@@ -562,8 +606,11 @@ namespace Nui
                 name);
 
             impl_->callbacks.erase(name);
-            impl_->view->init(script);
-            impl_->view->eval(script);
+
+            if (!impl_->isRunning)
+                impl_->view->init(script);
+            else
+                impl_->view->eval(script);
         });
     }
     //--------------------------------------------------------------------------------------------------------------------
@@ -624,7 +671,7 @@ namespace Nui
         }
         else
         {
-            winImpl->toProcessOnWindowThread.push_back([js, winImpl]() {
+            winImpl->toProcessOnWindowThread.emplace_back([js, winImpl]() {
                 winImpl->view->eval(js);
             });
             PostThreadMessage(winImpl->windowThreadId, wakeUpMessage, 0, 0);
@@ -638,12 +685,18 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void* Window::getNativeWebView()
     {
-        return static_cast<webview::browser_engine&>(*impl_->view).webview();
+        auto result = static_cast<webview::browser_engine&>(*impl_->view).webview();
+        if (!result.has_value())
+            return nullptr;
+        return result.value();
     }
     //---------------------------------------------------------------------------------------------------------------------
     void* Window::getNativeWindow()
     {
-        return impl_->view->window();
+        auto result = impl_->view->window();
+        if (!result.has_value())
+            return nullptr;
+        return result.value();
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::openDevTools()
@@ -651,14 +704,18 @@ namespace Nui
         std::scoped_lock lock{impl_->viewGuard};
 #if defined(_WIN32)
         auto* nativeWebView = static_cast<ICoreWebView2*>(getNativeWebView());
-        nativeWebView->OpenDevToolsWindow();
+        if (nativeWebView)
+            nativeWebView->OpenDevToolsWindow();
 #elif defined(__APPLE__)
         // Currently not easily possible.
 #else
         // FIXME: This freezes the view on Linux when called from there. "received NeedDebuggerBreak trap" in the
         // console, Is a breakpoint auto set and locks everything up?
-        auto nativeWebView = WEBKIT_WEB_VIEW(getNativeWebView());
-        auto webkitInspector = webkit_web_view_get_inspector(nativeWebView);
+        auto* view = getNativeWebView();
+        if (!view)
+            return;
+        auto* nativeWebView = WEBKIT_WEB_VIEW(view);
+        auto* webkitInspector = webkit_web_view_get_inspector(nativeWebView);
         webkit_web_inspector_show(webkitInspector);
         webkit_web_inspector_detach(webkitInspector);
 #endif
@@ -673,6 +730,8 @@ namespace Nui
 #if defined(_WIN32)
         ICoreWebView2_3* wv23;
         auto* nativeWebView = static_cast<ICoreWebView2*>(getNativeWebView());
+        if (!nativeWebView)
+            throw std::runtime_error("Could not get native webview for setting host name to folder mapping!");
 
         nativeWebView->QueryInterface(IID_ICoreWebView2_3, reinterpret_cast<void**>(&wv23));
 
