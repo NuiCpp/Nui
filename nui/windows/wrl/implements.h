@@ -164,19 +164,25 @@ namespace Microsoft
 // Location of the first and last entries for the linker generated list of pointers to CreatorMapEntry
 #ifdef _MSC_VER
                 __declspec(selectany) __declspec(allocate("minATL$__a"))
+#else
+                static
 #endif
-                    const CreatorMap* __pobjectentryfirst = nullptr;
+                const CreatorMap* __pobjectentryfirst = nullptr;
                 // Section m divides COM objects from WinRT objects
                 // - sections between a and m we store COM object info
                 // - sections between m+1 and z we store WinRT object info
 #ifdef _MSC_VER
                 __declspec(selectany) __declspec(allocate("minATL$__m"))
+#else
+                static
 #endif
-                    const CreatorMap* __pobjectentrymid = nullptr;
+                const CreatorMap* __pobjectentrymid = nullptr;
 #ifdef _MSC_VER
                 __declspec(selectany) __declspec(allocate("minATL$__z"))
+#else
+                static
 #endif
-                    const CreatorMap* __pobjectentrylast = nullptr;
+                const CreatorMap* __pobjectentrylast = nullptr;
             }
 
             // Base class used by all module classes.

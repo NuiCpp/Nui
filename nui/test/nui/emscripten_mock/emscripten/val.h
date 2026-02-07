@@ -44,7 +44,8 @@ namespace emscripten
                   Nui::Tests::Engine::createValue(std::move(value)))}
         {}
         template <typename T>
-        requires Nui::Tests::Engine::Callable<T> val(T value)
+        requires Nui::Tests::Engine::Callable<T>
+        val(T value)
             : referenced_value_{std::make_shared<Nui::Tests::Engine::ReferenceType>(
                   Nui::Tests::Engine::createValue(Nui::Tests::Engine::Function{std::move(value)}))}
         {}
@@ -241,7 +242,7 @@ namespace emscripten
             });
         }
 
-        static val global(char const* name)
+        static val global(char const* name = nullptr)
         {
 #ifdef NUI_TEST_DEBUG_PRINT
             std::cout << "val::global(" << name << ")\n";
@@ -249,6 +250,8 @@ namespace emscripten
                       << Nui::Tests::Engine::allValues[*Nui::Tests::Engine::globalObject.reference(name)].typeOf()
                       << "\n";
 #endif
+            if (name == nullptr)
+                return Nui::Tests::Engine::globalObject.reference("globalThis");
             return Nui::Tests::Engine::globalObject.reference(name);
         }
 

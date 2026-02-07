@@ -35,10 +35,10 @@ namespace Nui
     {
         using namespace std::string_literals;
 
-        auto webViewResult = static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(*view).widget());
+        auto webViewResult = static_cast<webview::browser_engine&>(*view).webview();
         if (!webViewResult.has_value())
             throw std::runtime_error("Could not get native webview for registering custom scheme handler!");
-        auto* webView = webViewResult.value();
+        auto* webView = static_cast<ICoreWebView2*>(webViewResult.value());
 
         for (auto const& customScheme : options.customSchemes)
         {
@@ -115,13 +115,13 @@ namespace Nui
     Microsoft::WRL::ComPtr<ICoreWebView2WebResourceResponse>
     Window::WindowsImplementation::makeResponse(CustomSchemeResponse const& responseData, HRESULT& result)
     {
-        auto webViewResult = static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(*view).widget());
+        auto webViewResult = static_cast<webview::browser_engine&>(*view).webview();
         if (!webViewResult.has_value())
         {
             result = E_FAIL;
             return {};
         }
-        auto* webView = webViewResult.value();
+        auto* webView = static_cast<ICoreWebView2*>(webViewResult.value());
 
         Microsoft::WRL::ComPtr<ICoreWebView2WebResourceResponse> response;
         Microsoft::WRL::ComPtr<ICoreWebView2_2> wv22;

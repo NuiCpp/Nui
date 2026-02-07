@@ -9,7 +9,7 @@ endif()
 
 option(NUI_FETCH_WEBVIEW "Fetch webview" ON)
 set(NUI_WEBVIEW_REPOSITORY "https://github.com/5cript/webview.git" CACHE STRING "Webview repository")
-set(NUI_WEBVIEW_TAG "ec61f411907fe5bcf8485eba3af2ce65be05ca8c" CACHE STRING "Webview tag")
+set(NUI_WEBVIEW_TAG "80d31a1170ce2140c85491682bc22219e71d0046" CACHE STRING "Webview tag")
 
 if (NUI_FETCH_WEBVIEW)
     include(FetchContent)

@@ -120,6 +120,11 @@ namespace Nui
 
         // Called when a message from the view cannot be parsed or references an invalid function or has no id.
         std::function<void(std::string_view)> onRpcError = {};
+
+        // Called when the frontend RpcClient uses "awaitRpcAvailable". This can be used to register all rpc functions
+        // and then mark the initialized flag via the RpcHub. This way users can avoid setting init scripts for the view
+        // and only execute scripts once, once the view is loaded.
+        std::function<void()> onRpcAliveMessage = {};
     };
 #else
     struct WindowOptions

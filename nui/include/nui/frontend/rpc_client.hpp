@@ -351,5 +351,50 @@ namespace Nui
             registerFunction(name, std::forward<FunctionT>(func));
             return AutoUnregister{name};
         }
+
+        static void awaitRpcAvailable(
+            std::function<void(bool timeout)> onAvailable,
+            std::chrono::seconds maxWait,
+            std::chrono::milliseconds checkInterval = std::chrono::milliseconds(100))
+        {
+            auto startTime = std::chrono::steady_clock::now();
+            std::shared_ptr<int> intervalId = std::make_shared<int>(0);
+            auto ask = []() -> void {
+                auto view = Nui::val::global("__webview__");
+                if (view.isUndefined())
+                    return;
+                view.call<void>("post", std::string{R"({"type": "rpc_alive"})"});
+                return;
+            };
+            *intervalId =
+                Nui::val::global()
+                    .call<Nui::val>(
+                        "setInterval",
+                        Nui::bind([onAvailable = std::move(onAvailable), intervalId, startTime, maxWait, ask]() {
+                            const auto now = std::chrono::steady_clock::now();
+                            if (now - startTime > maxWait)
+                            {
+                                // Timeout
+                                Nui::val::global().call<void>("clearInterval", *intervalId);
+                                onAvailable(true);
+                                return;
+                            }
+
+                            if (Nui::val::global("nui_rpc").isUndefined())
+                                return ask();
+
+                            auto rpcObject = Nui::val::global("nui_rpc");
+                            if (!rpcObject.hasOwnProperty("initialized"))
+                                return ask();
+
+                            if (!rpcObject["initialized"].as<bool>())
+                                return ask();
+
+                            Nui::val::global().call<void>("clearInterval", *intervalId);
+                            onAvailable(false);
+                        }),
+                        static_cast<int>(checkInterval.count()))
+                    .as<int>();
+        }
     };
 }

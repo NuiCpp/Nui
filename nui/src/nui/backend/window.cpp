@@ -121,6 +121,8 @@ namespace Nui
         int width;
         int height;
         std::function<void(std::string_view)> onRpcError;
+        std::function<void()> onRpcAliveMessage;
+        bool isRunning{false};
 
         virtual void registerSchemeHandlers(WindowOptions const& options) = 0;
 
@@ -133,6 +135,7 @@ namespace Nui
             , width{0}
             , height{0}
             , onRpcError{}
+            , onRpcAliveMessage{}
         {}
         virtual ~Implementation()
         {
@@ -212,6 +215,7 @@ namespace Nui
         }
         else
             impl_->onRpcError = options.onRpcError;
+        impl_->onRpcAliveMessage = options.onRpcAliveMessage;
 
 #ifdef __APPLE__
         impl_->initialize(options.debug, [](void* options) {
@@ -238,6 +242,14 @@ namespace Nui
             try
             {
                 const auto obj = nlohmann::json::parse(msg);
+                auto type = obj.find("type");
+                if (type != obj.end() && type->is_string() && type->get<std::string>() == "rpc_alive")
+                {
+                    if (impl_->onRpcAliveMessage)
+                        impl_->onRpcAliveMessage();
+                    return false;
+                }
+
                 if (!obj.contains("id"))
                     return impl_->onRpcError("Message does not contain a callback id!"), false;
 
@@ -342,13 +354,12 @@ namespace Nui
             using namespace std::string_literals;
 
             auto* winImpl = static_cast<WindowsImplementation*>(impl_.get());
-            auto webViewResult =
-                static_cast<ICoreWebView2*>(static_cast<webview::browser_engine&>(*impl_->view).widget());
+            auto webViewResult = static_cast<webview::browser_engine&>(*impl_->view).webview();
 
             if (!webViewResult.has_value())
                 throw std::runtime_error("Could not get native webview for setHtml workaround!");
 
-            auto* webView = webViewResult.value();
+            auto* webView = static_cast<ICoreWebView2*>(webViewResult.value());
 
             if (winImpl->setHtmlWorkaroundToken)
             {
@@ -450,6 +461,7 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::run()
     {
+        impl_->isRunning = true;
 #ifdef _WIN32
         auto* winImpl = static_cast<WindowsImplementation*>(impl_.get());
         MSG msg;
@@ -560,10 +572,11 @@ namespace Nui
                         const name = "{}";
                         const id = "{}";
                         globalThis.nui_rpc = (globalThis.nui_rpc || {{
-                            frontend: {{}}, backend: {{}}, tempId: 0
+                            frontend: {{}}, backend: {{}}, tempId: 0, initialized: false
                         }});
                         globalThis.nui_rpc.backend[name] = (...args) => {{
                             globalThis.__webview__.post(JSON.stringify({{
+                                type: "rpc",
                                 name: name,
                                 id: id,
                                 args: [...args]
@@ -574,8 +587,10 @@ namespace Nui
                 name,
                 name);
 
-            impl_->view->init(script);
-            impl_->view->eval(script);
+            if (!impl_->isRunning)
+                impl_->view->init(script);
+            else
+                impl_->view->eval(script);
         });
     }
     //--------------------------------------------------------------------------------------------------------------------
@@ -593,8 +608,11 @@ namespace Nui
                 name);
 
             impl_->callbacks.erase(name);
-            impl_->view->init(script);
-            impl_->view->eval(script);
+
+            if (!impl_->isRunning)
+                impl_->view->init(script);
+            else
+                impl_->view->eval(script);
         });
     }
     //--------------------------------------------------------------------------------------------------------------------
@@ -655,7 +673,7 @@ namespace Nui
         }
         else
         {
-            winImpl->toProcessOnWindowThread.push_back([js, winImpl]() {
+            winImpl->toProcessOnWindowThread.emplace_back([js, winImpl]() {
                 winImpl->view->eval(js);
             });
             PostThreadMessage(winImpl->windowThreadId, wakeUpMessage, 0, 0);
@@ -669,7 +687,7 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void* Window::getNativeWebView()
     {
-        auto result = static_cast<webview::browser_engine&>(*impl_->view).widget();
+        auto result = static_cast<webview::browser_engine&>(*impl_->view).webview();
         if (!result.has_value())
             return nullptr;
         return result.value();

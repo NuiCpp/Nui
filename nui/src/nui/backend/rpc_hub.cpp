@@ -109,5 +109,14 @@ namespace Nui
         enableScreen();
         enableEnvironmentVariables();
     }
+    //---------------------------------------------------------------------------------------------------------------------
+    void RpcHub::markRpcAsInitialized()
+    {
+        window_->eval(R"(
+            if (typeof globalThis.nui_rpc !== 'undefined') {
+                globalThis.nui_rpc.initialized = true;
+            }
+        )");
+    }
     // #####################################################################################################################
 }
