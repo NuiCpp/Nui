@@ -185,6 +185,13 @@ namespace Nui::Attributes
             };
         }
 
+        template <typename U>
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
+        Attribute operator=(std::reference_wrapper<Observed<U>> refObs) const
+        {
+            return this->operator=(refObs.get());
+        }
+
         template <typename RendererType, typename... ObservedValues>
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         Attribute
@@ -375,6 +382,13 @@ namespace Nui::Attributes
                     val.detachEvent(id);
                 },
             };
+        }
+
+        template <typename U>
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
+        Attribute operator=(std::reference_wrapper<Observed<U>> refObs) const
+        {
+            return this->operator=(refObs.get());
         }
 
         template <typename U>
