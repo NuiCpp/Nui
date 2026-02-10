@@ -512,7 +512,7 @@ namespace Nui::Attributes
         {
             return Attribute{
                 [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                    element.setAttribute(name, [func](Nui::val val) {
+                    element.setAttribute(name, [func](Nui::val val) mutable {
                         func(std::move(val));
                         globalEventContext.executeActiveEventsImmediately();
                     });
@@ -525,7 +525,7 @@ namespace Nui::Attributes
         {
             return Attribute{
                 [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                    element.setAttribute(name, [func](Nui::val const&) {
+                    element.setAttribute(name, [func](Nui::val const&) mutable {
                         func();
                         globalEventContext.executeActiveEventsImmediately();
                     });
@@ -540,7 +540,7 @@ namespace Nui::Attributes
         {
             return Attribute{
                 [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                    element.setProperty(name, [func](Nui::val val) {
+                    element.setProperty(name, [func](Nui::val val) mutable {
                         func(
                             std::decay_t<typename Traits::FunctionTraits<FunctionT>::template Argument<0>>{
                                 std::move(val)});
@@ -555,7 +555,7 @@ namespace Nui::Attributes
         {
             return Attribute{
                 [name = name(), func = std::move(func.prop)](Dom::ChildlessElement& element) {
-                    element.setProperty(name, [func](Nui::val val) {
+                    element.setProperty(name, [func](Nui::val val) mutable {
                         func(std::move(val));
                         globalEventContext.executeActiveEventsImmediately();
                     });
@@ -568,7 +568,7 @@ namespace Nui::Attributes
         {
             return Attribute{
                 [name = name(), func = std::move(func.prop)](Dom::ChildlessElement& element) {
-                    element.setProperty(name, [func](Nui::val const&) {
+                    element.setProperty(name, [func](Nui::val const&) mutable {
                         func();
                         globalEventContext.executeActiveEventsImmediately();
                     });
@@ -583,7 +583,7 @@ namespace Nui::Attributes
         {
             return Attribute{
                 [name = name(), func = std::move(func.prop)](Dom::ChildlessElement& element) {
-                    element.setProperty(name, [func](Nui::val val) {
+                    element.setProperty(name, [func](Nui::val val) mutable {
                         func(
                             std::decay_t<typename Traits::FunctionTraits<FunctionT>::template Argument<0>>{
                                 std::move(val)});
@@ -620,7 +620,7 @@ namespace Nui::Attributes
         {
             return Attribute{
                 [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                    element.addEventListener(name, [func](Nui::val const&) {
+                    element.addEventListener(name, [func](Nui::val const&) mutable {
                         func();
                         globalEventContext.executeActiveEventsImmediately();
                     });
@@ -633,7 +633,7 @@ namespace Nui::Attributes
         {
             return Attribute{
                 [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                    element.addEventListener(name, [func](Nui::val val) {
+                    element.addEventListener(name, [func](Nui::val val) mutable {
                         func(std::move(val));
                         globalEventContext.executeActiveEventsImmediately();
                     });
@@ -648,7 +648,7 @@ namespace Nui::Attributes
         {
             return Attribute{
                 [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                    element.addEventListener(name, [func](Nui::val val) {
+                    element.addEventListener(name, [func](Nui::val val) mutable {
                         func(
                             std::decay_t<typename Traits::FunctionTraits<FunctionT>::template Argument<0>>{
                                 std::move(val)});
