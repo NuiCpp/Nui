@@ -19,6 +19,7 @@
 #include <tuple>
 #include <string>
 #include <sstream>
+#include <type_traits>
 
 namespace Nui::Attributes
 {
@@ -196,6 +197,17 @@ namespace Nui::Attributes
                 },
                 nullptr};
         }
+        template <typename T>
+        requires std::is_fundamental_v<T>
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
+        auto operator=(T value) const
+        {
+            return StylePropertyImpl{
+                [name_ = std::string{name}, value = value]() {
+                    return fmt::format("{}:{}", name_, value);
+                },
+                nullptr};
+        }
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
         auto operator=(std::optional<std::string> value) const
         {
@@ -207,8 +219,23 @@ namespace Nui::Attributes
                 },
                 nullptr};
         }
+        template <typename T>
+        requires std::is_fundamental_v<T>
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
-        auto operator=(Observed<std::string> const& observedValue) const
+        auto operator=(std::optional<T> value) const
+        {
+            return StylePropertyImpl{
+                [name_ = std::string{name}, value = std::move(value)]() -> std::string {
+                    if (value)
+                        return fmt::format("{}:{}", name_, *value);
+                    return {};
+                },
+                nullptr};
+        }
+        template <typename T>
+        requires(std::is_fundamental_v<T> || std::is_same_v<T, std::string>)
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
+        auto operator=(Observed<T> const& observedValue) const
         {
             return StylePropertyImpl{
                 [name_ = std::string{name}, &observedValue]() {
@@ -216,8 +243,10 @@ namespace Nui::Attributes
                 },
                 observedValue};
         }
+        template <typename T>
+        requires(std::is_fundamental_v<T> || std::is_same_v<T, std::string>)
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
-        auto operator=(std::weak_ptr<Observed<std::string>>&& observedValue) const
+        auto operator=(std::weak_ptr<Observed<T>>&& observedValue) const
         {
             return StylePropertyImpl{
                 [name_ = std::string{name}, observedValue = std::weak_ptr{observedValue.lock()}]() {
@@ -227,8 +256,10 @@ namespace Nui::Attributes
                 },
                 std::move(observedValue)};
         }
+        template <typename T>
+        requires(std::is_fundamental_v<T> || std::is_same_v<T, std::string>)
         // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
-        auto operator=(std::shared_ptr<Observed<std::string>> observedValue) const
+        auto operator=(std::shared_ptr<Observed<T>> observedValue) const
         {
             return StylePropertyImpl{
                 [name_ = std::string{name}, observedValue = std::weak_ptr{observedValue}]() {
