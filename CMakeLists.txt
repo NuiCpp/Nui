@@ -33,6 +33,10 @@ else()
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/roar.cmake)
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/backend/common.cmake)
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/backend/emscripten.cmake)
+
+    if (${NUI_BUILD_XML_TOOL})
+        add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tools/xml_to_nui)
+    endif()
 endif()
 
 # Submodules
