@@ -160,7 +160,13 @@ namespace Nui::Detail
 
             for (auto const& range : valueRange->rangeContext())
             {
-                for (auto r = range.low(), high = range.high(); r <= high; ++r)
+                using RangeValueType = typename std::decay_t<decltype(range)>::value_type;
+                const auto clampedLow = std::max(range.low(), RangeValueType{0});
+                const auto clampedHigh =
+                    std::min(range.high(), static_cast<RangeValueType>(valueRange->value().size()) - RangeValueType{1});
+                if (clampedLow > clampedHigh)
+                    continue;
+                for (auto r = clampedLow, high = clampedHigh; r <= high; ++r)
                 {
                     elementRenderer_(r, valueRange->value()[static_cast<std::size_t>(r)])(
                         *(*parent)[static_cast<std::size_t>(r) + renderedBeforeCount_],

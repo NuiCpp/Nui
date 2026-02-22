@@ -433,6 +433,20 @@ namespace emscripten
             });
         }
 
+        bool isArray() const
+        {
+            return withValueDo([](auto& value) {
+                return value.type() == Nui::Tests::Engine::Value::Type::Array;
+            });
+        }
+
+        bool isObject() const
+        {
+            return withValueDo([](auto& value) {
+                return value.type() == Nui::Tests::Engine::Value::Type::Object;
+            });
+        }
+
         val typeOf() const
         {
             return withValueDo([](auto& value) {
