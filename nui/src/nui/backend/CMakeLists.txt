@@ -30,7 +30,6 @@ target_link_libraries(
     nui-backend
     PRIVATE
         project-settings
-        utf8cpp
     PUBLIC
         traits-library
         fmt::fmt
