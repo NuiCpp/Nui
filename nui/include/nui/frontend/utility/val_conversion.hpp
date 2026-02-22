@@ -189,6 +189,17 @@ namespace Nui
     Nui::val convertToVal(std::shared_ptr<T> const& ptr);
 
     /**
+     * @brief Converts a pair to Nui::val.
+     *
+     * @tparam T The type of the first element of the pair.
+     * @tparam U The type of the second element of the pair.
+     * @param pair The pair to convert.
+     * @return Nui::val The converted val.
+     */
+    template <typename T, typename U>
+    Nui::val convertToVal(std::pair<T, U> const& pair);
+
+    /**
      * @brief Converts anything that a "to_val" function is provided for found by ADL.
      *
      * @tparam T The type of the object.
@@ -330,6 +341,17 @@ namespace Nui
     void convertFromVal(Nui::val const& val, std::vector<T>& vector);
 
     /**
+     * @brief Converts a Nui::val to a pair
+     *
+     * @tparam T The type of the first element of the pair.
+     * @tparam U The type of the second element of the pair.
+     * @param val The val to convert.
+     * @param pair The variable to store the converted value.
+     */
+    template <typename T, typename U>
+    void convertFromVal(Nui::val const& val, std::pair<T, U>& pair);
+
+    /**
      * @brief Converts a Nui::val to an Observed<T>.
      *
      * @tparam T The type of the observed value.
@@ -467,6 +489,14 @@ namespace Nui
             return convertToVal(*ptr);
         return Nui::val::null();
     }
+    template <typename T, typename U>
+    Nui::val convertToVal(std::pair<T, U> const& pair)
+    {
+        Nui::val result = Nui::val::array();
+        result.call<void>("push", convertToVal(pair.first));
+        result.call<void>("push", convertToVal(pair.second));
+        return result;
+    }
     template <typename... Ts>
     Nui::val convertToVal(std::variant<Ts...> const& variant)
     {
@@ -601,6 +631,14 @@ namespace Nui
     void convertFromVal(Nui::val const& val, std::vector<T>& vector)
     {
         vector = emscripten::convertJSArrayToNumberVector<T>(val);
+    }
+    template <typename T, typename U>
+    void convertFromVal(Nui::val const& val, std::pair<T, U>& pair)
+    {
+        if (!val.isArray() || val["length"].as<std::size_t>() != 2)
+            throw std::invalid_argument("Expected an array of length 2 to convert to pair");
+        convertFromVal(val[0], pair.first);
+        convertFromVal(val[1], pair.second);
     }
     template <typename T>
     void convertFromVal(Nui::val const& val, Observed<T>& observed)
