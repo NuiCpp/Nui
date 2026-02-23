@@ -1,4 +1,4 @@
-function(add_npm_install)
+macro(add_npm_install)
     cmake_parse_arguments(
         NPM
         ""                                              # no boolean options
@@ -31,8 +31,6 @@ function(add_npm_install)
         )
     endif()
 
-    message(STATUS "NPM outputs: ${NPM_OUTPUTS}")
-
     add_custom_command(
         OUTPUT
             ${NPM_STAMP_FILE}
@@ -64,4 +62,4 @@ function(add_npm_install)
             ${NPM_STAMP_FILE}
             ${NPM_OUTPUTS}
     )
-endfunction()
+endmacro()
