@@ -2,7 +2,7 @@
 #include "raw_encoder.hpp"
 #include "constants.hpp"
 
-#include <roar/utility/base64.hpp>
+#include <nui/base64/base64.hpp>
 
 #include <iostream>
 #include <sstream>
@@ -12,7 +12,7 @@ std::ostream& Base64Encoder::header(std::ostream& output) const
     output <<
         R"(#pragma once
 
-#include <roar/utility/base64.hpp>
+#include <nui/base64/base64.hpp>
 
 #include <string_view>
 #include <string>
@@ -28,7 +28,7 @@ std::ostream& Base64Encoder::content(std::ostream& output, std::istream& input) 
     std::stringstream readStream;
     readStream << input.rdbuf();
 
-    auto encoded = Roar::base64Encode(std::move(readStream).str());
+    auto encoded = Nui::base64Encode(std::move(readStream).str());
 
     std::cout << "Encoded size: " << encoded.size() << "\n";
 
@@ -50,7 +50,7 @@ std::ostream& Base64Encoder::index(std::ostream& output) const
            << "; ++i) {\n";
     output << "\t\tmemo += " << name_ << "_data[i];\n";
     output << "\t}\n\n";
-    output << "\tmemo = Roar::base64Decode(memo);\n";
+    output << "\tmemo = Nui::base64Decode(memo);\n";
     output << "\treturn memo;\n";
     output << "}\n";
 
