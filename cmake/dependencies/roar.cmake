@@ -8,6 +8,7 @@ if(NUI_FETCH_ROAR)
         roar
         GIT_REPOSITORY ${NUI_ROAR_REPOSITORY}
         GIT_TAG        ${NUI_ROAR_TAG}
+        EXCLUDE_FROM_ALL
     )
 
     FetchContent_MakeAvailable(roar)
