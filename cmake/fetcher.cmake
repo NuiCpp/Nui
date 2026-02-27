@@ -3,8 +3,8 @@ include(FetchContent)
 function(nui_fetch_dependency)
     cmake_parse_arguments(
         NUI_FETCH_ARGS
-        "FIND;FETCH"
-        "LIBRARY_NAME;PACKAGE_NAME;FETCH_NAME;GIT_REPOSITORY;GIT_TAG"
+        ""
+        "FIND;FETCH;LIBRARY_NAME;PACKAGE_NAME;FETCH_NAME;GIT_REPOSITORY;GIT_TAG"
         ""
         ${ARGN}
     )
@@ -23,7 +23,7 @@ function(nui_fetch_dependency)
     endif()
 
     if (NUI_FETCH_ARGS_FIND)
-        find_package(${NUI_FETCH_ARGS_PACKAGE_NAME} QUIET)
+        find_package(${NUI_FETCH_ARGS_PACKAGE_NAME})
 
         if (${NUI_FETCH_ARGS_PACKAGE_NAME}_FOUND)
             return()
