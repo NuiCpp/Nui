@@ -12,4 +12,5 @@ set_target_properties(bin2hpp
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools_bin"
 )
 
-target_link_libraries(bin2hpp PRIVATE roar Boost::iostreams)
+target_link_libraries(bin2hpp PRIVATE Boost::iostreams nui-base64)
+target_include_directories(bin2hpp PRIVATE ${Boost_INCLUDE_DIRS})

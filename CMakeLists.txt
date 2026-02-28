@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.28)
 
 project(nui VERSION 1.1.0)
 
@@ -18,6 +18,9 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies/nui_traits.cmake)
 if (EMSCRIPTEN)
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/frontend/emscripten.cmake)
 else()
+    add_library(nui-base64 INTERFACE)
+    target_include_directories(nui-base64 INTERFACE "${CMAKE_CURRENT_LIST_DIR}/nui/include")
+
     add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tools/bin2hpp)
     add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tools/parcel_adapter)
     add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tools/patch_dotenv)

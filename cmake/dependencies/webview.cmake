@@ -2,7 +2,7 @@ if (APPLE)
 elseif (UNIX)
     find_package(PkgConfig REQUIRED)
     pkg_search_module(
-        webkit2 REQUIRED webkit2gtk-4.1 webkit2gtk-4.0 webkit2gtk
+        webkit REQUIRED webkitgtk-6.0 webkit2gtk-4.1 webkit2gtk-4.0 webkit2gtk
         IMPORTED_TARGET
     )
 endif()
@@ -32,7 +32,7 @@ target_link_libraries(
     webview-iface
     INTERFACE
         $<$<PLATFORM_ID:Linux>:
-            PkgConfig::webkit2
+            PkgConfig::webkit
         >
 )
 target_link_libraries(

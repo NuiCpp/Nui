@@ -2,7 +2,8 @@
 #include "raw_encoder.hpp"
 #include "constants.hpp"
 
-#include <roar/utility/base64.hpp>
+#include <nui/base64/base64.hpp>
+
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
@@ -15,7 +16,7 @@ std::ostream& CompressedEncoder::header(std::ostream& output) const
     output <<
         R"(#pragma once
 
-#include <roar/utility/base64.hpp>
+#include <nui/base64/base64.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
@@ -39,7 +40,7 @@ std::ostream& CompressedEncoder::content(std::ostream& output, std::istream& inp
     std::stringstream compressedRaw;
     boost::iostreams::copy(in, compressedRaw);
 
-    auto encoded = Roar::base64Encode(std::move(compressedRaw).str());
+    auto encoded = Nui::base64Encode(compressedRaw.str());
     std::stringstream ss{std::move(encoded)};
 
     RawEncoder rawEncoder(name_);
@@ -59,7 +60,7 @@ std::ostream& CompressedEncoder::index(std::ostream& output) const
            << "; ++i) {\n";
     output << "\t\tcompressed += " << name_ << "_data[i];\n";
     output << "\t}\n\n";
-    output << "\tcompressed = Roar::base64Decode(compressed);\n";
+    output << "\tcompressed = Nui::base64Decode(compressed);\n";
     output << "\tstd::stringstream compressedStream{compressed};\n";
     output << "\tboost::iostreams::filtering_streambuf<boost::iostreams::input> in;\n";
     output << "\tin.push(boost::iostreams::gzip_decompressor());\n";

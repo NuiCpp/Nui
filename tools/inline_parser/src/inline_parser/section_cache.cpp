@@ -1,6 +1,6 @@
 #include <inline_parser/section_cache.hpp>
 
-#include <roar/utility/base64.hpp>
+#include <nui/base64/base64.hpp>
 
 #include <fstream>
 
@@ -134,7 +134,7 @@ void to_json(nlohmann::json& j, SectionCache const& sc)
         nlohmann::json sectionJson;
         sectionJson["type"] = section.type;
         sectionJson["name"] = section.name;
-        sectionJson["content"] = Roar::base64Encode(section.content);
+        sectionJson["content"] = Nui::base64Encode(section.content);
         j[key] = sectionJson;
     }
 }
@@ -147,7 +147,7 @@ void from_json(nlohmann::json const& j, SectionCache& sc)
         Section section;
         section.type = sectionJson["type"].get<std::string>();
         section.name = sectionJson["name"].get<std::string>();
-        section.content = Roar::base64Decode(sectionJson["content"].get<std::string>());
+        section.content = Nui::base64Decode(sectionJson["content"].get<std::string>());
         sc.sections[key] = section;
     }
 }
