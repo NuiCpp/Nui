@@ -48,7 +48,6 @@ Nui uses the following dependencies:
 - fmt https://github.com/fmtlib/fmt - [Custom MIT-like LICENSE](https://github.com/fmtlib/fmt/blob/master/LICENSE)
 - gtest https://github.com/google/googletest - [BSD 3-Clause LICENSE](https://github.com/google/googletest/blob/main/LICENSE)
 - 5cript/interval-tree https://github.com/5cript/interval-tree - [CC0-1.0 LICENSE](https://github.com/5cript/interval-tree/blob/master/LICENSE)
-- 5cript/mplex https://github.com/5cript/mplex - [MIT LICENSE](https://github.com/5cript/mplex/blob/master/LICENSE)
 - nlohmann/json https://github.com/nlohmann/json - [MIT LICENSE](https://github.com/nlohmann/json/blob/develop/LICENSE.MIT)
 - portable-file-dialogs https://github.com/samhocevar/portable-file-dialogs - [WTFPL LICENSE](https://github.com/samhocevar/portable-file-dialogs/blob/main/COPYING)
 - 5cript/roar https://github.com/5cript/roar - [BSL-1.0 LICENSE](https://github.com/5cript/roar/blob/master/LICENSE)

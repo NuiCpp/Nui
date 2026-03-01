@@ -9,7 +9,6 @@ find_package(Boost CONFIG REQUIRED)
 
 target_link_libraries(nui-frontend-mocked PUBLIC
     traits-library
-    mplex
     interval-tree
     Boost::boost
     nui-events

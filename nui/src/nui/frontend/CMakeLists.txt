@@ -13,7 +13,6 @@ target_link_libraries(
         boost_preprocessor
         traits-library
         fmt::fmt
-        mplex
         interval-tree
         boost_describe
         boost_mp11
