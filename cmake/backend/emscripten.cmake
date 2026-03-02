@@ -24,7 +24,7 @@ function(nui_add_emscripten_target)
         NUI_ADD_EMSCRIPTEN_TARGET_ARGS
         "DISABLE_BIN2HPP;DISABLE_PARCEL_ADAPTER;ENABLE_TAILWIND;ENABLE_DOTENV;CONFIGURE_ALWAYS"
         "TARGET;PREJS;SOURCE_DIR;BIN2HPP_ENCODING"
-        "CMAKE_OPTIONS;CONFIGURE_ENVIRONMENT"
+        "CMAKE_OPTIONS"
         ${ARGN}
     )
 
@@ -123,18 +123,9 @@ function(nui_add_emscripten_target)
         endif()
     endif()
 
-    set(CONFIGURE_ENVIRONMENT "")
-    if (NOT NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CONFIGURE_ENVIRONMENT)
-        # Default is to remove tampering done by build environments not accounting for emscripten builds, like flatpak's sdk or yocto.
-        set(CONFIGURE_ENVIRONMENT --unset=CXXFLAGS --unset=CFLAGS --unset=LDFLAGS)
-    else()
-        set(CONFIGURE_ENVIRONMENT ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CONFIGURE_ENVIRONMENT})
-    endif()
-
     message(STATUS "C++ standard of frontend subproject: ${TARGET_CXX_STANDARD}")
 
     set(CONFIGURE_COMMAND_PART
-        ${EMCMAKE} cmake -E env ${CONFIGURE_ENVIRONMENT}
         ${EMCMAKE} cmake
             "-DCMAKE_CXX_STANDARD=${TARGET_CXX_STANDARD}"
             ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS}
@@ -146,13 +137,11 @@ function(nui_add_emscripten_target)
             -DNUI_MODULE_BUILD_DIR=${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}
             "${SOURCE_DIR}"
     )
+
     if(NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CONFIGURE_ALWAYS)
         set(CONFIGURE_COMMAND ${CONFIGURE_COMMAND_PART})
     else()
-        set(CONFIGURE_COMMAND
-            ${EMCMAKE} cmake -E md5sum "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/CMakeCache.txt" ||
-            ${CONFIGURE_COMMAND_PART}
-        )
+        set(CONFIGURE_COMMAND ${CONFIGURE_COMMAND_PART})
     endif()
 
     include(ExternalProject)
