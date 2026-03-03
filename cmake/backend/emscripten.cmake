@@ -156,27 +156,53 @@ function(nui_add_emscripten_target)
     endif()
 
     include(ExternalProject)
-    ExternalProject_Add(
-        "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten"
-        SOURCE_DIR "${SOURCE_DIR}"
-        # emscripten cmake with passed down Release/Debug build type
-        CONFIGURE_COMMAND ${CONFIGURE_COMMAND}
-        # copy over package.json and fill parcel options that do not exist on it
-        ${BUILD_COMMAND}
-        # patch .env file if needed
-        ${PATCH_DOTENV_COMMAND}
-        # copy tailwind config if needed
-        ${COPY_TAILWIND_CONFIG_COMMAND}
-        # emscripten make
-        COMMAND cmake --build "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}" --target ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
-        # convert result to header file containing the page
-        ${BIN2HPP_COMMAND}
-        BINARY_DIR "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
-        BUILD_ALWAYS 1
-        BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html"
-        INSTALL_COMMAND ""
-        DEPENDS inline-parser inline-injector parcel-adapter
-    )
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.2")
+        ExternalProject_Add(
+            "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten"
+            SOURCE_DIR "${SOURCE_DIR}"
+            # emscripten cmake with passed down Release/Debug build type
+            CONFIGURE_COMMAND ${CONFIGURE_COMMAND}
+            # copy over package.json and fill parcel options that do not exist on it
+            ${BUILD_COMMAND}
+            # patch .env file if needed
+            ${PATCH_DOTENV_COMMAND}
+            # copy tailwind config if needed
+            ${COPY_TAILWIND_CONFIG_COMMAND}
+            # emscripten make
+            COMMAND cmake --build "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}" --target ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
+            # convert result to header file containing the page
+            ${BIN2HPP_COMMAND}
+            BINARY_DIR "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
+            BUILD_ALWAYS 1
+            BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html"
+            INSTALL_COMMAND ""
+            DEPENDS inline-parser inline-injector parcel-adapter
+            CONFIGURE_ENVIRONMENT_MODIFICATION
+                CXXFLAGS=set:"" CFLAGS=set:"" LDFLAGS=set:""
+        )
+    else()
+        ExternalProject_Add(
+            "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten"
+            SOURCE_DIR "${SOURCE_DIR}"
+            # emscripten cmake with passed down Release/Debug build type
+            CONFIGURE_COMMAND ${CONFIGURE_COMMAND}
+            # copy over package.json and fill parcel options that do not exist on it
+            ${BUILD_COMMAND}
+            # patch .env file if needed
+            ${PATCH_DOTENV_COMMAND}
+            # copy tailwind config if needed
+            ${COPY_TAILWIND_CONFIG_COMMAND}
+            # emscripten make
+            COMMAND cmake --build "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}" --target ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
+            # convert result to header file containing the page
+            ${BIN2HPP_COMMAND}
+            BINARY_DIR "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
+            BUILD_ALWAYS 1
+            BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}/bin/index.html"
+            INSTALL_COMMAND ""
+            DEPENDS inline-parser inline-injector parcel-adapter
+        )
+    endif()
     add_dependencies(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten)
     add_dependencies(${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten bin2hpp)
     add_custom_target(
