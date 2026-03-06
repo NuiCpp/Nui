@@ -125,7 +125,7 @@ function(nui_add_emscripten_target)
 
     message(STATUS "C++ standard of frontend subproject: ${TARGET_CXX_STANDARD}")
 
-    set(CONFIGURE_COMMAND_PART
+    set(CONFIGURE_COMMAND
         ${EMCMAKE} cmake
             "-DCMAKE_CXX_STANDARD=${TARGET_CXX_STANDARD}"
             ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CMAKE_OPTIONS}
@@ -137,12 +137,6 @@ function(nui_add_emscripten_target)
             -DNUI_MODULE_BUILD_DIR=${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}
             "${SOURCE_DIR}"
     )
-
-    if(NUI_ADD_EMSCRIPTEN_TARGET_ARGS_CONFIGURE_ALWAYS)
-        set(CONFIGURE_COMMAND ${CONFIGURE_COMMAND_PART})
-    else()
-        set(CONFIGURE_COMMAND ${CONFIGURE_COMMAND_PART})
-    endif()
 
     include(ExternalProject)
     if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.2")
@@ -167,7 +161,7 @@ function(nui_add_emscripten_target)
             INSTALL_COMMAND ""
             DEPENDS inline-parser inline-injector parcel-adapter
             CONFIGURE_ENVIRONMENT_MODIFICATION
-                CXXFLAGS=set:"" CFLAGS=set:"" LDFLAGS=set:""
+                CXXFLAGS=unset:"" CFLAGS=unset:"" LDFLAGS=unset:""
         )
     else()
         ExternalProject_Add(
