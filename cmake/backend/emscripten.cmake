@@ -139,7 +139,7 @@ function(nui_add_emscripten_target)
     )
 
     include(ExternalProject)
-    if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.2")
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.2" AND NOT WIN32)
         ExternalProject_Add(
             "${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-emscripten"
             SOURCE_DIR "${SOURCE_DIR}"
