@@ -32,7 +32,7 @@ namespace Nui
     };
 
     /**
-     * @brief This object can be copied with low cost.
+     * @brief This object can be copied with low cost having share semantics.
      */
     class EventContext
     {
@@ -61,10 +61,27 @@ namespace Nui
         {
             return impl_->eventRegistry().activateAfterEffect(id);
         }
+
+        /**
+         * @brief Executes all currently active events. This will apply all changes caused by modified Observed<T> to
+         * the DOM. Will also execute listen() callbacks that were registered on the modified Observed<T>.
+         */
         void executeActiveEventsImmediately()
         {
             impl_->eventRegistry().executeActiveEvents();
         }
+
+        /**
+         * @brief Alias for executeActiveEventsImmediately.
+         */
+        void sync()
+        {
+            impl_->eventRegistry().executeActiveEvents();
+        }
+
+        /**
+         * @brief Executes the event with the given id if it was active.
+         */
         void executeEvent(EventIdType id)
         {
             impl_->eventRegistry().executeEvent(id);
@@ -73,6 +90,10 @@ namespace Nui
         {
             return impl_->eventRegistry().registerAfterEffect(std::move(event));
         }
+
+        /**
+         * @brief Cleans up events from the event registry where the associated dom objects are no longer alive.
+         */
         void cleanInvalidEvents()
         {
             impl_->eventRegistry().cleanInvalidEvents();
@@ -81,10 +102,20 @@ namespace Nui
         {
             impl_->eventRegistry().removeAfterEffect(id);
         }
+
+        /**
+         * @brief Resets the event registry, removing all events. This will break your page!, so it should
+         * be used with caution. Mainly useful for testing.
+         */
         void reset()
         {
             impl_->eventRegistry().clear();
         }
+
+        /**
+         * @brief Can be used to check if events are currently being executed. This is useful to avoid infinite
+         * recursion.
+         */
         bool isExecutingEvents() const
         {
             return impl_->eventRegistry().isExecutingEvents();

@@ -162,6 +162,12 @@ namespace Nui
             eventContext_->executeActiveEventsImmediately();
         }
 
+        EventContext& eventContext() const
+        {
+            NUI_ASSERT(eventContext_ != nullptr, "Event context must never be null.");
+            return *eventContext_;
+        }
+
       protected:
         EventContext* eventContext_;
         mutable std::vector<EventContext::EventIdType> attachedEvents_;
