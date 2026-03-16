@@ -88,6 +88,10 @@ namespace Nui
                 return itemWithId.item.value()(itemWithId.id);
             });
             executingEvents_ = false;
+            auto funcs = std::move(delayedAfterProcessing_);
+            delayedAfterProcessing_.clear();
+            for (auto& func : funcs)
+                func();
         }
 
         void cleanInvalidEvents()
@@ -121,9 +125,15 @@ namespace Nui
             return executingEvents_;
         }
 
+        void delayToAfterProcessing(std::function<void()> func)
+        {
+            delayedAfterProcessing_.push_back(std::move(func));
+        }
+
       private:
         RegistryType registry_;
         RegistryType afterEffects_;
         bool executingEvents_{false};
+        std::vector<std::function<void()>> delayedAfterProcessing_;
     };
 }
