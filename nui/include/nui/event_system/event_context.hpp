@@ -53,6 +53,10 @@ namespace Nui
         {
             return impl_->eventRegistry().registerEvent(std::move(event));
         }
+        void removeEvent(EventIdType id)
+        {
+            impl_->eventRegistry().removeEvent(id);
+        }
         auto activateEvent(EventIdType id)
         {
             return impl_->eventRegistry().activateEvent(id);
@@ -119,6 +123,16 @@ namespace Nui
         bool isExecutingEvents() const
         {
             return impl_->eventRegistry().isExecutingEvents();
+        }
+
+        /**
+         * @brief This function can be used to delay the execution of a function until after all currently active events
+         * have been executed. This is useful to avoid infinite recursion when you want to trigger an event from within
+         * an event handler.
+         */
+        void delayToAfterProcessing(std::function<void()> func)
+        {
+            impl_->eventRegistry().delayToAfterProcessing(std::move(func));
         }
 
       private:

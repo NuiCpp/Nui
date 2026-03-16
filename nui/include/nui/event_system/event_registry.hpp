@@ -29,6 +29,21 @@ namespace Nui
         }
 
         /**
+         * @brief Remove an event from the registry. If the event is currently active, it will be deselected first.
+         *
+         * @param id Id of the event to remove.
+         */
+        void removeEvent(EventIdType id)
+        {
+            if (!registry_.deselect(id, [](auto const&) {
+                    return false;
+                }))
+            {
+                registry_.erase(id);
+            }
+        }
+
+        /**
          * @brief Returns a pointer to the selected event (only valid until the next activation or event execution). May
          * return nullptr when the event id was not found.
          *
@@ -88,6 +103,10 @@ namespace Nui
                 return itemWithId.item.value()(itemWithId.id);
             });
             executingEvents_ = false;
+            auto funcs = std::move(delayedAfterProcessing_);
+            delayedAfterProcessing_.clear();
+            for (auto& func : funcs)
+                func();
         }
 
         void cleanInvalidEvents()
@@ -121,9 +140,15 @@ namespace Nui
             return executingEvents_;
         }
 
+        void delayToAfterProcessing(std::function<void()> func)
+        {
+            delayedAfterProcessing_.push_back(std::move(func));
+        }
+
       private:
         RegistryType registry_;
         RegistryType afterEffects_;
         bool executingEvents_{false};
+        std::vector<std::function<void()>> delayedAfterProcessing_;
     };
 }
