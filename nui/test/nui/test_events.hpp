@@ -24,7 +24,7 @@ namespace Nui::Tests
         Observed<int> obs;
 
         int calledWith = 77;
-        listen(globalEventContext, obs, [&calledWith](int const& value) -> bool {
+        listen(obs, [&calledWith](int const& value) -> bool {
             calledWith = value;
             return true;
         });
@@ -40,7 +40,7 @@ namespace Nui::Tests
         Observed<int> obs;
 
         int calledWith = 77;
-        listen(globalEventContext, obs, [&calledWith](int const& value) -> bool {
+        listen(obs, [&calledWith](int const& value) -> bool {
             calledWith = value;
             return true;
         });
@@ -53,7 +53,7 @@ namespace Nui::Tests
         Observed<int> obs;
 
         int calledWith = 77;
-        listen(globalEventContext, obs, [&calledWith](int const& value) -> bool {
+        listen(obs, [&calledWith](int const& value) -> bool {
             calledWith = value;
             return true;
         });
@@ -68,7 +68,7 @@ namespace Nui::Tests
         Observed<int> obs{42};
 
         int calledWith = 77;
-        listen(globalEventContext, obs, [&calledWith](int const& value) -> bool {
+        listen(obs, [&calledWith](int const& value) -> bool {
             calledWith = value;
             return true;
         });
@@ -83,7 +83,7 @@ namespace Nui::Tests
         auto obs = std::make_shared<Observed<int>>(40);
 
         int calledWith = 77;
-        listen(globalEventContext, obs, [&calledWith](int const& value) -> bool {
+        listen(obs, [&calledWith](int const& value) -> bool {
             calledWith = value;
             return true;
         });
@@ -98,7 +98,7 @@ namespace Nui::Tests
         auto obs = std::make_shared<Observed<int>>(40);
 
         int calledWith = 77;
-        listen(globalEventContext, obs, [&calledWith](int const& value) -> bool {
+        listen(obs, [&calledWith](int const& value) -> bool {
             calledWith = value;
             return true;
         });
@@ -113,7 +113,7 @@ namespace Nui::Tests
         auto obs = std::make_shared<Observed<int>>();
 
         int calledWith = 77;
-        listen(globalEventContext, obs, [&calledWith](int const& value) -> bool {
+        listen(obs, [&calledWith](int const& value) -> bool {
             calledWith = value;
             return true;
         });
@@ -129,7 +129,7 @@ namespace Nui::Tests
         auto obs = std::make_shared<Observed<int>>();
 
         int calledWith = 77;
-        listen(globalEventContext, obs, [&calledWith](int const& value) -> bool {
+        listen(obs, [&calledWith](int const& value) -> bool {
             calledWith = value;
             return true;
         });
@@ -147,7 +147,7 @@ namespace Nui::Tests
         Observed<int> obs{CustomEventContextFlag, &eventContext};
 
         int calledWith = 77;
-        listen(eventContext, obs, [&calledWith](int const& value) -> bool {
+        listen(obs, [&calledWith](int const& value) -> bool {
             calledWith = value;
             return true;
         });
@@ -165,7 +165,7 @@ namespace Nui::Tests
         Observed<int> obs{CustomEventContextFlag, &eventContext};
 
         int calledWith = 77;
-        listen(eventContext, obs, [&calledWith](int const& value) -> void {
+        listen(obs, [&calledWith](int const& value) -> void {
             calledWith = value;
         });
 
@@ -182,7 +182,7 @@ namespace Nui::Tests
         std::shared_ptr<Observed<int>> obs = std::make_shared<Observed<int>>(CustomEventContextFlag, &eventContext);
 
         int calledWith = 77;
-        listen(eventContext, obs, [&calledWith](int const& value) -> void {
+        listen(obs, [&calledWith](int const& value) -> void {
             calledWith = value;
         });
 
@@ -199,7 +199,7 @@ namespace Nui::Tests
         std::shared_ptr<Observed<int>> obs = std::make_shared<Observed<int>>(CustomEventContextFlag, &eventContext);
 
         int calledWith = 77;
-        listen(eventContext, obs, [&calledWith](int const& value) -> bool {
+        listen(obs, [&calledWith](int const& value) -> bool {
             calledWith = value;
             return true;
         });
@@ -220,7 +220,7 @@ namespace Nui::Tests
         std::shared_ptr<Observed<int>> obs = std::make_shared<Observed<int>>(CustomEventContextFlag, &eventContext);
 
         int calledWith = 77;
-        listen(eventContext, obs, [&calledWith](int const& value) -> bool {
+        listen(obs, [&calledWith](int const& value) -> bool {
             calledWith = value;
             return false;
         });
@@ -239,7 +239,7 @@ namespace Nui::Tests
         Observed<int> obs;
 
         int calledWith = 77;
-        listen(globalEventContext, obs, [&calledWith](int const& value) -> bool {
+        listen(obs, [&calledWith](int const& value) -> bool {
             calledWith = value;
             return true;
         });
@@ -257,7 +257,7 @@ namespace Nui::Tests
         Observed<int> obs{CustomEventContextFlag, &eventContext};
 
         int calledWith = 77;
-        listen(eventContext, obs, [&calledWith](int const& value) -> bool {
+        listen(obs, [&calledWith](int const& value) -> bool {
             calledWith = value;
             return true;
         });
