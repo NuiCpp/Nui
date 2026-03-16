@@ -1,45 +1,7 @@
 #pragma once
 
-#include <concepts>
-
-namespace Nui
-{
-    template <typename T>
-    concept Numerical = std::integral<T> || std::floating_point<T>;
-
-    template <typename T>
-    concept Fundamental = Numerical<T> || std::same_as<T, bool>;
-
-    template <typename T>
-    concept Incrementable = requires(T t) {
-        ++t;
-        t++;
-    };
-
-    template <typename T>
-    concept Decrementable = requires(T t) {
-        --t;
-        t--;
-    };
-
-    template <typename T, typename U>
-    concept PlusAssignable = requires(T t, U u) { t += u; };
-
-    template <typename T, typename U>
-    concept MinusAssignable = requires(T t, U u) { t += u; };
-
-    template <typename T, typename U>
-    concept InvocableReturns = requires(T func) {
-        {
-            func()
-        } -> std::same_as<U>;
-    };
-
-    template <typename T>
-    concept Range = requires(T t) {
-        t.begin();
-        t.end();
-        t.cbegin();
-        t.cend();
-    };
-}
+#include <nui/utility/concepts/invocable_returns.hpp>
+#include <nui/utility/concepts/numeric.hpp>
+#include <nui/utility/concepts/range.hpp>
+#include <nui/utility/concepts/is_std_function.hpp>
+#include <nui/utility/concepts/is_shared_ptr.hpp>
