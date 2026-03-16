@@ -53,6 +53,10 @@ namespace Nui
         {
             return impl_->eventRegistry().registerEvent(std::move(event));
         }
+        void removeEvent(EventIdType id)
+        {
+            impl_->eventRegistry().removeEvent(id);
+        }
         auto activateEvent(EventIdType id)
         {
             return impl_->eventRegistry().activateEvent(id);

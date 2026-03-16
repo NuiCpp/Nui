@@ -29,6 +29,21 @@ namespace Nui
         }
 
         /**
+         * @brief Remove an event from the registry. If the event is currently active, it will be deselected first.
+         *
+         * @param id Id of the event to remove.
+         */
+        void removeEvent(EventIdType id)
+        {
+            if (!registry_.deselect(id, [](auto const&) {
+                    return false;
+                }))
+            {
+                registry_.erase(id);
+            }
+        }
+
+        /**
          * @brief Returns a pointer to the selected event (only valid until the next activation or event execution). May
          * return nullptr when the event id was not found.
          *
