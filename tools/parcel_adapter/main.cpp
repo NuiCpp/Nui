@@ -90,7 +90,7 @@ int main(int argc, char** argv)
     if (!package["devDependencies"].contains("parcel"))
     {
         std::cout << "WARNING! Please install parcel as a dev dependency in your project.\n";
-        package["devDependencies"]["parcel"] = "^2.7.0";
+        package["devDependencies"]["parcel"] = "^2.13.0";
     }
 
     if (!package.contains("alias"))

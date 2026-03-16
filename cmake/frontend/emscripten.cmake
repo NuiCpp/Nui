@@ -3,7 +3,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/npm_install.cmake")
 function(nui_prepare_emscripten_target)
     cmake_parse_arguments(
         NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS
-        "NO_INLINE;NO_INLINE_INJECT;LEAN_INDEX_HTML;NO_NPM_INSTALL"
+        "NO_INLINE;NO_INLINE_INJECT;LEAN_INDEX_HTML;NO_NPM_INSTALL;LEAN_INDEX_HTML_NO_INDEX_JS"
         "TARGET;PREJS;STATIC;UNPACKED_MODE;CXX_STANDARD"
         "EMSCRIPTEN_LINK_OPTIONS;EMSCRIPTEN_COMPILE_OPTIONS;PARCEL_ARGS;NPM_INSTALL_ARGS;OBSERVED_BUNDLE_FILES;NPM_EXTRA_OUTPUTS"
         ${ARGN}
@@ -28,6 +28,9 @@ function(nui_prepare_emscripten_target)
     set(NUI_LEAN_HTML "nolean")
     if (NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_LEAN_INDEX_HTML)
         set(NUI_LEAN_HTML "lean")
+    endif()
+    if (NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_LEAN_INDEX_HTML_NO_INDEX_JS)
+        set(NUI_LEAN_HTML "superlean")
     endif()
 
     if (NOT NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_CXX_STANDARD)
@@ -59,6 +62,7 @@ function(nui_prepare_emscripten_target)
         COMMAND ${CMAKE_COMMAND} -E rm -rf "${CMAKE_BINARY_DIR}/static"
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_STATIC} "${CMAKE_BINARY_DIR}/static"
         ${INLINER_COMMAND}
+        COMMAND ${CMAKE_COMMAND} -E echo "${CMAKE_BINARY_DIR}/node_modules/.bin/parcel build --dist-dir ${CMAKE_BINARY_DIR}/bin ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PARCEL_ARGS}"
         COMMAND "${CMAKE_BINARY_DIR}/node_modules/.bin/parcel" build --dist-dir "${CMAKE_BINARY_DIR}/bin" ${NUI_PREPARE_EMSCRIPTEN_TARGET_ARGS_PARCEL_ARGS}
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
         DEPENDS "${CMAKE_BINARY_DIR}/bin/index.js"
