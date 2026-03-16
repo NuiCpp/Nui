@@ -267,4 +267,98 @@ namespace Nui::Tests
 
         EXPECT_EQ(calledWith, 42);
     }
+
+    TEST_F(TestEvents, SmartListenCanUpdateOtherObservedValueWithoutCausingRecursion)
+    {
+        Observed<int> obs1;
+        Observed<int> obs2;
+
+        auto holder = smartListen(obs1, [&obs2](int const& value) -> void {
+            obs2 = value + 1;
+        });
+
+        obs1 = 41;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(obs2.value(), 42);
+    }
+
+    TEST_F(TestEvents, SmartListenCanUpdateTheSameObservedValueWithoutCausingRecursion)
+    {
+        Observed<int> obs;
+
+        auto holder = smartListen(obs, [&obs](int const& value) -> void {
+            obs = value + 1;
+        });
+
+        obs = 40;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(obs.value(), 41);
+    }
+
+    TEST_F(TestEvents, SmartListenHolderStopsUpdatesWhenDestroyed)
+    {
+        Observed<int> obs;
+
+        {
+            auto holder = smartListen(obs, [&obs](int const& value) -> void {
+                obs = value + 1;
+            });
+
+            obs = 40;
+            globalEventContext.executeActiveEventsImmediately();
+
+            EXPECT_EQ(obs.value(), 41);
+        }
+
+        obs = 50;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(obs.value(), 50);
+    }
+
+    TEST_F(TestEvents, SmartListenHolderCanBeDisarmed)
+    {
+        Observed<int> obs;
+
+        {
+            auto holder = smartListen(obs, [&obs](int const& value) -> void {
+                obs = value + 1;
+            });
+
+            obs = 40;
+            globalEventContext.executeActiveEventsImmediately();
+
+            EXPECT_EQ(obs.value(), 41);
+
+            holder.disarm();
+        }
+
+        obs = 50;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(obs.value(), 51);
+    }
+
+    TEST_F(TestEvents, SmartListenHolderCanManuallyRemoveEvent)
+    {
+        Observed<int> obs;
+
+        auto holder = smartListen(obs, [&obs](int const& value) -> void {
+            obs = value + 1;
+        });
+
+        obs = 40;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(obs.value(), 41);
+
+        holder.removeEvent();
+
+        obs = 50;
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(obs.value(), 50);
+    }
 }
