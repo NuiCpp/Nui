@@ -32,8 +32,9 @@ int main(int argc, char** argv)
     const auto index = std::filesystem::path{argv[1]};
     const auto importScripts = std::filesystem::path{argv[2]};
     const auto importStyles = std::filesystem::path{argv[3]};
-    const auto importScriptsDefer = std::string{argv[4]} == "defer" ? true : false;
-    const auto leanHtml = std::string{argv[5]} == "lean" ? true : false;
+    const auto importScriptsDefer = std::string{argv[4]} == "defer";
+    const auto leanHtml = std::string{argv[5]} == "lean";
+    const auto superLean = std::string{argv[5]} == "superlean";
 
     std::string indexHtml;
     try
@@ -60,14 +61,18 @@ int main(int argc, char** argv)
         "\t<style>\n\t\t@import \"" + relativeImportStylesFile.generic_string() + "\";\n\t</style>\n";
 
     std::string importBinIndexHtml;
-    if (!leanHtml)
+    if (!superLean)
     {
-        importBinIndexHtml =
-            "\t<script type=\"module\" defer>\n\t\timport \"" + binIndex.generic_string() + "\";\n\t</script>\n";
-    }
-    else
-    {
-        importBinIndexHtml = "\t<script type=\"module\" defer src=\"" + binIndex.generic_string() + "\"></script>\n";
+        if (!leanHtml)
+        {
+            importBinIndexHtml =
+                "\t<script type=\"module\" defer>\n\t\timport \"" + binIndex.generic_string() + "\";\n\t</script>\n";
+        }
+        else
+        {
+            importBinIndexHtml =
+                "\t<script type=\"module\" defer src=\"" + binIndex.generic_string() + "\"></script>\n";
+        }
     }
 
     // find end of header </head> from behind in indexHtml:
