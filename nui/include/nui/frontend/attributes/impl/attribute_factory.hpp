@@ -39,24 +39,6 @@ namespace Nui::Attributes
             return eventId;
         }
 
-        template <typename ElementT, typename T>
-        EventContext::EventIdType defaultAttributeEvent(std::weak_ptr<ElementT> element, T const& obs, char const* name)
-        {
-            return changeEventHandler(element, obs, [name = name, obs](ElementT& element) {
-                element.setAttribute(name, obs.value());
-                return true;
-            });
-        }
-
-        template <typename ElementT, typename T>
-        EventContext::EventIdType defaultPropertyEvent(std::weak_ptr<ElementT> element, T const& obs, char const* name)
-        {
-            return changeEventHandler(element, obs, [name = name, obs](ElementT& element) {
-                element.setProperty(name, obs.value());
-                return true;
-            });
-        }
-
         template <typename FunctionT>
         struct CallableByExplicitConstructionOfValImpl
         {
@@ -74,198 +56,42 @@ namespace Nui::Attributes
         template <typename FunctionCallableByExplicitConstructionOfVal>
         concept CallableByExplicitConstructionOfVal =
             CallableByExplicitConstructionOfValImpl<std::decay_t<FunctionCallableByExplicitConstructionOfVal>>::value;
-    }
 
-    class PropertyFactory
-    {
-      public:
-        explicit constexpr PropertyFactory(char const* name)
-            : name_{name}
-        {}
-
-        constexpr PropertyFactory(PropertyFactory const& other) = default;
-        constexpr PropertyFactory(PropertyFactory&& other) noexcept = default;
-        PropertyFactory& operator=(PropertyFactory const&) = delete;
-        PropertyFactory& operator=(PropertyFactory&&) = delete;
-        ~PropertyFactory() = default;
-
-        constexpr char const* name() const
+        struct SetPropertyPolicy
         {
-            return name_;
+            template <typename ValueT>
+            static void set(Dom::ChildlessElement& element, char const* name, ValueT&& value) noexcept(
+                noexcept(std::declval<Dom::ChildlessElement&>().setProperty(name, std::forward<ValueT>(value))))
+
+            {
+                element.setProperty(name, std::forward<ValueT>(value));
+            }
         };
 
-        template <typename U>
-        requires(!IsObservedLike<std::decay_t<U>> && !std::invocable<U, Nui::val> && !std::invocable<U>)
-        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
-        Attribute operator=(U val) const
+        struct SetAttributePolicy
         {
-            return Attribute{
-                [name = name(), val = std::move(val)](Dom::ChildlessElement& element) {
-                    element.setProperty(name, val);
-                },
-            };
-        }
+            template <typename ValueT>
+            static void set(Dom::ChildlessElement& element, char const* name, ValueT&& value) noexcept(
+                noexcept(std::declval<Dom::ChildlessElement&>().setAttribute(name, std::forward<ValueT>(value))))
+            {
+                element.setAttribute(name, std::forward<ValueT>(value));
+            }
+        };
+    }
 
-        template <typename U>
-        requires(IsSharedObserved<std::decay_t<U>>)
-        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
-        Attribute operator=(U const& shared) const
-        {
-            return Attribute{
-                [name = name(), weak = std::weak_ptr{shared}](Dom::ChildlessElement& element) {
-                    if (auto shared = weak.lock(); shared)
-                        element.setProperty(name, shared->value());
-                },
-                [name = name(), weak = std::weak_ptr{shared}](std::weak_ptr<Dom::ChildlessElement> const& element) {
-                    auto shared = weak.lock();
-                    if (!shared)
-                        return EventContext::invalidEventId;
-
-                    const auto eventId = globalEventContext.registerEvent(
-                        Event{
-                            [name, element, obsWeak = std::weak_ptr{shared}](auto eventId) {
-                                auto obsShared = obsWeak.lock();
-                                if (!obsShared)
-                                {
-                                    return false;
-                                }
-                                if (auto shared = element.lock(); shared)
-                                {
-                                    shared->setProperty(name, obsShared->value());
-                                    return true;
-                                }
-                                obsShared->detachEvent(eventId);
-                                return false;
-                            },
-                            [element, obsWeak = std::weak_ptr{shared}]() {
-                                return !element.expired() && !obsWeak.expired();
-                            },
-                        });
-                    shared->attachEvent(eventId);
-                    return eventId;
-                },
-                [weak = std::weak_ptr{shared}](EventContext::EventIdType id) {
-                    if (auto shared = weak.lock(); shared)
-                        shared->detachEvent(id);
-                },
-            };
-        }
-
-        template <typename U>
-        requires(IsWeakObserved<std::decay_t<U>>)
-        // NOLINTNEXTLINE
-        Attribute operator=(U&& val) const
-        {
-            auto shared = val.lock();
-            if (!shared)
-                return Attribute{};
-
-            return operator=(shared);
-        }
-
-        template <typename U>
-        requires(IsObserved<std::decay_t<U>>)
-        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
-        Attribute operator=(U& val) const
-        {
-            return Attribute{
-                [name = name(), &val](Dom::ChildlessElement& element) {
-                    element.setProperty(name, val.value());
-                },
-                [name = name(), &val](std::weak_ptr<Dom::ChildlessElement>&& element) {
-                    return Detail::defaultPropertyEvent(
-                        std::move(element), Nui::Detail::CopyableObservedWrap{val}, name);
-                },
-                [&val](EventContext::EventIdType id) {
-                    val.detachEvent(id);
-                },
-            };
-        }
-
-        template <typename U>
-        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
-        Attribute operator=(std::reference_wrapper<Observed<U>> refObs) const
-        {
-            return this->operator=(refObs.get());
-        }
-
-        template <typename RendererType, typename... ObservedValues>
-        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
-        Attribute
-        operator=(ObservedValueCombinatorWithGenerator<RendererType, ObservedValues...> const& combinator) const
-        {
-            return Attribute{
-                [name = name(), combinator](Dom::ChildlessElement& element) {
-                    element.setProperty(name, combinator.value());
-                },
-                [name = name(), combinator](std::weak_ptr<Dom::ChildlessElement>&& element) {
-                    return Detail::defaultPropertyEvent(std::move(element), combinator, name);
-                },
-                [combinator](EventContext::EventIdType id) {
-                    combinator.detachEvent(id);
-                },
-            };
-        }
-
-        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
-        Attribute operator=(std::function<void(Nui::val)> func) const
-        {
-            return Attribute{
-                [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                    element.setProperty(name, [func](Nui::val val) {
-                        func(std::move(val));
-                        globalEventContext.executeActiveEventsImmediately();
-                    });
-                },
-            };
-        }
-
-        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
-        Attribute operator=(std::function<void()> func) const
-        {
-            return Attribute{
-                [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                    element.setProperty(name, [func](Nui::val const&) {
-                        func();
-                        globalEventContext.executeActiveEventsImmediately();
-                    });
-                },
-            };
-        }
-
-        template <typename FunctionT>
-        requires Detail::CallableByExplicitConstructionOfVal<FunctionT>
-        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
-        Attribute operator=(FunctionT func) const
-        {
-            return Attribute{
-                [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                    element.setProperty(name, [func](Nui::val val) {
-                        func(
-                            std::decay_t<typename Traits::FunctionTraits<FunctionT>::template Argument<0>>{
-                                std::move(val)});
-                        globalEventContext.executeActiveEventsImmediately();
-                    });
-                },
-            };
-        }
-
-      private:
-        char const* name_;
-    };
-
-    class AttributeFactory
+    template <typename Policy>
+    class ElementMemberFactory
     {
       public:
-        explicit constexpr AttributeFactory(char const* name)
+        explicit constexpr ElementMemberFactory(char const* name)
             : name_{name}
         {}
 
-        constexpr AttributeFactory(AttributeFactory const& other) = default;
-        constexpr AttributeFactory(AttributeFactory&& other) = default;
-        AttributeFactory& operator=(AttributeFactory const&) = delete;
-        AttributeFactory& operator=(AttributeFactory&&) = delete;
-        ~AttributeFactory() = default;
+        constexpr ElementMemberFactory(ElementMemberFactory const& other) = default;
+        constexpr ElementMemberFactory(ElementMemberFactory&& other) noexcept = default;
+        ElementMemberFactory& operator=(ElementMemberFactory const&) = delete;
+        ElementMemberFactory& operator=(ElementMemberFactory&&) = delete;
+        ~ElementMemberFactory() = default;
 
         constexpr char const* name() const
         {
@@ -281,7 +107,7 @@ namespace Nui::Attributes
         {
             return Attribute{
                 [name = name(), val = std::move(val)](Dom::ChildlessElement& element) {
-                    element.setAttribute(name, val);
+                    Policy::set(element, name, val);
                 },
             };
         }
@@ -294,7 +120,7 @@ namespace Nui::Attributes
             return Attribute{
                 [name = name(), weak = std::weak_ptr{shared}](Dom::ChildlessElement& element) {
                     if (auto shared = weak.lock(); shared)
-                        element.setAttribute(name, shared->value());
+                        Policy::set(element, name, shared->value());
                 },
                 [name = name(), weak = std::weak_ptr{shared}](std::weak_ptr<Dom::ChildlessElement> const& element) {
                     auto shared = weak.lock();
@@ -311,7 +137,7 @@ namespace Nui::Attributes
                                 }
                                 if (auto shared = element.lock(); shared)
                                 {
-                                    shared->setAttribute(name, obsShared->value());
+                                    Policy::set(*shared, name, obsShared->value());
                                     return true;
                                 }
                                 obsShared->detachEvent(eventId);
@@ -350,11 +176,16 @@ namespace Nui::Attributes
         {
             return Attribute{
                 [name = name(), &val](Dom::ChildlessElement& element) {
-                    element.setAttribute(name, val.value());
+                    Policy::set(element, name, val.value());
                 },
                 [name = name(), &val](std::weak_ptr<Dom::ChildlessElement>&& element) {
-                    return Detail::defaultAttributeEvent(
-                        std::move(element), Nui::Detail::CopyableObservedWrap{val}, name);
+                    return Detail::changeEventHandler(
+                        element,
+                        ::Nui::Detail::CopyableObservedWrap{val},
+                        [name = name, obs = ::Nui::Detail::CopyableObservedWrap{val}](Dom::ChildlessElement& element) {
+                            Policy::set(element, name, obs.value());
+                            return true;
+                        });
                 },
                 [&val](EventContext::EventIdType id) {
                     val.detachEvent(id);
@@ -376,26 +207,17 @@ namespace Nui::Attributes
         {
             return Attribute{
                 [name = name(), combinator](Dom::ChildlessElement& element) {
-                    element.setAttribute(name, combinator.value());
+                    Policy::set(element, name, combinator.value());
                 },
                 [name = name(), combinator](std::weak_ptr<Dom::ChildlessElement>&& element) {
-                    return Detail::defaultAttributeEvent(std::move(element), combinator, name);
+                    return Detail::changeEventHandler(
+                        element, combinator, [name = name, combinator](Dom::ChildlessElement& element) {
+                            Policy::set(element, name, combinator.value());
+                            return true;
+                        });
                 },
                 [combinator](EventContext::EventIdType id) {
                     combinator.detachEvent(id);
-                },
-            };
-        }
-
-        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
-        Attribute operator=(std::function<void(Nui::val)> func) const
-        {
-            return Attribute{
-                [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                    element.setAttribute(name, [func](Nui::val val) mutable {
-                        func(std::move(val));
-                        globalEventContext.executeActiveEventsImmediately();
-                    });
                 },
             };
         }
@@ -405,8 +227,21 @@ namespace Nui::Attributes
         {
             return Attribute{
                 [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                    element.setAttribute(name, [func](Nui::val const&) mutable {
+                    Policy::set(element, name, [func](Nui::val const&) mutable {
                         func();
+                        globalEventContext.executeActiveEventsImmediately();
+                    });
+                },
+            };
+        }
+
+        // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
+        Attribute operator=(std::function<void(Nui::val)> func) const
+        {
+            return Attribute{
+                [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
+                    Policy::set(element, name, [func](Nui::val val) mutable {
+                        func(std::move(val));
                         globalEventContext.executeActiveEventsImmediately();
                     });
                 },
@@ -420,7 +255,7 @@ namespace Nui::Attributes
         {
             return Attribute{
                 [name = name(), func = std::move(func)](Dom::ChildlessElement& element) {
-                    element.setAttribute(name, [func](Nui::val val) mutable {
+                    Policy::set(element, name, [func](Nui::val val) mutable {
                         func(
                             std::decay_t<typename Traits::FunctionTraits<FunctionT>::template Argument<0>>{
                                 std::move(val)});
@@ -433,6 +268,9 @@ namespace Nui::Attributes
       private:
         char const* name_;
     };
+
+    using PropertyFactory = ElementMemberFactory<Detail::SetPropertyPolicy>;
+    using AttributeFactory = ElementMemberFactory<Detail::SetAttributePolicy>;
 
     class EventFactory
     {
@@ -524,7 +362,7 @@ namespace Nui::Attributes
 
             template <typename... Args>
             // NOLINTNEXTLINE(misc-unconventional-assign-operator, cppcoreguidelines-c-copy-assignment-signature)
-            constexpr Attribute operator=(Args&&... args) const
+            Attribute operator=(Args&&... args) const
             {
                 auto attr = factory.operator=(std::forward<Args>(args)...);
                 attr.defer(true);
