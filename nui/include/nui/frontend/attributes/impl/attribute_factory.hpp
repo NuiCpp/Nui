@@ -77,6 +77,15 @@ namespace Nui::Attributes
                 element.setAttribute(name, std::forward<ValueT>(value));
             }
         };
+
+        struct TextNodeAttributePolicy
+        {
+            template <typename ValueT>
+            static void set(Dom::ChildlessElement& element, char const* name, ValueT&& value) noexcept
+            {
+                element.setNodeValue(std::forward<ValueT>(value));
+            }
+        };
     }
 
     template <typename Policy>

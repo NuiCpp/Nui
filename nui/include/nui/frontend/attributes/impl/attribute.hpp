@@ -63,7 +63,7 @@ namespace Nui
         EventContext::EventIdType createEvent(std::weak_ptr<Dom::ChildlessElement>&& element) const;
         std::function<void(EventContext::EventIdType const&)> getEventClear() const;
 
-        std::string const& stringData() const;
+        std::string stringData() const;
 
         bool isRegular() const;
         bool isStringData() const;

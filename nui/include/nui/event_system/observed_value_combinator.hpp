@@ -126,6 +126,11 @@ namespace Nui
             return ObservedValueCombinator<ObservedValues...>{std::move(this->observedValues_)};
         }
 
+        ObservedValueCombinator<ObservedValues...> combinator()
+        {
+            return ObservedValueCombinator<ObservedValues...>{this->observedValues_};
+        }
+
         constexpr auto value() const
         {
             if constexpr (std::invocable<RendererTypeNoRef>)
@@ -165,10 +170,21 @@ namespace Nui
             std::invocable<RendererType> ||
             std::invocable<std::decay_t<RendererType>, typename std::decay_t<ObservedValues>::observed_type...>)
         constexpr ObservedValueCombinatorWithGenerator<std::decay_t<RendererType>, ObservedValues...>
-        generate(RendererType&& generator)
+        generate(RendererType&& generator) const&
         {
             return ObservedValueCombinatorWithGenerator<std::decay_t<RendererType>, ObservedValues...>{
                 observedValues_, std::forward<RendererType>(generator)};
+        }
+
+        template <typename RendererType>
+        requires(
+            std::invocable<RendererType> ||
+            std::invocable<std::decay_t<RendererType>, typename std::decay_t<ObservedValues>::observed_type...>)
+        constexpr ObservedValueCombinatorWithGenerator<std::decay_t<RendererType>, ObservedValues...>
+        generate(RendererType&& generator) &&
+        {
+            return ObservedValueCombinatorWithGenerator<std::decay_t<RendererType>, ObservedValues...>{
+                std::move(observedValues_), std::forward<RendererType>(generator)};
         }
     };
     template <typename... ObservedValues>
