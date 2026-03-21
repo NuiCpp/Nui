@@ -19,6 +19,20 @@ namespace Nui::Attributes
 {
     namespace Detail
     {
+        /**
+         * @brief The basic change event handler for attribute/properties on dom elements. It registers an event on the
+         * observed value that will call the provided onLock function when the value changes. The onLock function should
+         * return true if the event should continue to be listened to, or false if it should be detached. The event will
+         * also be detached if the element is destroyed.
+         *
+         * @tparam ElementT The type of the element that the attribute is applied to.
+         * @tparam T The type of the observed value. This has to outlive the element.
+         * @param element A weak pointer to the element that the attribute is applied to.
+         * @param obs The observed value that triggers the event when it changes.
+         * @param onLock A function that is called when the observed value changes. It should return true if the event
+         * should continue to be listened to, or false if it should be detached.
+         * @return EventContext::EventIdType The ID of the registered event.
+         */
         template <typename ElementT, typename T>
         EventContext::EventIdType changeEventHandler(std::weak_ptr<ElementT> element, T const& obs, auto onLock)
         {
@@ -39,6 +53,14 @@ namespace Nui::Attributes
             return eventId;
         }
 
+        /**
+         * @brief Metafunction used to determine if a callable can be called by explicitly constructing the first
+         * argument from a Nui::val. This enables wrappers for Nui::val to be used for event handlers without the need
+         * for the user to explicitly construct it from a Nui::val while not making the construction implicit for the
+         * wrapper, which could lead to unintended conversions.
+         *
+         * @tparam FunctionT
+         */
         template <typename FunctionT>
         struct CallableByExplicitConstructionOfValImpl
         {
@@ -57,6 +79,9 @@ namespace Nui::Attributes
         concept CallableByExplicitConstructionOfVal =
             CallableByExplicitConstructionOfValImpl<std::decay_t<FunctionCallableByExplicitConstructionOfVal>>::value;
 
+        /**
+         * @brief Policy for setting properties on DOM elements.
+         */
         struct SetPropertyPolicy
         {
             template <typename ValueT>
@@ -68,6 +93,9 @@ namespace Nui::Attributes
             }
         };
 
+        /**
+         * @brief Policy for setting attributes on DOM elements.
+         */
         struct SetAttributePolicy
         {
             template <typename ValueT>
@@ -78,16 +106,31 @@ namespace Nui::Attributes
             }
         };
 
+        /**
+         * @brief Policy for setting the value of a text node on DOM elements.
+         */
         struct TextNodeAttributePolicy
         {
             template <typename ValueT>
-            static void set(Dom::ChildlessElement& element, char const* name, ValueT&& value) noexcept
+            static void set(Dom::ChildlessElement& element, char const*, ValueT&& value) noexcept
             {
                 element.setNodeValue(std::forward<ValueT>(value));
             }
         };
     }
 
+    /**
+     * @brief This is the class that is used to create attributes/properties for DOM elements. It uses a policy to
+     * determine how the attribute should be applied to the element. The factory can be assigned a stateful variable to
+     * create an attribute/property. If the stateful variable is an observed value, the factory will automatically
+     * register an event to update the attribute/property when the observed value changes. The factory can also be
+     * assigned a plain value, in which case it will create an attribute/property with that value. The factory can also
+     * be assigned a function, in which case it will create an event handler that calls the function when the event is
+     * triggered.
+     *
+     * @tparam Policy How to apply the attribute to the element (e.g. as an attribute, as a property, or as a text node
+     * value).
+     */
     template <typename Policy>
     class ElementMemberFactory
     {
@@ -281,6 +324,10 @@ namespace Nui::Attributes
     using PropertyFactory = ElementMemberFactory<Detail::SetPropertyPolicy>;
     using AttributeFactory = ElementMemberFactory<Detail::SetAttributePolicy>;
 
+    /**
+     * @brief The EventFactory is similar to the ElementMemberFactory but it can only be used for creating event
+     * listeners on DOM elements.
+     */
     class EventFactory
     {
       public:
@@ -348,14 +395,36 @@ namespace Nui::Attributes
 
     inline namespace Literals
     {
+        /**
+         * @brief Creates an AttributeFactory with the given name. The returned factory can be used to create attributes
+         * for DOM elements by assigning values to it.
+         *
+         * @param name The name of the attribute to create (e.g. "class", "id", "onclick", etc.).
+         * @return constexpr AttributeFactory
+         */
         constexpr AttributeFactory operator""_attr(char const* name, std::size_t)
         {
             return AttributeFactory{name};
         }
+
+        /**
+         * @brief Creates a PropertyFactory with the given name. The returned factory can be used to create properties
+         * for DOM elements by assigning values to it.
+         *
+         * @param name The name of the property to create (e.g. "value", "checked", "disabled", etc.).
+         * @return constexpr PropertyFactory
+         */
         constexpr PropertyFactory operator""_prop(char const* name, std::size_t)
         {
             return PropertyFactory{name};
         }
+        /**
+         * @brief Creates an EventFactory with the given name. The returned factory can be used to create event
+         * listeners for DOM elements by assigning functions to it.
+         *
+         * @param name The name of the event to create (e.g. "onclick", "onchange", "oninput", etc.).
+         * @return constexpr EventFactory
+         */
         constexpr EventFactory operator""_event(char const* name, std::size_t)
         {
             return EventFactory{name};
@@ -380,6 +449,12 @@ namespace Nui::Attributes
         };
     }
 
+    /**
+     * @brief This operator can be used to defer the application of an attribute until the parent element is attached to
+     * the DOM.
+     *
+     * @tparam T The type of the factory to defer (e.g. AttributeFactory, PropertyFactory, EventFactory).
+     */
     template <typename T>
     requires(
         std::is_same_v<std::decay_t<T>, AttributeFactory> || std::is_same_v<std::decay_t<T>, PropertyFactory> ||
