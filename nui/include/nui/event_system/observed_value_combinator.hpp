@@ -207,4 +207,34 @@ namespace Nui
         return ObservedValueCombinator<std::decay_t<Detail::ObservedAddReference_t<ObservedValues>>...>{
             std::forward<Detail::ObservedAddReference_t<ObservedValues>>(observedValues)...};
     }
+
+    template <typename... Types>
+    struct IsObservedValueCombinatorImpl
+    {
+        static constexpr bool value = false;
+    };
+
+    template <typename... Types>
+    struct IsObservedValueCombinatorImpl<ObservedValueCombinator<Types...>>
+    {
+        static constexpr bool value = true;
+    };
+
+    template <typename... Types>
+    struct IsObservedValueCombinatorWithGeneratorImpl
+    {
+        static constexpr bool value = false;
+    };
+
+    template <typename... Types>
+    struct IsObservedValueCombinatorWithGeneratorImpl<ObservedValueCombinatorWithGenerator<Types...>>
+    {
+        static constexpr bool value = true;
+    };
+
+    template <typename T>
+    concept IsObservedValueCombinator = IsObservedValueCombinatorImpl<std::decay_t<T>>::value;
+
+    template <typename T>
+    concept IsObservedValueCombinatorWithGenerator = IsObservedValueCombinatorWithGeneratorImpl<std::decay_t<T>>::value;
 }
