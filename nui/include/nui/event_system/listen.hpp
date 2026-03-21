@@ -21,6 +21,10 @@ namespace Nui
         using ObservedMemberType =
             std::conditional_t<IsSharedObserved<ObservedType>, ObservedType, ObservedType const*>;
 
+        ListenRemover()
+            : id_{EventContext::invalidEventId}
+            , obs_{nullptr}
+        {}
         ListenRemover(EventContext::EventIdType id, ObservedType const& obs)
             : id_{id}
             , obs_{std::get<ObservedMemberType>(
@@ -107,7 +111,8 @@ namespace Nui
     {
         const auto eventId = obs.eventContext().registerEvent(
             Event{
-                [obs = Detail::CopyableObservedWrap{obs}, onEvent = std::forward<FunctionT>(onEvent)](std::size_t) {
+                [obs = Detail::CopyableObservedWrap{obs},
+                 onEvent = std::forward<FunctionT>(onEvent)](std::size_t) mutable {
                     if constexpr (std::is_same_v<decltype(onEvent(obs.value())), bool>)
                         return onEvent(obs.value());
                     else
@@ -152,7 +157,8 @@ namespace Nui
     {
         const auto eventId = obs->eventContext().registerEvent(
             Event{
-                [weak = std::weak_ptr<Observed<ValueT>>{obs}, onEvent = std::forward<FunctionT>(onEvent)](std::size_t) {
+                [weak = std::weak_ptr<Observed<ValueT>>{obs},
+                 onEvent = std::forward<FunctionT>(onEvent)](std::size_t) mutable {
                     if (auto obs = weak.lock(); obs)
                     {
                         if constexpr (std::is_same_v<decltype(onEvent(obs->value())), bool>)
@@ -186,7 +192,7 @@ namespace Nui
     [[nodiscard("The returned ListenRemover must be stored to keep the listener alive")]]
     ListenRemover<Observed<ValueT>> smartListen(Observed<ValueT> const& obs, FunctionT&& onEvent)
     {
-        const auto eventId = listen(obs, [fn = std::forward<FunctionT>(onEvent), &obs](auto&& value) {
+        const auto eventId = listen(obs, [fn = std::forward<FunctionT>(onEvent), &obs](auto&& value) mutable {
             obs.eventContext().delayToAfterProcessing([&fn, value = std::forward<decltype(value)>(value)]() mutable {
                 fn(std::forward<decltype(value)>(value));
             });
@@ -212,7 +218,7 @@ namespace Nui
     ListenRemover<std::shared_ptr<Observed<ValueT>>>
     smartListen(std::shared_ptr<Observed<ValueT>> const& obs, FunctionT&& onEvent)
     {
-        const auto eventId = listen(obs, [fn = std::forward<FunctionT>(onEvent), obs](auto&& value) {
+        const auto eventId = listen(obs, [fn = std::forward<FunctionT>(onEvent), obs](auto&& value) mutable {
             obs->eventContext().delayToAfterProcessing([fn, value = std::forward<decltype(value)>(value)]() mutable {
                 fn(std::forward<decltype(value)>(value));
             });
