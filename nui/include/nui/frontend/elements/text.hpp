@@ -1,7 +1,9 @@
 #pragma once
 
+#include <nui/frontend/attributes/impl/attribute_factory.hpp>
 #include <nui/frontend/elements/impl/html_element_incl.hpp>
 #include <nui/frontend/event_system/observed_value.hpp>
+#include <nui/frontend/event_system/observed_value_combinator.hpp>
 #include <nui/frontend/event_system/event_context.hpp>
 
 #include <string_view>
@@ -19,30 +21,28 @@ namespace Nui::Elements
             : HtmlElement{
                   "",
                   &TextElementBridge,
-                  Attribute{
-                      obs.value(),
-                      [&obs](std::weak_ptr<Dom::ChildlessElement>&& element) {
-                          const auto eventId = globalEventContext.registerEvent(Event{
-                              [element, &obs](auto eventId) {
-                                  if (auto shared = element.lock(); shared)
-                                  {
-                                      shared->setNodeValue(obs.value());
-                                      return true;
-                                  }
-                                  obs.detachEvent(eventId);
-                                  return false;
-                              },
-                              [element]() {
-                                  return !element.expired();
-                              }});
-                          obs.attachEvent(eventId);
-                          return eventId;
-                      },
-                      [&obs](EventContext::EventIdType const& id) {
-                          obs.detachEvent(id);
-                      },
-                  },
+                  Nui::Attributes::ElementMemberFactory<::Nui::Attributes::Detail::TextNodeAttributePolicy>{""} = obs,
               }
+        {}
+        template <typename... CombinatorParameters>
+        text(Nui::ObservedValueCombinatorWithGenerator<CombinatorParameters...> combinator)
+            : HtmlElement{
+                  "",
+                  &TextElementBridge,
+                  Nui::Attributes::ElementMemberFactory<::Nui::Attributes::Detail::TextNodeAttributePolicy>{""} =
+                      std::move(combinator),
+              }
+        {}
+        text(std::shared_ptr<Nui::Observed<std::string>> obs)
+            : HtmlElement{
+                  "",
+                  &TextElementBridge,
+                  Nui::Attributes::ElementMemberFactory<::Nui::Attributes::Detail::TextNodeAttributePolicy>{""} =
+                      std::move(obs),
+              }
+        {}
+        text(std::weak_ptr<Nui::Observed<std::string>> const& obs)
+            : text{obs.lock()}
         {}
     };
 }

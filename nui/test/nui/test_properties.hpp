@@ -22,9 +22,9 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::checked;
-        using Nui::property;
+        using namespace Nui::Attributes::Literals;
 
-        render(div{checked = property("asdf")}());
+        render(div{"checked"_prop = "asdf"}());
 
         EXPECT_EQ(Nui::val::global("document")["body"]["checked"].as<std::string>(), "asdf");
     }
@@ -33,11 +33,11 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::checked;
-        using Nui::property;
+        using namespace Nui::Attributes::Literals;
 
         Observed<bool> isChecked{false};
 
-        render(div{checked = property(isChecked)}());
+        render(div{"checked"_prop = isChecked}());
 
         EXPECT_EQ(Nui::val::global("document")["body"]["checked"].as<bool>(), false);
 
@@ -51,11 +51,11 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::checked;
-        using Nui::property;
+        using namespace Nui::Attributes::Literals;
 
         Observed<bool> isChecked{false};
 
-        render(div{checked = property(isChecked)}());
+        render(div{"checked"_prop = isChecked}());
 
         EXPECT_EQ(Nui::val::global("document")["body"]["checked"].as<bool>(), false);
 
@@ -68,11 +68,11 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::checked;
-        using Nui::property;
+        using namespace Nui::Attributes::Literals;
 
         Observed<std::optional<bool>> isChecked{std::nullopt};
 
-        render(div{checked = property(isChecked)}());
+        render(div{"checked"_prop = isChecked}());
 
         EXPECT_FALSE(Nui::val::global("document")["body"].hasOwnProperty("checked"));
 
@@ -91,31 +91,11 @@ namespace Nui::Tests
     {
         using Nui::Elements::input;
         using Nui::Attributes::value;
-        using Nui::property;
+        using namespace Nui::Attributes::Literals;
 
         Observed<std::string> observed{"Hello"};
 
-        render(input{value = property(observe(observed).generate([&observed]() {
-                         return observed.value() + " World";
-                     }))}());
-
-        EXPECT_EQ(Nui::val::global("document")["body"]["value"].as<std::string>(), "Hello World");
-
-        observed = "Goodbye";
-        Nui::globalEventContext.executeActiveEventsImmediately();
-
-        EXPECT_EQ(Nui::val::global("document")["body"]["value"].as<std::string>(), "Goodbye World");
-    }
-
-    TEST_F(TestProperties, PropertiesCanBeGeneratedAlternate)
-    {
-        using Nui::Elements::input;
-        using Nui::Attributes::value;
-        using Nui::property;
-
-        Observed<std::string> observed{"Hello"};
-
-        render(input{value = observe(observed).generateProperty([&observed]() {
+        render(input{"value"_prop = observe(observed).generate([&observed]() {
             return observed.value() + " World";
         })}());
 
@@ -127,21 +107,9 @@ namespace Nui::Tests
         EXPECT_EQ(Nui::val::global("document")["body"]["value"].as<std::string>(), "Goodbye World");
     }
 
-    TEST_F(TestProperties, CanUseAttributeLiteralForProperty)
-    {
-        using Nui::Elements::input;
-        using Nui::property;
-        using namespace Nui::Attributes::Literals;
-
-        render(input{"value"_attr = property("Hello World")}());
-
-        EXPECT_EQ(Nui::val::global("document")["body"]["value"].as<std::string>(), "Hello World");
-    }
-
     TEST_F(TestProperties, CanUsePropertyLiteral)
     {
         using Nui::Elements::input;
-        using Nui::property;
         using namespace Nui::Attributes::Literals;
 
         render(input{"value"_prop = "Hello World"}());
@@ -153,10 +121,11 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::id;
+        using namespace Nui::Attributes::Literals;
 
         std::variant<std::string, int> idValue{"A"};
 
-        render(div{id = property(idValue)}());
+        render(div{"id"_prop = idValue}());
         EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
     }
 
@@ -164,10 +133,11 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::id;
+        using namespace Nui::Attributes::Literals;
 
         Observed<std::variant<std::string, int>> idValue{"A"};
 
-        render(div{id = property(idValue)}());
+        render(div{"id"_prop = idValue}());
         EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
 
         idValue = 1;
@@ -179,10 +149,11 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::id;
+        using namespace Nui::Attributes::Literals;
 
         std::string_view idValue{"A"};
 
-        render(div{id = property(idValue)}());
+        render(div{"id"_prop = idValue}());
         EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
     }
 
@@ -200,12 +171,13 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::onClick;
+        using namespace Nui::Attributes::Literals;
 
         bool called = false;
-        render(div{onClick = property([&called]() {
-                       called = true;
-                   })}());
-        Nui::val::global("document")["body"]["onclick"](Nui::val{});
+        render(div{"onClick"_prop = [&called]() {
+            called = true;
+        }}());
+        Nui::val::global("document")["body"]["onClick"](Nui::val{});
         EXPECT_TRUE(called);
     }
 
@@ -213,12 +185,13 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::onClick;
+        using namespace Nui::Attributes::Literals;
 
         bool called = false;
-        render(div{onClick = property([&called](Nui::val) {
-                       called = true;
-                   })}());
-        Nui::val::global("document")["body"]["onclick"](Nui::val{});
+        render(div{"onClick"_prop = [&called](Nui::val) {
+            called = true;
+        }}());
+        Nui::val::global("document")["body"]["onClick"](Nui::val{});
         EXPECT_TRUE(called);
     }
 
@@ -226,10 +199,11 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::hidden;
+        using namespace Nui::Attributes::Literals;
 
         bool hiddenValue = true;
 
-        render(div{hidden = property(hiddenValue)}());
+        render(div{"hidden"_prop = hiddenValue}());
         EXPECT_TRUE(Nui::val::global("document")["body"]["hidden"].as<bool>());
     }
 
@@ -237,10 +211,11 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::tabIndex;
+        using namespace Nui::Attributes::Literals;
 
         int tabIndexValue = 1;
 
-        render(div{tabIndex = property(tabIndexValue)}());
+        render(div{"tabIndex"_prop = tabIndexValue}());
         EXPECT_EQ(Nui::val::global("document")["body"]["tabIndex"].as<long long>(), 1);
     }
 
@@ -248,17 +223,17 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::tabIndex;
+        using namespace Nui::Attributes::Literals;
 
         double tabIndexValue = 1.5;
 
-        render(div{tabIndex = property(tabIndexValue)}());
+        render(div{"tabIndex"_prop = tabIndexValue}());
         EXPECT_EQ(Nui::val::global("document")["body"]["tabIndex"].as<long double>(), 1.5);
     }
 
     TEST_F(TestProperties, CanUseGeneratorWithPropertyLiteral)
     {
         using Nui::Elements::input;
-        using Nui::property;
         using namespace Nui::Attributes::Literals;
 
         Observed<std::string> observed{"Hello"};
@@ -279,10 +254,11 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::id;
+        using namespace Nui::Attributes::Literals;
 
         std::shared_ptr<Observed<std::string>> value = std::make_shared<Observed<std::string>>("A");
 
-        render(div{id = property(std::weak_ptr{value})}());
+        render(div{"id"_prop = std::weak_ptr{value}}());
 
         EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
 
@@ -296,10 +272,11 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::id;
+        using namespace Nui::Attributes::Literals;
 
         std::shared_ptr<Observed<std::string>> value = std::make_shared<Observed<std::string>>("A");
 
-        render(div{id = property(value)}());
+        render(div{"id"_prop = value}());
 
         EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
 
@@ -313,10 +290,11 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::id;
+        using namespace Nui::Attributes::Literals;
 
         std::shared_ptr<Observed<std::string>> value = std::make_shared<Observed<std::string>>("A");
 
-        render(div{id = property(std::weak_ptr{value})}());
+        render(div{"id"_prop = std::weak_ptr{value}}());
 
         EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
 
@@ -333,10 +311,11 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::id;
+        using namespace Nui::Attributes::Literals;
 
         std::shared_ptr<Observed<std::string>> value = std::make_shared<Observed<std::string>>("A");
 
-        render(div{id = property(value)}());
+        render(div{"id"_prop = value}());
 
         EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "A");
 
@@ -353,15 +332,16 @@ namespace Nui::Tests
     {
         using Nui::Elements::div;
         using Nui::Attributes::id;
+        using namespace Nui::Attributes::Literals;
 
         Observed<std::string> classPart1{"Hello"};
         Observed<std::string> classPart2{"World"};
 
         render(
-            div{id = property(observe(classPart1, classPart2)
-                                  .generate([](std::string const& part1, std::string const& part2) -> std::string {
-                                      return part1 + " " + part2;
-                                  }))}());
+            div{"id"_prop = observe(classPart1, classPart2)
+                                .generate([](std::string const& part1, std::string const& part2) -> std::string {
+                                    return part1 + " " + part2;
+                                })}());
 
         EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "Hello World");
 
@@ -369,25 +349,5 @@ namespace Nui::Tests
         globalEventContext.executeActiveEventsImmediately();
 
         EXPECT_EQ(Nui::val::global("document")["body"]["id"].as<std::string>(), "Goodbye World");
-    }
-
-    TEST_F(TestProperties, GeneratorCanTakeObservedValuesAsArgumentsAlternate)
-    {
-        using Nui::Elements::input;
-        using Nui::Attributes::value;
-        using Nui::property;
-
-        Observed<std::string> observed{"Hello"};
-
-        render(input{value = observe(observed).generateProperty([&observed](std::string const& observedValue) {
-            return observedValue + " World";
-        })}());
-
-        EXPECT_EQ(Nui::val::global("document")["body"]["value"].as<std::string>(), "Hello World");
-
-        observed = "Goodbye";
-        Nui::globalEventContext.executeActiveEventsImmediately();
-
-        EXPECT_EQ(Nui::val::global("document")["body"]["value"].as<std::string>(), "Goodbye World");
     }
 }

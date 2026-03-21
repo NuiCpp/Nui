@@ -10,7 +10,7 @@ namespace Nui::Attributes
         requires std::invocable<T, std::weak_ptr<Dom::BasicElement>&&>
         Attribute operator=(T&& func) const
         {
-            return Attribute{[func = std::forward<T>(func)](Dom::ChildlessElement& element) {
+            return Attribute{[func = std::forward<T>(func)](Dom::ChildlessElement& element) mutable {
                 func(element.weak_from_base<Dom::BasicElement>());
             }};
         }
@@ -19,21 +19,21 @@ namespace Nui::Attributes
         requires std::invocable<T, Nui::val&&>
         Attribute onMaterialize(T&& func) const
         {
-            return operator=([func = std::forward<T>(func)](std::weak_ptr<Dom::BasicElement>&& element) {
+            return operator=([func = std::forward<T>(func)](std::weak_ptr<Dom::BasicElement>&& element) mutable {
                 func(element.lock()->val());
             });
         }
 
         Attribute operator=(std::weak_ptr<Dom::BasicElement>& ref) const
         {
-            return operator=([&ref](std::weak_ptr<Dom::BasicElement>&& element) {
+            return operator=([&ref](std::weak_ptr<Dom::BasicElement>&& element) mutable {
                 ref = std::move(element);
             });
         }
 
         Attribute operator=(Nui::val& ref) const
         {
-            return operator=([&ref](std::weak_ptr<Dom::BasicElement>&& element) {
+            return operator=([&ref](std::weak_ptr<Dom::BasicElement>&& element) mutable {
                 ref = element.lock()->val();
             });
         }

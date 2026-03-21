@@ -468,6 +468,16 @@ namespace Nui::Tests
         EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "hi");
     }
 
+    TEST_F(TestAttributes, CanSetDeferredAttribute2)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::id;
+
+        render(div{!(id) = "hi"}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "hi");
+    }
+
     TEST_F(TestAttributes, CanUseSharedPointerObserved)
     {
         using Nui::Elements::div;
