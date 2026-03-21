@@ -145,6 +145,11 @@ namespace Nui
             }
         }
 
+        void generate(RendererTypeNoRef generator)
+        {
+            this->generator_ = std::move(generator);
+        }
+
         RendererTypeNoRef generator() const&
         {
             return generator_;
