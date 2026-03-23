@@ -52,7 +52,7 @@ namespace Nui::Detail
          * @brief Handles getting the value range, taking care of weak observed types.
          *
          * @param holder A hold token that keeps locked weak pointers alive.
-         * @return auto* A pointer to a Nui::Observed<T>.
+         * @return auto* A pointer to a Nui::Observed<T, Tags>.
          */
         auto* getValueRange(HoldToken& holder)
         {

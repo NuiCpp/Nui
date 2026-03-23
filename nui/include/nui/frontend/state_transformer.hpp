@@ -95,10 +95,11 @@ namespace Nui
          * @brief Constructor for a shared_ptr to an observed value.
          *
          * @tparam U Observed state type
+         * @tparam Tags Observed state tags
          */
-        template <typename U>
+        template <typename U, typename Tags>
         // NOLINTNEXTLINE(hicpp-explicit-conversions): Intentional
-        StateTransformer(std::shared_ptr<Nui::Observed<U>> const& value)
+        StateTransformer(std::shared_ptr<Nui::Observed<U, Tags>> const& value)
             : reifier_{[this, value]() mutable {
                 return std::make_tuple(ReificationStrategies::reify(*this, *value)...);
             }}
@@ -118,20 +119,23 @@ namespace Nui
          * StateTransformer, otherwise accessing the value or reifying will lead to undefined behavior.
          *
          * @tparam U Observed state type
+         * @tparam Tags Observed state tags
          */
-        template <typename U>
+        template <typename U, typename Tags>
         // NOLINTNEXTLINE(hicpp-explicit-conversions): Intentional
-        StateTransformer(Nui::Observed<U>& val)
-            : reifier_{[this, ref = std::reference_wrapper<Nui::Observed<U>>{val}]() mutable {
+        StateTransformer(Nui::Observed<U, Tags>& val)
+            : reifier_{[this, ref = std::reference_wrapper<Nui::Observed<U, Tags>>{val}]() mutable {
                 return std::make_tuple(ReificationStrategies::reify(*this, ref.get())...);
             }}
-            , assigner_{[ref = std::reference_wrapper<Nui::Observed<U>>{val}](void const* ptr, ChangePolicy status) {
+            , assigner_{[ref = std::reference_wrapper<Nui::Observed<U, Tags>>{val}](
+                            void const* ptr,
+                            ChangePolicy status) {
                 if (status == ChangePolicy::Tracked)
                     ref.get() = *static_cast<U const*>(ptr);
                 else
                     ref.get().value() = *static_cast<U const*>(ptr);
             }}
-            , value_{[ref = std::reference_wrapper<Nui::Observed<U>>{val}]() mutable {
+            , value_{[ref = std::reference_wrapper<Nui::Observed<U, Tags>>{val}]() mutable {
                 return ref.get().value();
             }}
         {}
@@ -141,10 +145,11 @@ namespace Nui
          * value. Make sure that the observed value outlives the StateTransformer, otherwise the functions will throw.
          *
          * @tparam U Observed state type
+         * @tparam Tags Observed state tags
          */
-        template <typename U>
+        template <typename U, typename Tags>
         // NOLINTNEXTLINE(hicpp-explicit-conversions): Intentional
-        StateTransformer(std::weak_ptr<Nui::Observed<U>> const& val)
+        StateTransformer(std::weak_ptr<Nui::Observed<U, Tags>> const& val)
             : reifier_{[this, val = std::weak_ptr{val.lock()}]() mutable {
                 auto value = val.lock();
                 if (!value)

@@ -100,14 +100,15 @@ namespace Nui
      * context to delay specific changes until after processing manually.
      *
      * @tparam ValueT The type of the contained observed value.
+     * @tparam Tags The tags associated with the observed value.
      * @tparam FunctionT The type of the onEvent function. Needs to be of signature that accepts the observed value
      * contents as an argument.
      * @param obs The observed value to listen to.
      * @param onEvent The function to call when the observed value changes.
      * @return EventRegistry::EventIdType The id of the registered event.
      */
-    template <typename ValueT, typename FunctionT>
-    EventRegistry::EventIdType listen(Observed<ValueT> const& obs, FunctionT&& onEvent)
+    template <typename ValueT, typename Tags, typename FunctionT>
+    EventRegistry::EventIdType listen(Observed<ValueT, Tags> const& obs, FunctionT&& onEvent)
     {
         const auto eventId = obs.eventContext().registerEvent(
             Event{
@@ -146,18 +147,19 @@ namespace Nui
      * is destroyed.
      *
      * @tparam ValueT The type of the contained observed value.
+     * @tparam Tags The tags associated with the observed value.
      * @tparam FunctionT The type of the onEvent function. Needs to be of signature that accepts the observed value
      * contents as an argument.
      * @param obs A shared_ptr of an observed value to listen to.
      * @param onEvent The function to call when the observed value changes.
      * @return EventRegistry::EventIdType The id of the registered event.
      */
-    template <typename ValueT, typename FunctionT>
-    EventRegistry::EventIdType listen(std::shared_ptr<Observed<ValueT>> const& obs, FunctionT&& onEvent)
+    template <typename ValueT, typename Tags, typename FunctionT>
+    EventRegistry::EventIdType listen(std::shared_ptr<Observed<ValueT, Tags>> const& obs, FunctionT&& onEvent)
     {
         const auto eventId = obs->eventContext().registerEvent(
             Event{
-                [weak = std::weak_ptr<Observed<ValueT>>{obs},
+                [weak = std::weak_ptr<Observed<ValueT, Tags>>{obs},
                  onEvent = std::forward<FunctionT>(onEvent)](std::size_t) mutable {
                     if (auto obs = weak.lock(); obs)
                     {
@@ -169,7 +171,7 @@ namespace Nui
                     }
                     return false;
                 },
-                [weak = std::weak_ptr<Observed<ValueT>>{obs}]() {
+                [weak = std::weak_ptr<Observed<ValueT, Tags>>{obs}]() {
                     return !weak.expired();
                 }});
         obs->attachEvent(eventId);
@@ -186,11 +188,12 @@ namespace Nui
      * contents as an argument.
      * @param obs The observed value to listen to.
      * @param onEvent The function to call when the observed value changes.
-     * @return ListenRemover<Observed<ValueT>> A ListenRemover that will automatically remove the event on destruction.
+     * @return ListenRemover<Observed<ValueT, Tags>> A ListenRemover that will automatically remove the event on
+     * destruction.
      */
-    template <typename ValueT, typename FunctionT>
+    template <typename ValueT, typename Tags, typename FunctionT>
     [[nodiscard("The returned ListenRemover must be stored to keep the listener alive")]]
-    ListenRemover<Observed<ValueT>> smartListen(Observed<ValueT> const& obs, FunctionT&& onEvent)
+    ListenRemover<Observed<ValueT, Tags>> smartListen(Observed<ValueT, Tags> const& obs, FunctionT&& onEvent)
     {
         const auto eventId = listen(obs, [fn = std::forward<FunctionT>(onEvent), &obs](auto&& value) mutable {
             obs.eventContext().delayToAfterProcessing([&fn, value = std::forward<decltype(value)>(value)]() mutable {
@@ -210,13 +213,13 @@ namespace Nui
      * contents as an argument.
      * @param obs A shared pointer to the observed value to listen to.
      * @param onEvent The function to call when the observed value changes.
-     * @return ListenRemover<std::shared_ptr<Observed<ValueT>>> A ListenRemover that will automatically remove the event
-     * on destruction.
+     * @return ListenRemover<std::shared_ptr<Observed<ValueT, Tags>>> A ListenRemover that will automatically remove the
+     * event on destruction.
      */
-    template <typename ValueT, typename FunctionT>
+    template <typename ValueT, typename Tags, typename FunctionT>
     [[nodiscard("The returned ListenRemover must be stored to keep the listener alive")]]
-    ListenRemover<std::shared_ptr<Observed<ValueT>>>
-    smartListen(std::shared_ptr<Observed<ValueT>> const& obs, FunctionT&& onEvent)
+    ListenRemover<std::shared_ptr<Observed<ValueT, Tags>>>
+    smartListen(std::shared_ptr<Observed<ValueT, Tags>> const& obs, FunctionT&& onEvent)
     {
         const auto eventId = listen(obs, [fn = std::forward<FunctionT>(onEvent), obs](auto&& value) mutable {
             obs->eventContext().delayToAfterProcessing([fn, value = std::forward<decltype(value)>(value)]() mutable {

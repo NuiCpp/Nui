@@ -260,20 +260,20 @@ namespace Nui
     }
 #endif
 
-    template <typename ContainerT>
-    constexpr auto ObservedContainer<ContainerT>::map(auto&& function) const
+    template <typename ContainerT, typename Tags>
+    constexpr auto ObservedContainer<ContainerT, Tags>::map(auto&& function) const
     {
-        return std::pair<ObservedRange<Observed<ContainerT>>, std::decay_t<decltype(function)>>{
-            ObservedRange<Observed<ContainerT>>{static_cast<Observed<ContainerT> const&>(*this)},
+        return std::pair<ObservedRange<Observed<ContainerT, Tags>>, std::decay_t<decltype(function)>>{
+            ObservedRange<Observed<ContainerT, Tags>>{static_cast<Observed<ContainerT, Tags> const&>(*this)},
             std::forward<std::decay_t<decltype(function)>>(function),
         };
     }
 
-    template <typename ContainerT>
-    constexpr auto ObservedContainer<ContainerT>::map(auto&& function)
+    template <typename ContainerT, typename Tags>
+    constexpr auto ObservedContainer<ContainerT, Tags>::map(auto&& function)
     {
-        return std::pair<ObservedRange<Observed<ContainerT>>, std::decay_t<decltype(function)>>{
-            ObservedRange<Observed<ContainerT>>{static_cast<Observed<ContainerT>&>(*this)},
+        return std::pair<ObservedRange<Observed<ContainerT, Tags>>, std::decay_t<decltype(function)>>{
+            ObservedRange<Observed<ContainerT, Tags>>{static_cast<Observed<ContainerT, Tags>&>(*this)},
             std::forward<std::decay_t<decltype(function)>>(function),
         };
     }

@@ -364,15 +364,16 @@ namespace Nui
         }
 
         // Observed text and number content functions:
-        auto operator()(Observed<std::string> const& observedString) &&
+        template <typename Tags>
+        auto operator()(Observed<std::string, Tags> const& observedString) &&
         {
             return std::move(*this).operator()(observe(observedString), [&observedString]() -> std::string {
                 return observedString.value();
             });
         }
-        template <typename T>
+        template <typename T, typename Tags>
         requires Fundamental<T>
-        auto operator()(Observed<T> const& observedNumber) &&
+        auto operator()(Observed<T, Tags> const& observedNumber) &&
         {
             return std::move(*this).operator()(observe(observedNumber), [&observedNumber]() -> std::string {
                 return std::to_string(observedNumber.value());
