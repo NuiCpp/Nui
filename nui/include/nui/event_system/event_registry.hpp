@@ -1,7 +1,7 @@
 #pragma once
 
 #include <nui/data_structures/selectables_registry.hpp>
-#include <nui/frontend/event_system/event.hpp>
+#include <nui/event_system/event.hpp>
 #include <nui/utility/visit_overloaded.hpp>
 
 #include <limits>

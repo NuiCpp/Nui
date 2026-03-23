@@ -2,9 +2,9 @@
 
 #include <nui/frontend/attributes/impl/attribute_factory.hpp>
 #include <nui/frontend/elements/impl/html_element_incl.hpp>
-#include <nui/frontend/event_system/observed_value.hpp>
-#include <nui/frontend/event_system/observed_value_combinator.hpp>
-#include <nui/frontend/event_system/event_context.hpp>
+#include <nui/event_system/observed_value.hpp>
+#include <nui/event_system/observed_value_combinator.hpp>
+#include <nui/event_system/event_context.hpp>
 
 #include <string_view>
 

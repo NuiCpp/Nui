@@ -1,6 +1,6 @@
 #pragma once
 
-#include <nui/frontend/event_system/observed_value.hpp>
+#include <nui/event_system/observed_value.hpp>
 #include <nui/utility/visit_overloaded.hpp>
 #include <nui/frontend/elements/fragment.hpp>
 #include <nui/frontend/elements/caption.hpp>

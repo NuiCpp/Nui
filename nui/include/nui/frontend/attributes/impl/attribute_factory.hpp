@@ -2,9 +2,9 @@
 
 #include <nui/frontend/attributes/impl/attribute.hpp>
 #include <nui/frontend/dom/childless_element.hpp>
-#include <nui/frontend/event_system/observed_value.hpp>
-#include <nui/frontend/event_system/event_context.hpp>
-#include <nui/frontend/event_system/observed_value_combinator.hpp>
+#include <nui/event_system/observed_value.hpp>
+#include <nui/event_system/event_context.hpp>
+#include <nui/event_system/observed_value_combinator.hpp>
 #include <nui/utility/fixed_string.hpp>
 
 #include <nui/frontend/val.hpp>

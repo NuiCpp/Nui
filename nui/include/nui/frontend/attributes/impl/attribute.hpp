@@ -1,7 +1,7 @@
 #pragma once
 
 #include <nui/frontend/dom/element_fwd.hpp>
-#include <nui/frontend/event_system/event_context.hpp>
+#include <nui/event_system/event_context.hpp>
 
 #include <functional>
 #include <memory>

@@ -2,7 +2,7 @@
 #include <nui/frontend/rpc_client.hpp>
 #include <nui/frontend/utility/val_conversion.hpp>
 #include <nui/frontend/api/console.hpp>
-#include <nui/frontend/event_system/event_context.hpp>
+#include <nui/event_system/event_context.hpp>
 
 #include <nui/frontend/val.hpp>
 

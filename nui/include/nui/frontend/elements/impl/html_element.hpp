@@ -1,9 +1,9 @@
 #pragma once
 
-#include <nui/frontend/event_system/observed_value.hpp>
-#include <nui/frontend/event_system/observed_value_combinator.hpp>
-#include <nui/frontend/event_system/range.hpp>
-#include <nui/frontend/event_system/event_context.hpp>
+#include <nui/event_system/observed_value.hpp>
+#include <nui/event_system/observed_value_combinator.hpp>
+#include <nui/event_system/range.hpp>
+#include <nui/event_system/event_context.hpp>
 #include <nui/frontend/dom/element_fwd.hpp>
 #include <nui/frontend/elements/detail/fragment_context.hpp>
 #include <nui/frontend/elements/impl/html_element_bridge.hpp>
