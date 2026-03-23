@@ -107,6 +107,23 @@ namespace Nui
                     hub->unregisterFunction(name);
                 }}
             {}
+            ~AutoUnregister() = default;
+
+            AutoUnregister(AutoUnregister const&) = delete;
+            AutoUnregister(AutoUnregister&& other) noexcept
+                : OnDestroy{std::move(other)}
+            {}
+            AutoUnregister& operator=(AutoUnregister const&) = delete;
+            AutoUnregister& operator=(AutoUnregister&& other) noexcept
+            {
+                OnDestroy::operator=(std::move(other));
+                return *this;
+            }
+
+            void reset()
+            {
+                trigger();
+            }
         };
 
         template <typename T>
