@@ -10,13 +10,16 @@ namespace Nui
 {
     namespace Detail
     {
+        constexpr static std::uint64_t fnv1aPrime = 1099511628211ULL;
+        constexpr static std::uint64_t fnv1aOffsetBasis = 14695981039346656037ULL;
+
         constexpr std::uint64_t fnv1a(std::string_view str) noexcept
         {
-            std::uint64_t hash = 14695981039346656037ULL;
+            std::uint64_t hash = fnv1aOffsetBasis;
             for (auto c : str)
             {
                 hash ^= static_cast<std::uint64_t>(c);
-                hash *= 1099511628211ULL;
+                hash *= fnv1aPrime;
             }
             return hash;
         }
@@ -30,11 +33,7 @@ namespace Nui
 
         constexpr std::uint64_t locationHash(std::string_view file, int line) noexcept
         {
-            std::uint64_t h = fnv1a(filenameOnly(file));
-            // Mix in the line number
-            h ^= static_cast<std::uint64_t>(line);
-            h *= 1099511628211ULL;
-            return h;
+            return (fnv1a(file) ^ static_cast<std::uint64_t>(line)) * fnv1aPrime;
         }
     }
 
