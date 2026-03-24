@@ -73,6 +73,7 @@ namespace Nui
                           {
                               *eventComesFromRpc = true;
                               observed = value.template get<typename ObservedT::observed_type>();
+                              observed.eventContext().sync();
                           }
                           *eventComesFromRpc = false;
                       }),
@@ -149,6 +150,7 @@ namespace Nui
                           {
                               *eventComesFromRpc = true;
                               *observed = value.template get<typename SharedObservedT::value_type::observed_type>();
+                              observed->eventContext().sync();
                           }
                           *eventComesFromRpc = false;
                       }),
