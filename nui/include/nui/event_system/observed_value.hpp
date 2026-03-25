@@ -423,11 +423,11 @@ namespace Nui
 
     namespace ContainerWrapUtility
     {
-        template <typename T, typename ContainerT>
+        template <typename T, typename ContainerT, typename Tags = void>
         class ReferenceWrapper
         {
           public:
-            ReferenceWrapper(ObservedContainer<ContainerT>* owner, std::size_t pos, T& ref)
+            ReferenceWrapper(ObservedContainer<ContainerT, Tags>* owner, std::size_t pos, T& ref)
                 : owner_{owner}
                 , pos_{pos}
                 , ref_{&ref}
@@ -511,18 +511,18 @@ namespace Nui
             }
 
           protected:
-            ObservedContainer<ContainerT>* owner_;
+            ObservedContainer<ContainerT, Tags>* owner_;
             std::size_t pos_;
             T* ref_;
         };
 
-        template <typename T, typename ContainerT>
-        auto& unwrapReferenceWrapper(ReferenceWrapper<T, ContainerT>& wrapper)
+        template <typename T, typename ContainerT, typename Tags = void>
+        auto& unwrapReferenceWrapper(ReferenceWrapper<T, ContainerT, Tags>& wrapper)
         {
             return wrapper.get();
         }
-        template <typename T, typename ContainerT>
-        auto const& unwrapReferenceWrapper(ReferenceWrapper<T, ContainerT> const& wrapper)
+        template <typename T, typename ContainerT, typename Tags = void>
+        auto const& unwrapReferenceWrapper(ReferenceWrapper<T, ContainerT, Tags> const& wrapper)
         {
             return wrapper.get();
         }
@@ -535,11 +535,11 @@ namespace Nui
             return ref;
         }
 
-        template <typename T, typename ContainerT>
+        template <typename T, typename ContainerT, typename Tags = void>
         class PointerWrapper
         {
           public:
-            PointerWrapper(ObservedContainer<ContainerT>* owner, std::size_t pos, T* ptr) noexcept
+            PointerWrapper(ObservedContainer<ContainerT, Tags>* owner, std::size_t pos, T* ptr) noexcept
                 : owner_{owner}
                 , pos_{pos}
                 , ptr_{ptr}
@@ -584,23 +584,23 @@ namespace Nui
             }
 
           protected:
-            ObservedContainer<ContainerT>* owner_;
+            ObservedContainer<ContainerT, Tags>* owner_;
             std::size_t pos_;
             T* ptr_;
         };
 
-        template <typename WrappedIterator, typename ContainerT>
+        template <typename WrappedIterator, typename ContainerT, typename Tags = void>
         class IteratorWrapper
         {
           public:
             using iterator_category = std::random_access_iterator_tag;
             using value_type = typename WrappedIterator::value_type;
             using difference_type = typename WrappedIterator::difference_type;
-            using pointer = PointerWrapper<value_type, ContainerT>;
-            using reference = ReferenceWrapper<value_type, ContainerT>;
+            using pointer = PointerWrapper<value_type, ContainerT, Tags>;
+            using reference = ReferenceWrapper<value_type, ContainerT, Tags>;
 
           public:
-            IteratorWrapper(ObservedContainer<ContainerT>* owner, WrappedIterator it)
+            IteratorWrapper(ObservedContainer<ContainerT, Tags>* owner, WrappedIterator it)
                 : owner_{owner}
                 , it_{std::move(it)}
             {}
@@ -652,13 +652,13 @@ namespace Nui
             auto operator*()
             {
                 if constexpr (std::is_same_v<WrappedIterator, typename ContainerT::reverse_iterator>)
-                    return ReferenceWrapper<value_type, ContainerT>{
+                    return ReferenceWrapper<value_type, ContainerT, Tags>{
                         owner_,
                         owner_->contained_.size() - static_cast<std::size_t>(1) -
                             static_cast<std::size_t>(it_ - owner_->contained_.rbegin()),
                         *it_};
                 else
-                    return ReferenceWrapper<value_type, ContainerT>{
+                    return ReferenceWrapper<value_type, ContainerT, Tags>{
                         owner_, static_cast<std::size_t>(it_ - owner_->contained_.begin()), *it_};
             }
             auto operator*() const
@@ -668,13 +668,13 @@ namespace Nui
             auto operator->()
             {
                 if constexpr (std::is_same_v<WrappedIterator, typename ContainerT::reverse_iterator>)
-                    return PointerWrapper<value_type, ContainerT>{
+                    return PointerWrapper<value_type, ContainerT, Tags>{
                         owner_,
                         owner_->contained_.size() - static_cast<std::size_t>(1) -
                             static_cast<std::size_t>(it_ - owner_->contained_.rbegin()),
                         &*it_};
                 else
-                    return PointerWrapper<value_type, ContainerT>{
+                    return PointerWrapper<value_type, ContainerT, Tags>{
                         owner_, static_cast<std::size_t>(it_ - owner_->contained_.begin()), &*it_};
             }
             auto operator->() const
@@ -711,7 +711,7 @@ namespace Nui
             }
 
           private:
-            ObservedContainer<ContainerT>* owner_;
+            ObservedContainer<ContainerT, Tags>* owner_;
             WrappedIterator it_;
         };
     };
@@ -721,22 +721,22 @@ namespace Nui
     {
       public:
         using observed_type = ContainerT;
-        friend class ContainerWrapUtility::ReferenceWrapper<typename ContainerT::value_type, ContainerT>;
-        friend class ContainerWrapUtility::PointerWrapper<typename ContainerT::value_type, ContainerT>;
+        friend class ContainerWrapUtility::ReferenceWrapper<typename ContainerT::value_type, ContainerT, Tags>;
+        friend class ContainerWrapUtility::PointerWrapper<typename ContainerT::value_type, ContainerT, Tags>;
 
         using value_type = typename ContainerT::value_type;
         using allocator_type = typename ContainerT::allocator_type;
         using size_type = typename ContainerT::size_type;
         using difference_type = typename ContainerT::difference_type;
-        using reference = ContainerWrapUtility::ReferenceWrapper<typename ContainerT::value_type, ContainerT>;
+        using reference = ContainerWrapUtility::ReferenceWrapper<typename ContainerT::value_type, ContainerT, Tags>;
         using const_reference = typename ContainerT::const_reference;
-        using pointer = ContainerWrapUtility::PointerWrapper<typename ContainerT::value_type, ContainerT>;
+        using pointer = ContainerWrapUtility::PointerWrapper<typename ContainerT::value_type, ContainerT, Tags>;
         using const_pointer = typename ContainerT::const_pointer;
 
-        using iterator = ContainerWrapUtility::IteratorWrapper<typename ContainerT::iterator, ContainerT>;
+        using iterator = ContainerWrapUtility::IteratorWrapper<typename ContainerT::iterator, ContainerT, Tags>;
         using const_iterator = typename ContainerT::const_iterator;
         using reverse_iterator =
-            ContainerWrapUtility::IteratorWrapper<typename ContainerT::reverse_iterator, ContainerT>;
+            ContainerWrapUtility::IteratorWrapper<typename ContainerT::reverse_iterator, ContainerT, Tags>;
         using const_reverse_iterator = typename ContainerT::const_reverse_iterator;
 
         using ModifiableObserved<ContainerT, Tags>::contained_;

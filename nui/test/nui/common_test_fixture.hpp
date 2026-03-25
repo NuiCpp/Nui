@@ -43,8 +43,8 @@ namespace Nui::Tests
             };
         };
 
-        template <template <typename...> typename ContainerT, typename RangeElementType>
-        void rangeTextBodyRender(Observed<ContainerT<RangeElementType>>& observedRange, Nui::val& parent)
+        template <template <typename...> typename ContainerT, typename RangeElementType, typename Tags = void>
+        void rangeTextBodyRender(Observed<ContainerT<RangeElementType>, Tags>& observedRange, Nui::val& parent)
         {
             using Nui::Elements::div;
             using Nui::Elements::body;
@@ -55,8 +55,8 @@ namespace Nui::Tests
             }));
         }
 
-        template <template <typename...> typename ContainerT, typename RangeElementType>
-        std::string aggregateObservedCharList(Observed<ContainerT<RangeElementType>>& observedRange)
+        template <template <typename...> typename ContainerT, typename RangeElementType, typename Tags = void>
+        std::string aggregateObservedCharList(Observed<ContainerT<RangeElementType>, Tags>& observedRange)
         {
             auto toString = [](RangeElementType elem) {
                 if constexpr (std::is_same_v<RangeElementType, char>)
@@ -84,8 +84,8 @@ namespace Nui::Tests
             return viewReality;
         }
 
-        template <template <typename...> typename ContainerT, typename RangeElementType>
-        void textBodyParityTest(Observed<ContainerT<RangeElementType>>& observedRange, Nui::val const& parent)
+        template <template <typename...> typename ContainerT, typename RangeElementType, typename Tags = void>
+        void textBodyParityTest(Observed<ContainerT<RangeElementType>, Tags>& observedRange, Nui::val const& parent)
         {
             ASSERT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(observedRange.size()));
             EXPECT_EQ(this->aggregateObservedCharList(observedRange), this->getChildrenBodyTextConcat(parent));

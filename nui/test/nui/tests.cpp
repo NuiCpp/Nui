@@ -11,6 +11,7 @@
 #include "components/test_dialog.hpp"
 #include "components/test_select.hpp"
 #include "test_delocalized.hpp"
+#include "test_synchronized.hpp"
 
 #include <gtest/gtest.h>
 
