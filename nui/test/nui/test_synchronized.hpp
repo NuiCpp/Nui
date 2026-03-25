@@ -24,7 +24,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::class_;
 
-        Observed<std::string, SYNCHRONIZE> observedClass{"asdf"};
+        Observed<std::string, NUI_SYNCHRONIZE> observedClass{"asdf"};
 
         render(div{}(div{class_ = observedClass}()));
 
@@ -37,7 +37,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::class_;
 
-        Observed<std::string, SYNCHRONIZE> observedClass{"asdf"};
+        Observed<std::string, NUI_SYNCHRONIZE> observedClass{"asdf"};
 
         render(div{class_ = observedClass}());
 
@@ -54,7 +54,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::class_;
 
-        Observed<std::string, SYNCHRONIZE> observedClass{"asdf"};
+        Observed<std::string, NUI_SYNCHRONIZE> observedClass{"asdf"};
 
         render(div{class_ = observedClass}());
 
@@ -69,7 +69,7 @@ namespace Nui::Tests
         using Nui::Attributes::class_;
         using Nui::Attributes::id;
 
-        Observed<std::string, SYNCHRONIZE> observedClass{"asdf"};
+        Observed<std::string, NUI_SYNCHRONIZE> observedClass{"asdf"};
 
         render(div{class_ = observedClass, id = "qwer"}());
 
@@ -83,8 +83,8 @@ namespace Nui::Tests
         using Nui::Attributes::class_;
         using Nui::Attributes::id;
 
-        Observed<std::string, SYNCHRONIZE> observedClass{"asdf"};
-        Observed<std::string, SYNCHRONIZE> observedId{"qwer"};
+        Observed<std::string, NUI_SYNCHRONIZE> observedClass{"asdf"};
+        Observed<std::string, NUI_SYNCHRONIZE> observedId{"qwer"};
 
         render(div{class_ = observedClass, id = observedId}());
 
@@ -101,8 +101,8 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::class_;
 
-        Observed<std::string, SYNCHRONIZE> observedClass{"asdf"};
-        Observed<std::string, SYNCHRONIZE> observedClassNested{"qwer"};
+        Observed<std::string, NUI_SYNCHRONIZE> observedClass{"asdf"};
+        Observed<std::string, NUI_SYNCHRONIZE> observedClassNested{"qwer"};
 
         render(div{class_ = observedClass}(div{class_ = observedClassNested}()));
 
@@ -118,7 +118,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::class_;
 
-        Observed<int, SYNCHRONIZE> observedClass{0};
+        Observed<int, NUI_SYNCHRONIZE> observedClass{0};
 
         render(div{class_ = observe(observedClass).generate([&observedClass]() {
             return "C"s + std::to_string(observedClass.value());
@@ -136,8 +136,8 @@ namespace Nui::Tests
         using namespace Nui::Attributes;
 
         Nui::val ref;
-        Observed<int, SYNCHRONIZE> number{0};
-        Observed<std::string, SYNCHRONIZE> text{"asdf"};
+        Observed<int, NUI_SYNCHRONIZE> number{0};
+        Observed<std::string, NUI_SYNCHRONIZE> text{"asdf"};
 
         render(div{reference = ref, class_ = observe(number, text).generate([&number, &text]() {
                        return text.value() + std::to_string(number.value());
@@ -169,7 +169,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::style;
 
-        Observed<std::string, SYNCHRONIZE> observedStyle{"color: red"};
+        Observed<std::string, NUI_SYNCHRONIZE> observedStyle{"color: red"};
         render(div{style = observedStyle}());
 
         EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(), "color: red");
@@ -180,7 +180,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::style;
 
-        Observed<std::string, SYNCHRONIZE> observedStyle{"color: red"};
+        Observed<std::string, NUI_SYNCHRONIZE> observedStyle{"color: red"};
         render(div{style = observedStyle}());
 
         EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["style"].as<std::string>(), "color: red");
@@ -194,7 +194,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::style;
 
-        Observed<std::string, SYNCHRONIZE> divColor{"red"};
+        Observed<std::string, NUI_SYNCHRONIZE> divColor{"red"};
         render(div{style = observe(divColor).generate([&divColor]() {
             return "color: "s + divColor.value();
         })}());
@@ -241,7 +241,7 @@ namespace Nui::Tests
         using Nui::Attributes::id;
         using Nui::Attributes::onClick;
 
-        Observed<bool, SYNCHRONIZE> clicked{false};
+        Observed<bool, NUI_SYNCHRONIZE> clicked{false};
         render(
             div{onClick =
                     [&clicked]() {
@@ -309,7 +309,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::id;
 
-        Observed<std::string, SYNCHRONIZE> idValue{"A"};
+        Observed<std::string, NUI_SYNCHRONIZE> idValue{"A"};
 
         render(div{id = idValue}());
 
@@ -349,7 +349,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::id;
 
-        Observed<std::variant<std::string, int>, SYNCHRONIZE> idValue{"A"};
+        Observed<std::variant<std::string, int>, NUI_SYNCHRONIZE> idValue{"A"};
 
         render(div{id = idValue}());
         EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "A");
@@ -376,7 +376,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::id;
 
-        Observed<std::optional<std::string>, SYNCHRONIZE> idValue{std::string{"A"}};
+        Observed<std::optional<std::string>, NUI_SYNCHRONIZE> idValue{std::string{"A"}};
 
         render(div{id = idValue}());
         EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["id"].as<std::string>(), "A");
@@ -412,7 +412,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::id;
 
-        auto idValue = std::make_shared<Observed<std::string, SYNCHRONIZE>>("A");
+        auto idValue = std::make_shared<Observed<std::string, NUI_SYNCHRONIZE>>("A");
 
         render(div{id = idValue}());
 
@@ -429,7 +429,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::id;
 
-        auto idValue = std::make_shared<Observed<std::string, SYNCHRONIZE>>("A");
+        auto idValue = std::make_shared<Observed<std::string, NUI_SYNCHRONIZE>>("A");
         auto weakIdValue = std::weak_ptr{idValue};
 
         render(div{id = weakIdValue}());
@@ -447,7 +447,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::id;
 
-        auto idValue = std::make_shared<Observed<std::string, SYNCHRONIZE>>("A");
+        auto idValue = std::make_shared<Observed<std::string, NUI_SYNCHRONIZE>>("A");
 
         render(div{!id = idValue}());
 
@@ -464,7 +464,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::id;
 
-        auto idValue = std::make_shared<Observed<std::string, SYNCHRONIZE>>("A");
+        auto idValue = std::make_shared<Observed<std::string, NUI_SYNCHRONIZE>>("A");
         auto weakIdValue = std::weak_ptr{idValue};
 
         render(div{!id = weakIdValue}());
@@ -482,7 +482,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::id;
 
-        auto idValue = std::make_shared<Observed<std::string, SYNCHRONIZE>>("A");
+        auto idValue = std::make_shared<Observed<std::string, NUI_SYNCHRONIZE>>("A");
         auto weakIdValue = std::weak_ptr{idValue};
 
         render(div{id = weakIdValue}());
@@ -503,7 +503,7 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::id;
 
-        auto idValue = std::make_shared<Observed<std::string, SYNCHRONIZE>>("A");
+        auto idValue = std::make_shared<Observed<std::string, NUI_SYNCHRONIZE>>("A");
 
         render(div{id = idValue}());
 
@@ -523,8 +523,8 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::id;
 
-        Nui::Observed<bool, SYNCHRONIZE> other{true};
-        auto idValue = std::make_shared<Observed<std::string, SYNCHRONIZE>>("A");
+        Nui::Observed<bool, NUI_SYNCHRONIZE> other{true};
+        auto idValue = std::make_shared<Observed<std::string, NUI_SYNCHRONIZE>>("A");
 
         render(div{}(observe(other), [&idValue]() -> Nui::ElementRenderer {
             return div{id = idValue}();
@@ -541,8 +541,8 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::id;
 
-        Nui::Observed<bool, SYNCHRONIZE> other{true};
-        auto idValue = std::make_shared<Observed<std::string, SYNCHRONIZE>>("A");
+        Nui::Observed<bool, NUI_SYNCHRONIZE> other{true};
+        auto idValue = std::make_shared<Observed<std::string, NUI_SYNCHRONIZE>>("A");
         auto weakIdValue = std::weak_ptr{idValue};
 
         render(div{}(observe(other), [&weakIdValue]() -> Nui::ElementRenderer {
@@ -564,7 +564,7 @@ namespace Nui::Tests
             (void)this;
             return "Hello";
         };
-        Observed<bool, SYNCHRONIZE> bla{true};
+        Observed<bool, NUI_SYNCHRONIZE> bla{true};
 
         render(body{class_ = observe(bla).generate(lambda)}());
 
@@ -576,8 +576,8 @@ namespace Nui::Tests
         using Nui::Elements::div;
         using Nui::Attributes::class_;
 
-        Observed<std::string, SYNCHRONIZE> classPart1{"Hello"};
-        Observed<std::string, SYNCHRONIZE> classPart2{"World"};
+        Observed<std::string, NUI_SYNCHRONIZE> classPart1{"Hello"};
+        Observed<std::string, NUI_SYNCHRONIZE> classPart2{"World"};
 
         render(
             div{class_ = observe(classPart1, classPart2)
@@ -596,7 +596,7 @@ namespace Nui::Tests
     TEST_F(TestSynchronized, SubscriptOperatorAssignmentUpdatesView)
     {
         Nui::val parent;
-        Observed<std::vector<char>, SYNCHRONIZE> vec{{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>, NUI_SYNCHRONIZE> vec{{'A', 'B', 'C', 'D'}};
 
         rangeTextBodyRender(vec, parent);
         textBodyParityTest(vec, parent);
@@ -610,7 +610,7 @@ namespace Nui::Tests
     {
         Nui::val parent;
 
-        Observed<std::vector<char>, SYNCHRONIZE> vec{{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>, NUI_SYNCHRONIZE> vec{{'A', 'B', 'C', 'D'}};
 
         using Nui::Elements::div;
         using Nui::Elements::body;
@@ -647,7 +647,7 @@ namespace Nui::Tests
         using Nui::Attributes::checked;
         using namespace Nui::Attributes::Literals;
 
-        Observed<bool, SYNCHRONIZE> isChecked{false};
+        Observed<bool, NUI_SYNCHRONIZE> isChecked{false};
 
         render(div{"checked"_prop = isChecked}());
 
@@ -665,7 +665,7 @@ namespace Nui::Tests
         using namespace Nui::Attributes;
 
         Nui::val nested;
-        Observed<bool, SYNCHRONIZE> toggle{true};
+        Observed<bool, NUI_SYNCHRONIZE> toggle{true};
 
         render(body{}(observe(toggle), [&toggle, &nested]() {
             if (*toggle)
@@ -688,7 +688,7 @@ namespace Nui::Tests
     TEST_F(TestSynchronized, InsertOnlyDoesNecessaryUpdates)
     {
         Nui::val parent;
-        Observed<std::vector<char>, SYNCHRONIZE> vec{{'A', 'B', 'C', 'D'}};
+        Observed<std::vector<char>, NUI_SYNCHRONIZE> vec{{'A', 'B', 'C', 'D'}};
 
         using Nui::Elements::div;
         using Nui::Elements::body;
@@ -735,7 +735,7 @@ namespace Nui::Tests
         using Nui::Elements::body;
         using namespace Nui::Attributes;
 
-        Observed<std::vector<std::string>, SYNCHRONIZE> vec{{"A", "B", "C", "D"}};
+        Observed<std::vector<std::string>, NUI_SYNCHRONIZE> vec{{"A", "B", "C", "D"}};
 
         render(body{}(range(vec), [&vec](long long i, auto const& element) {
             return div{}(std::string{element});
