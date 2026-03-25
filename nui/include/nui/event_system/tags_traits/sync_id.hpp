@@ -57,4 +57,4 @@ namespace Nui
         using SyncId = NUI_SYNC_ID; \
     }
 
-#define SYNCHRONIZE Nui::TagContainer<::Nui::SyncId<::Nui::Detail::locationHash(__FILE__, __LINE__)>>
+#define NUI_SYNCHRONIZE Nui::TagContainer<::Nui::SyncId<::Nui::Detail::locationHash(__FILE__, __LINE__)>>
