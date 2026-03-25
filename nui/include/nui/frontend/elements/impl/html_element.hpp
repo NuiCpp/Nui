@@ -1,9 +1,9 @@
 #pragma once
 
-#include <nui/frontend/event_system/observed_value.hpp>
-#include <nui/frontend/event_system/observed_value_combinator.hpp>
-#include <nui/frontend/event_system/range.hpp>
-#include <nui/frontend/event_system/event_context.hpp>
+#include <nui/event_system/observed_value.hpp>
+#include <nui/event_system/observed_value_combinator.hpp>
+#include <nui/event_system/range.hpp>
+#include <nui/event_system/event_context.hpp>
 #include <nui/frontend/dom/element_fwd.hpp>
 #include <nui/frontend/elements/detail/fragment_context.hpp>
 #include <nui/frontend/elements/impl/html_element_bridge.hpp>
@@ -364,15 +364,16 @@ namespace Nui
         }
 
         // Observed text and number content functions:
-        auto operator()(Observed<std::string> const& observedString) &&
+        template <typename Tags>
+        auto operator()(Observed<std::string, Tags> const& observedString) &&
         {
             return std::move(*this).operator()(observe(observedString), [&observedString]() -> std::string {
                 return observedString.value();
             });
         }
-        template <typename T>
+        template <typename T, typename Tags>
         requires Fundamental<T>
-        auto operator()(Observed<T> const& observedNumber) &&
+        auto operator()(Observed<T, Tags> const& observedNumber) &&
         {
             return std::move(*this).operator()(observe(observedNumber), [&observedNumber]() -> std::string {
                 return std::to_string(observedNumber.value());

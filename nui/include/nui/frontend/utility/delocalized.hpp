@@ -2,7 +2,7 @@
 
 #include <nui/frontend/element_renderer.hpp>
 #include <nui/frontend/dom/element.hpp>
-#include <nui/frontend/event_system/observed_value.hpp>
+#include <nui/event_system/observed_value.hpp>
 #include <nui/frontend/elements/div.hpp>
 #include <nui/frontend/elements/nil.hpp>
 #include <nui/frontend/attributes/class.hpp>

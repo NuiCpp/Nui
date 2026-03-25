@@ -32,8 +32,8 @@ namespace Nui
     class ObservedBase
     {
       public:
-        explicit ObservedBase(CustomEventContextFlag_t, EventContext* ctx)
-            : eventContext_{ctx}
+        explicit ObservedBase(CustomEventContextFlag_t, EventContext& ctx)
+            : eventContext_{&ctx}
             , attachedEvents_{}
             , attachedOneshotEvents_{}
         {}
@@ -174,12 +174,13 @@ namespace Nui
         mutable std::vector<EventContext::EventIdType> attachedOneshotEvents_;
     };
 
-    template <typename ContainedT>
+    template <typename ContainedT, typename Tags = void>
     class ModifiableObserved : public ObservedBase
     {
       public:
         using value_type = ContainedT;
         using observed_type = ContainedT;
+        using tags = Tags;
 
       public:
         class ModificationProxy
@@ -253,7 +254,7 @@ namespace Nui
 
       public:
         ModifiableObserved()
-            : ObservedBase{CustomEventContextFlag, &globalEventContext}
+            : ObservedBase{CustomEventContextFlag, globalEventContext}
             , contained_{}
         {}
         ModifiableObserved(const ModifiableObserved&) = delete;
@@ -291,18 +292,18 @@ namespace Nui
         template <typename T = ContainedT>
         requires std::is_constructible_v<ContainedT, T>
         explicit ModifiableObserved(T&& t)
-            : ObservedBase{CustomEventContextFlag, &globalEventContext}
+            : ObservedBase{CustomEventContextFlag, globalEventContext}
             , contained_{std::forward<T>(t)}
         {}
 
-        explicit ModifiableObserved(CustomEventContextFlag_t, EventContext* ctx)
+        explicit ModifiableObserved(EventContext& ctx)
             : ObservedBase{CustomEventContextFlag, ctx}
             , contained_{}
         {}
 
         template <typename T = ContainedT>
         requires std::is_constructible_v<ContainedT, T>
-        ModifiableObserved(CustomEventContextFlag_t, EventContext* ctx, T&& t)
+        ModifiableObserved(EventContext& ctx, T&& t)
             : ObservedBase{CustomEventContextFlag, ctx}
             , contained_{std::forward<T>(t)}
         {}
@@ -323,14 +324,14 @@ namespace Nui
 
         template <typename T = ContainedT, typename U>
         requires PlusAssignable<T, U>
-        ModifiableObserved<T>& operator+=(U const& rhs)
+        ModifiableObserved<T, Tags>& operator+=(U const& rhs)
         {
             this->contained_ += rhs;
             return *this;
         }
         template <typename T = ContainedT, typename U>
         requires MinusAssignable<T, U>
-        ModifiableObserved<T>& operator-=(U const& rhs)
+        ModifiableObserved<T, Tags>& operator-=(U const& rhs)
         {
             this->contained_ -= rhs;
             return *this;
@@ -417,16 +418,16 @@ namespace Nui
         ContainedT contained_;
     };
 
-    template <typename ContainerT>
+    template <typename ContainerT, typename Tags = void>
     class ObservedContainer;
 
     namespace ContainerWrapUtility
     {
-        template <typename T, typename ContainerT>
+        template <typename T, typename ContainerT, typename Tags = void>
         class ReferenceWrapper
         {
           public:
-            ReferenceWrapper(ObservedContainer<ContainerT>* owner, std::size_t pos, T& ref)
+            ReferenceWrapper(ObservedContainer<ContainerT, Tags>* owner, std::size_t pos, T& ref)
                 : owner_{owner}
                 , pos_{pos}
                 , ref_{&ref}
@@ -510,18 +511,18 @@ namespace Nui
             }
 
           protected:
-            ObservedContainer<ContainerT>* owner_;
+            ObservedContainer<ContainerT, Tags>* owner_;
             std::size_t pos_;
             T* ref_;
         };
 
-        template <typename T, typename ContainerT>
-        auto& unwrapReferenceWrapper(ReferenceWrapper<T, ContainerT>& wrapper)
+        template <typename T, typename ContainerT, typename Tags = void>
+        auto& unwrapReferenceWrapper(ReferenceWrapper<T, ContainerT, Tags>& wrapper)
         {
             return wrapper.get();
         }
-        template <typename T, typename ContainerT>
-        auto const& unwrapReferenceWrapper(ReferenceWrapper<T, ContainerT> const& wrapper)
+        template <typename T, typename ContainerT, typename Tags = void>
+        auto const& unwrapReferenceWrapper(ReferenceWrapper<T, ContainerT, Tags> const& wrapper)
         {
             return wrapper.get();
         }
@@ -534,11 +535,11 @@ namespace Nui
             return ref;
         }
 
-        template <typename T, typename ContainerT>
+        template <typename T, typename ContainerT, typename Tags = void>
         class PointerWrapper
         {
           public:
-            PointerWrapper(ObservedContainer<ContainerT>* owner, std::size_t pos, T* ptr) noexcept
+            PointerWrapper(ObservedContainer<ContainerT, Tags>* owner, std::size_t pos, T* ptr) noexcept
                 : owner_{owner}
                 , pos_{pos}
                 , ptr_{ptr}
@@ -583,23 +584,23 @@ namespace Nui
             }
 
           protected:
-            ObservedContainer<ContainerT>* owner_;
+            ObservedContainer<ContainerT, Tags>* owner_;
             std::size_t pos_;
             T* ptr_;
         };
 
-        template <typename WrappedIterator, typename ContainerT>
+        template <typename WrappedIterator, typename ContainerT, typename Tags = void>
         class IteratorWrapper
         {
           public:
             using iterator_category = std::random_access_iterator_tag;
             using value_type = typename WrappedIterator::value_type;
             using difference_type = typename WrappedIterator::difference_type;
-            using pointer = PointerWrapper<value_type, ContainerT>;
-            using reference = ReferenceWrapper<value_type, ContainerT>;
+            using pointer = PointerWrapper<value_type, ContainerT, Tags>;
+            using reference = ReferenceWrapper<value_type, ContainerT, Tags>;
 
           public:
-            IteratorWrapper(ObservedContainer<ContainerT>* owner, WrappedIterator it)
+            IteratorWrapper(ObservedContainer<ContainerT, Tags>* owner, WrappedIterator it)
                 : owner_{owner}
                 , it_{std::move(it)}
             {}
@@ -651,13 +652,13 @@ namespace Nui
             auto operator*()
             {
                 if constexpr (std::is_same_v<WrappedIterator, typename ContainerT::reverse_iterator>)
-                    return ReferenceWrapper<value_type, ContainerT>{
+                    return ReferenceWrapper<value_type, ContainerT, Tags>{
                         owner_,
                         owner_->contained_.size() - static_cast<std::size_t>(1) -
                             static_cast<std::size_t>(it_ - owner_->contained_.rbegin()),
                         *it_};
                 else
-                    return ReferenceWrapper<value_type, ContainerT>{
+                    return ReferenceWrapper<value_type, ContainerT, Tags>{
                         owner_, static_cast<std::size_t>(it_ - owner_->contained_.begin()), *it_};
             }
             auto operator*() const
@@ -667,13 +668,13 @@ namespace Nui
             auto operator->()
             {
                 if constexpr (std::is_same_v<WrappedIterator, typename ContainerT::reverse_iterator>)
-                    return PointerWrapper<value_type, ContainerT>{
+                    return PointerWrapper<value_type, ContainerT, Tags>{
                         owner_,
                         owner_->contained_.size() - static_cast<std::size_t>(1) -
                             static_cast<std::size_t>(it_ - owner_->contained_.rbegin()),
                         &*it_};
                 else
-                    return PointerWrapper<value_type, ContainerT>{
+                    return PointerWrapper<value_type, ContainerT, Tags>{
                         owner_, static_cast<std::size_t>(it_ - owner_->contained_.begin()), &*it_};
             }
             auto operator->() const
@@ -710,79 +711,79 @@ namespace Nui
             }
 
           private:
-            ObservedContainer<ContainerT>* owner_;
+            ObservedContainer<ContainerT, Tags>* owner_;
             WrappedIterator it_;
         };
     };
 
-    template <typename ContainerT>
-    class ObservedContainer : public ModifiableObserved<ContainerT>
+    template <typename ContainerT, typename Tags>
+    class ObservedContainer : public ModifiableObserved<ContainerT, Tags>
     {
       public:
         using observed_type = ContainerT;
-        friend class ContainerWrapUtility::ReferenceWrapper<typename ContainerT::value_type, ContainerT>;
-        friend class ContainerWrapUtility::PointerWrapper<typename ContainerT::value_type, ContainerT>;
+        friend class ContainerWrapUtility::ReferenceWrapper<typename ContainerT::value_type, ContainerT, Tags>;
+        friend class ContainerWrapUtility::PointerWrapper<typename ContainerT::value_type, ContainerT, Tags>;
 
         using value_type = typename ContainerT::value_type;
         using allocator_type = typename ContainerT::allocator_type;
         using size_type = typename ContainerT::size_type;
         using difference_type = typename ContainerT::difference_type;
-        using reference = ContainerWrapUtility::ReferenceWrapper<typename ContainerT::value_type, ContainerT>;
+        using reference = ContainerWrapUtility::ReferenceWrapper<typename ContainerT::value_type, ContainerT, Tags>;
         using const_reference = typename ContainerT::const_reference;
-        using pointer = ContainerWrapUtility::PointerWrapper<typename ContainerT::value_type, ContainerT>;
+        using pointer = ContainerWrapUtility::PointerWrapper<typename ContainerT::value_type, ContainerT, Tags>;
         using const_pointer = typename ContainerT::const_pointer;
 
-        using iterator = ContainerWrapUtility::IteratorWrapper<typename ContainerT::iterator, ContainerT>;
+        using iterator = ContainerWrapUtility::IteratorWrapper<typename ContainerT::iterator, ContainerT, Tags>;
         using const_iterator = typename ContainerT::const_iterator;
         using reverse_iterator =
-            ContainerWrapUtility::IteratorWrapper<typename ContainerT::reverse_iterator, ContainerT>;
+            ContainerWrapUtility::IteratorWrapper<typename ContainerT::reverse_iterator, ContainerT, Tags>;
         using const_reverse_iterator = typename ContainerT::const_reverse_iterator;
 
-        using ModifiableObserved<ContainerT>::contained_;
+        using ModifiableObserved<ContainerT, Tags>::contained_;
 
       public:
-        explicit ObservedContainer(CustomEventContextFlag_t, EventContext* ctx)
-            : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx}
+        explicit ObservedContainer(CustomEventContextFlag_t, EventContext& ctx)
+            : ModifiableObserved<ContainerT, Tags>{CustomEventContextFlag, ctx}
             , rangeContext_{std::make_shared<RangeEventContext>()}
             , afterEffectId_{registerAfterEffect()}
         {}
         explicit ObservedContainer()
-            : ModifiableObserved<ContainerT>{}
+            : ModifiableObserved<ContainerT, Tags>{}
             , rangeContext_{std::make_shared<RangeEventContext>()}
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
-        explicit ObservedContainer(CustomEventContextFlag_t, EventContext* ctx, T&& t)
-            : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx, std::forward<T>(t)}
+        explicit ObservedContainer(CustomEventContextFlag_t, EventContext& ctx, T&& t)
+            : ModifiableObserved<ContainerT, Tags>{CustomEventContextFlag, ctx, std::forward<T>(t)}
             , rangeContext_{std::make_shared<RangeEventContext>()}
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
         requires std::constructible_from<ContainerT, T>
         explicit ObservedContainer(T&& t)
-            : ModifiableObserved<ContainerT>{std::forward<T>(t)}
+            : ModifiableObserved<ContainerT, Tags>{std::forward<T>(t)}
             , rangeContext_{std::make_shared<RangeEventContext>()}
             , afterEffectId_{registerAfterEffect()}
         {}
         explicit ObservedContainer(RangeEventContext&& rangeContext)
-            : ModifiableObserved<ContainerT>{}
+            : ModifiableObserved<ContainerT, Tags>{}
             , rangeContext_{std::make_shared<RangeEventContext>(std::move(rangeContext))}
             , afterEffectId_{registerAfterEffect()}
         {}
-        explicit ObservedContainer(CustomEventContextFlag_t, EventContext* ctx, RangeEventContext&& rangeContext)
-            : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx}
+        explicit ObservedContainer(CustomEventContextFlag_t, EventContext& ctx, RangeEventContext&& rangeContext)
+            : ModifiableObserved<ContainerT, Tags>{CustomEventContextFlag, ctx}
             , rangeContext_{std::make_shared<RangeEventContext>(std::move(rangeContext))}
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
         ObservedContainer(T&& t, RangeEventContext&& rangeContext)
-            : ModifiableObserved<ContainerT>{std::forward<T>(t)}
+            : ModifiableObserved<ContainerT, Tags>{std::forward<T>(t)}
             , rangeContext_{std::make_shared<RangeEventContext>(std::move(rangeContext))}
             , afterEffectId_{registerAfterEffect()}
         {}
         template <typename T = ContainerT>
-        ObservedContainer(CustomEventContextFlag_t, EventContext* ctx, T&& t, RangeEventContext&& rangeContext)
-            : ModifiableObserved<ContainerT>{CustomEventContextFlag, ctx, std::forward<T>(t)}
+        ObservedContainer(CustomEventContextFlag_t, EventContext& ctx, T&& t, RangeEventContext&& rangeContext)
+            : ModifiableObserved<ContainerT, Tags>{CustomEventContextFlag, ctx, std::forward<T>(t)}
             , rangeContext_{std::make_shared<RangeEventContext>(std::move(rangeContext))}
             , afterEffectId_{registerAfterEffect()}
         {}
@@ -1288,90 +1289,92 @@ namespace Nui
         mutable EventContext::EventIdType afterEffectId_;
     };
 
-    template <typename T>
-    class Observed : public ModifiableObserved<T>
+    template <typename T, typename Tags = void>
+    class Observed : public ModifiableObserved<T, Tags>
     {
       public:
         using observed_type = T;
-        using ModifiableObserved<T>::ModifiableObserved;
-        using ModifiableObserved<T>::operator=;
-        using ModifiableObserved<T>::operator->;
+        using ModifiableObserved<T, Tags>::ModifiableObserved;
+        using ModifiableObserved<T, Tags>::operator=;
+        using ModifiableObserved<T, Tags>::operator->;
 
         Observed& operator=(T const& contained)
         {
-            ModifiableObserved<T>::operator=(contained);
+            ModifiableObserved<T, Tags>::operator=(contained);
             return *this;
         }
         Observed& operator=(T&& contained)
         {
-            ModifiableObserved<T>::operator=(std::move(contained));
+            ModifiableObserved<T, Tags>::operator=(std::move(contained));
             return *this;
         }
     };
-    template <typename... Parameters>
-    class Observed<std::vector<Parameters...>> : public ObservedContainer<std::vector<Parameters...>>
+    template <typename... Parameters, typename Tags>
+    class Observed<std::vector<Parameters...>, Tags> : public ObservedContainer<std::vector<Parameters...>, Tags>
     {
       public:
         static constexpr auto isRandomAccess = true;
-        using ObservedContainer<std::vector<Parameters...>>::ObservedContainer;
-        using ObservedContainer<std::vector<Parameters...>>::operator=;
-        using ObservedContainer<std::vector<Parameters...>>::operator->;
+        using ObservedContainer<std::vector<Parameters...>, Tags>::ObservedContainer;
+        using ObservedContainer<std::vector<Parameters...>, Tags>::operator=;
+        using ObservedContainer<std::vector<Parameters...>, Tags>::operator->;
         using observed_type = std::vector<Parameters...>;
 
-        Observed<std::vector<Parameters...>>& operator=(std::vector<Parameters...> const& contained)
+        Observed<std::vector<Parameters...>, Tags>& operator=(std::vector<Parameters...> const& contained)
         {
-            ObservedContainer<std::vector<Parameters...>>::operator=(contained);
+            ObservedContainer<std::vector<Parameters...>, Tags>::operator=(contained);
             return *this;
         }
-        Observed<std::vector<Parameters...>>& operator=(std::vector<Parameters...>&& contained)
+        Observed<std::vector<Parameters...>, Tags>& operator=(std::vector<Parameters...>&& contained)
         {
-            ObservedContainer<std::vector<Parameters...>>::operator=(std::move(contained));
+            ObservedContainer<std::vector<Parameters...>, Tags>::operator=(std::move(contained));
             return *this;
         }
     };
-    template <typename... Parameters>
-    class Observed<std::deque<Parameters...>> : public ObservedContainer<std::deque<Parameters...>>
+    template <typename... Parameters, typename Tags>
+    class Observed<std::deque<Parameters...>, Tags> : public ObservedContainer<std::deque<Parameters...>, Tags>
     {
       public:
         static constexpr auto isRandomAccess = true;
-        using ObservedContainer<std::deque<Parameters...>>::ObservedContainer;
-        using ObservedContainer<std::deque<Parameters...>>::operator=;
-        using ObservedContainer<std::deque<Parameters...>>::operator->;
+        using ObservedContainer<std::deque<Parameters...>, Tags>::ObservedContainer;
+        using ObservedContainer<std::deque<Parameters...>, Tags>::operator=;
+        using ObservedContainer<std::deque<Parameters...>, Tags>::operator->;
         using observed_type = std::deque<Parameters...>;
 
-        Observed<std::deque<Parameters...>>& operator=(std::deque<Parameters...> const& contained)
+        Observed<std::deque<Parameters...>, Tags>& operator=(std::deque<Parameters...> const& contained)
         {
-            ObservedContainer<std::deque<Parameters...>>::operator=(contained);
+            ObservedContainer<std::deque<Parameters...>, Tags>::operator=(contained);
             return *this;
         }
-        Observed<std::deque<Parameters...>>& operator=(std::deque<Parameters...>&& contained)
+        Observed<std::deque<Parameters...>, Tags>& operator=(std::deque<Parameters...>&& contained)
         {
-            ObservedContainer<std::deque<Parameters...>>::operator=(std::move(contained));
+            ObservedContainer<std::deque<Parameters...>, Tags>::operator=(std::move(contained));
             return *this;
         }
     };
-    template <typename... Parameters>
-    class Observed<std::basic_string<Parameters...>> : public ObservedContainer<std::basic_string<Parameters...>>
+    template <typename... Parameters, typename Tags>
+    class Observed<std::basic_string<Parameters...>, Tags>
+        : public ObservedContainer<std::basic_string<Parameters...>, Tags>
     {
       public:
         static constexpr auto isRandomAccess = true;
-        using ObservedContainer<std::basic_string<Parameters...>>::ObservedContainer;
-        using ObservedContainer<std::basic_string<Parameters...>>::operator=;
-        using ObservedContainer<std::basic_string<Parameters...>>::operator->;
+        using ObservedContainer<std::basic_string<Parameters...>, Tags>::ObservedContainer;
+        using ObservedContainer<std::basic_string<Parameters...>, Tags>::operator=;
+        using ObservedContainer<std::basic_string<Parameters...>, Tags>::operator->;
         using observed_type = std::basic_string<Parameters...>;
 
-        Observed<std::basic_string<Parameters...>>& operator=(std::basic_string<Parameters...> const& contained)
+        Observed<std::basic_string<Parameters...>, Tags>& operator=(std::basic_string<Parameters...> const& contained)
         {
-            ObservedContainer<std::basic_string<Parameters...>>::operator=(contained);
+            ObservedContainer<std::basic_string<Parameters...>, Tags>::operator=(contained);
             return *this;
         }
-        Observed<std::basic_string<Parameters...>>& operator=(std::basic_string<Parameters...>&& contained)
+        Observed<std::basic_string<Parameters...>, Tags>& operator=(std::basic_string<Parameters...>&& contained)
         {
-            ObservedContainer<std::basic_string<Parameters...>>::operator=(std::move(contained));
+            ObservedContainer<std::basic_string<Parameters...>, Tags>::operator=(std::move(contained));
             return *this;
         }
 
-        Observed<std::basic_string<Parameters...>>& erase(std::size_t index = 0, std::size_t count = std::string::npos)
+        Observed<std::basic_string<Parameters...>, Tags>&
+        erase(std::size_t index = 0, std::size_t count = std::string::npos)
         {
             if (count == std::size_t{0})
                 return *this;
@@ -1383,120 +1386,146 @@ namespace Nui
             return *this;
         }
     };
-    template <typename... Parameters>
-    class Observed<std::set<Parameters...>> : public ObservedContainer<std::set<Parameters...>>
+    template <typename... Parameters, typename Tags>
+    class Observed<std::set<Parameters...>, Tags> : public ObservedContainer<std::set<Parameters...>, Tags>
     {
       public:
         static constexpr auto isRandomAccess = false;
-        using ObservedContainer<std::set<Parameters...>>::ObservedContainer;
-        using ObservedContainer<std::set<Parameters...>>::operator=;
-        using ObservedContainer<std::set<Parameters...>>::operator->;
+        using ObservedContainer<std::set<Parameters...>, Tags>::ObservedContainer;
+        using ObservedContainer<std::set<Parameters...>, Tags>::operator=;
+        using ObservedContainer<std::set<Parameters...>, Tags>::operator->;
         using observed_type = std::set<Parameters...>;
 
       public:
         Observed()
-            : ObservedContainer<std::set<Parameters...>>{RangeEventContext{true}}
+            : ObservedContainer<std::set<Parameters...>, Tags>{RangeEventContext{true}}
         {}
         template <typename T = std::set<Parameters...>>
         requires std::constructible_from<std::set<Parameters...>, T>
         explicit Observed(T&& t)
-            : ObservedContainer<std::set<Parameters...>>{std::forward<T>(t), RangeEventContext{true}}
+            : ObservedContainer<std::set<Parameters...>, Tags>{std::forward<T>(t), RangeEventContext{true}}
         {}
 
-        Observed<std::set<Parameters...>>& operator=(std::set<Parameters...> const& contained)
+        Observed<std::set<Parameters...>, Tags>& operator=(std::set<Parameters...> const& contained)
         {
-            ObservedContainer<std::set<Parameters...>>::operator=(contained);
+            ObservedContainer<std::set<Parameters...>, Tags>::operator=(contained);
             return *this;
         }
-        Observed<std::set<Parameters...>>& operator=(std::set<Parameters...>&& contained)
+        Observed<std::set<Parameters...>, Tags>& operator=(std::set<Parameters...>&& contained)
         {
-            ObservedContainer<std::set<Parameters...>>::operator=(std::move(contained));
+            ObservedContainer<std::set<Parameters...>, Tags>::operator=(std::move(contained));
             return *this;
         }
     };
-    template <typename... Parameters>
-    class Observed<std::list<Parameters...>> : public ObservedContainer<std::list<Parameters...>>
+    template <typename... Parameters, typename Tags>
+    class Observed<std::list<Parameters...>, Tags> : public ObservedContainer<std::list<Parameters...>, Tags>
     {
       public:
         static constexpr auto isRandomAccess = false;
-        using ObservedContainer<std::list<Parameters...>>::ObservedContainer;
-        using ObservedContainer<std::list<Parameters...>>::operator=;
-        using ObservedContainer<std::list<Parameters...>>::operator->;
+        using ObservedContainer<std::list<Parameters...>, Tags>::ObservedContainer;
+        using ObservedContainer<std::list<Parameters...>, Tags>::operator=;
+        using ObservedContainer<std::list<Parameters...>, Tags>::operator->;
         using observed_type = std::list<Parameters...>;
 
       public:
         Observed()
-            : ObservedContainer<std::list<Parameters...>>{RangeEventContext{true}}
+            : ObservedContainer<std::list<Parameters...>, Tags>{RangeEventContext{true}}
         {}
         template <typename T = std::list<Parameters...>>
         requires std::constructible_from<std::list<Parameters...>, T>
         explicit Observed(T&& t)
-            : ObservedContainer<std::list<Parameters...>>{std::forward<T>(t), RangeEventContext{true}}
+            : ObservedContainer<std::list<Parameters...>, Tags>{std::forward<T>(t), RangeEventContext{true}}
         {}
 
-        Observed<std::list<Parameters...>>& operator=(std::list<Parameters...> const& contained)
+        Observed<std::list<Parameters...>, Tags>& operator=(std::list<Parameters...> const& contained)
         {
-            ObservedContainer<std::list<Parameters...>>::operator=(contained);
+            ObservedContainer<std::list<Parameters...>, Tags>::operator=(contained);
             return *this;
         }
-        Observed<std::list<Parameters...>>& operator=(std::list<Parameters...>&& contained)
+        Observed<std::list<Parameters...>, Tags>& operator=(std::list<Parameters...>&& contained)
         {
-            ObservedContainer<std::list<Parameters...>>::operator=(std::move(contained));
+            ObservedContainer<std::list<Parameters...>, Tags>::operator=(std::move(contained));
             return *this;
         }
     };
 
-    template <typename... MapArgs>
-    class Observed<std::unordered_map<MapArgs...>> : public ModifiableObserved<std::unordered_map<MapArgs...>>
+    template <typename... MapArgs, typename Tags>
+    class Observed<std::unordered_map<MapArgs...>, Tags>
+        : public ModifiableObserved<std::unordered_map<MapArgs...>, Tags>
     {
       public:
         static constexpr auto isRandomAccess = false;
         using observed_type = std::unordered_map<MapArgs...>;
-        using ModifiableObserved<observed_type>::ModifiableObserved;
-        using ModifiableObserved<observed_type>::operator=;
-        using ModifiableObserved<observed_type>::operator->;
+        using ModifiableObserved<observed_type, Tags>::ModifiableObserved;
+        using ModifiableObserved<observed_type, Tags>::operator=;
+        using ModifiableObserved<observed_type, Tags>::operator->;
 
         Observed& operator=(observed_type const& contained)
         {
-            ModifiableObserved<observed_type>::operator=(contained);
+            ModifiableObserved<observed_type, Tags>::operator=(contained);
             return *this;
         }
         Observed& operator=(observed_type&& contained)
         {
-            ModifiableObserved<observed_type>::operator=(std::move(contained));
+            ModifiableObserved<observed_type, Tags>::operator=(std::move(contained));
             return *this;
         }
     };
 
-    template <typename... MapArgs>
-    class Observed<std::map<MapArgs...>> : public ModifiableObserved<std::map<MapArgs...>>
+    template <typename... MapArgs, typename Tags>
+    class Observed<std::map<MapArgs...>, Tags> : public ModifiableObserved<std::map<MapArgs...>, Tags>
     {
       public:
         static constexpr auto isRandomAccess = false;
         using observed_type = std::map<MapArgs...>;
-        using ModifiableObserved<observed_type>::ModifiableObserved;
-        using ModifiableObserved<observed_type>::operator=;
-        using ModifiableObserved<observed_type>::operator->;
+        using ModifiableObserved<observed_type, Tags>::ModifiableObserved;
+        using ModifiableObserved<observed_type, Tags>::operator=;
+        using ModifiableObserved<observed_type, Tags>::operator->;
 
         Observed& operator=(observed_type const& contained)
         {
-            ModifiableObserved<observed_type>::operator=(contained);
+            ModifiableObserved<observed_type, Tags>::operator=(contained);
             return *this;
         }
         Observed& operator=(observed_type&& contained)
         {
-            ModifiableObserved<observed_type>::operator=(std::move(contained));
+            ModifiableObserved<observed_type, Tags>::operator=(std::move(contained));
             return *this;
         }
     };
 
-    template <>
-    class Observed<void> : public ObservedBase
+    template <typename Tags>
+    class Observed<void, Tags> : public ObservedBase
     {
       public:
         using ObservedBase::ObservedBase;
         using ObservedBase::operator=;
         using observed_type = void;
+
+        Observed()
+            : ObservedBase{CustomEventContextFlag, globalEventContext}
+        {}
+        Observed(const Observed&) = delete;
+        Observed(Observed&& other) noexcept
+            : ObservedBase{std::move(other)}
+        {
+            update();
+        };
+        Observed& operator=(const Observed&) = delete;
+        Observed& operator=(Observed&& other) noexcept
+        {
+            if (this != &other)
+            {
+                ObservedBase::operator=(std::move(other));
+                update();
+            }
+            return *this;
+        };
+        ~Observed() override = default;
+
+        explicit Observed(EventContext& ctx)
+            : ObservedBase{CustomEventContextFlag, ctx}
+        {}
 
         void modify() const
         {
@@ -1511,61 +1540,61 @@ namespace Nui
 
     namespace Detail
     {
-        template <typename T>
+        template <typename T, typename Tags = void>
         struct IsObserved
         {
             static constexpr bool value = false;
         };
 
-        template <typename T>
-        struct IsObserved<Observed<T>>
+        template <typename T, typename Tags>
+        struct IsObserved<Observed<T, Tags>>
         {
             static constexpr bool value = true;
         };
 
-        template <typename T>
+        template <typename T, typename Tags = void>
         struct IsWeakObserved
         {
             static constexpr bool value = false;
         };
 
-        template <typename T>
-        struct IsWeakObserved<std::weak_ptr<Observed<T>>>
+        template <typename T, typename Tags>
+        struct IsWeakObserved<std::weak_ptr<Observed<T, Tags>>>
         {
             static constexpr bool value = true;
         };
 
-        template <typename T>
+        template <typename T, typename Tags = void>
         struct IsSharedObserved
         {
             static constexpr bool value = false;
         };
 
-        template <typename T>
-        struct IsSharedObserved<std::shared_ptr<Observed<T>>>
+        template <typename T, typename Tags>
+        struct IsSharedObserved<std::shared_ptr<Observed<T, Tags>>>
         {
             static constexpr bool value = true;
         };
 
-        template <typename T>
+        template <typename T, typename Tags = void>
         struct IsObservedLike
         {
             static constexpr bool value =
-                IsObserved<T>::value || IsWeakObserved<T>::value || IsSharedObserved<T>::value;
+                IsObserved<T, Tags>::value || IsWeakObserved<T, Tags>::value || IsSharedObserved<T, Tags>::value;
         };
     }
 
-    template <typename T>
+    template <typename T, typename Tags>
     requires Incrementable<T>
-    inline ModifiableObserved<T>& operator++(ModifiableObserved<T>& observedValue)
+    inline ModifiableObserved<T, Tags>& operator++(ModifiableObserved<T, Tags>& observedValue)
     {
         ++observedValue.value();
         observedValue.update();
         return observedValue;
     }
-    template <typename T>
+    template <typename T, typename Tags>
     requires Incrementable<T>
-    inline T operator++(ModifiableObserved<T>& observedValue, int)
+    inline T operator++(ModifiableObserved<T, Tags>& observedValue, int)
     {
         auto tmp = observedValue.value();
         ++observedValue.value();
@@ -1573,16 +1602,16 @@ namespace Nui
         return tmp;
     }
 
-    template <typename T>
-    inline auto operator--(ModifiableObserved<T>& observedValue)
-        -> ModifiableObserved<Detail::PickFirst_t<T, decltype(--std::declval<T>())>>&
+    template <typename T, typename Tags>
+    inline auto operator--(ModifiableObserved<T, Tags>& observedValue)
+        -> ModifiableObserved<Detail::PickFirst_t<T, decltype(--std::declval<T>())>, Tags>&
     {
         --observedValue.value();
         observedValue.update();
         return observedValue;
     }
-    template <typename T>
-    inline auto operator--(ModifiableObserved<T>& observedValue, int)
+    template <typename T, typename Tags>
+    inline auto operator--(ModifiableObserved<T, Tags>& observedValue, int)
         -> Detail::PickFirst_t<T, decltype(std::declval<T>()--)>
     {
         auto tmp = observedValue.value();
@@ -1591,22 +1620,22 @@ namespace Nui
         return tmp;
     }
 
-    template <typename T>
-    concept IsObserved = Detail::IsObserved<std::decay_t<T>>::value;
-    template <typename T>
-    concept IsSharedObserved = Detail::IsSharedObserved<std::decay_t<T>>::value;
-    template <typename T>
-    concept IsWeakObserved = Detail::IsWeakObserved<std::decay_t<T>>::value;
-    template <typename T>
-    concept IsObservedLike = Detail::IsObservedLike<std::decay_t<T>>::value;
+    template <typename T, typename Tags = void>
+    concept IsObserved = Detail::IsObserved<std::decay_t<T>, Tags>::value;
+    template <typename T, typename Tags = void>
+    concept IsSharedObserved = Detail::IsSharedObserved<std::decay_t<T>, Tags>::value;
+    template <typename T, typename Tags = void>
+    concept IsWeakObserved = Detail::IsWeakObserved<std::decay_t<T>, Tags>::value;
+    template <typename T, typename Tags = void>
+    concept IsObservedLike = Detail::IsObservedLike<std::decay_t<T>, Tags>::value;
 
     namespace Detail
     {
-        template <typename T>
-        struct CopyableObservedWrap // minimal wrapper to make Observed<T> copiable
+        template <typename T, typename Tags = void>
+        struct CopyableObservedWrap // minimal wrapper to make Observed<T, Tags> copiable
         {
           public:
-            explicit constexpr CopyableObservedWrap(Observed<T> const& observed)
+            explicit constexpr CopyableObservedWrap(Observed<T, Tags> const& observed)
                 : observed_{&observed}
             {}
 
@@ -1626,7 +1655,7 @@ namespace Nui
             }
 
           private:
-            Observed<T> const* observed_;
+            Observed<T, Tags> const* observed_;
         };
 
         template <typename T>
@@ -1639,25 +1668,25 @@ namespace Nui
         {
             using type = void;
         };
-        template <typename T>
-        struct ObservedAddReference<std::weak_ptr<Observed<T>>>
+        template <typename T, typename Tags>
+        struct ObservedAddReference<std::weak_ptr<Observed<T, Tags>>>
         {
-            using type = std::weak_ptr<Observed<T>>;
+            using type = std::weak_ptr<Observed<T, Tags>>;
         };
-        template <typename T>
-        struct ObservedAddReference<std::shared_ptr<Observed<T>>>
+        template <typename T, typename Tags>
+        struct ObservedAddReference<std::shared_ptr<Observed<T, Tags>>>
         {
-            using type = std::weak_ptr<Observed<T>>;
+            using type = std::weak_ptr<Observed<T, Tags>>;
         };
-        template <typename T>
-        struct ObservedAddReference<std::weak_ptr<const Observed<T>>>
+        template <typename T, typename Tags>
+        struct ObservedAddReference<std::weak_ptr<const Observed<T, Tags>>>
         {
-            using type = std::weak_ptr<const Observed<T>>;
+            using type = std::weak_ptr<const Observed<T, Tags>>;
         };
-        template <typename T>
-        struct ObservedAddReference<std::shared_ptr<const Observed<T>>>
+        template <typename T, typename Tags>
+        struct ObservedAddReference<std::shared_ptr<const Observed<T, Tags>>>
         {
-            using type = std::weak_ptr<const Observed<T>>;
+            using type = std::weak_ptr<const Observed<T, Tags>>;
         };
 
         template <typename T>
@@ -1672,17 +1701,17 @@ namespace Nui
             using type = void;
             using raw = void;
         };
-        template <typename T>
-        struct ObservedAddMutableReference<std::weak_ptr<Observed<T>>>
+        template <typename T, typename Tags>
+        struct ObservedAddMutableReference<std::weak_ptr<Observed<T, Tags>>>
         {
-            using type = std::weak_ptr<Observed<T>>;
-            using raw = Observed<T>;
+            using type = std::weak_ptr<Observed<T, Tags>>;
+            using raw = Observed<T, Tags>;
         };
-        template <typename T>
-        struct ObservedAddMutableReference<std::shared_ptr<Observed<T>>>
+        template <typename T, typename Tags>
+        struct ObservedAddMutableReference<std::shared_ptr<Observed<T, Tags>>>
         {
-            using type = std::weak_ptr<Observed<T>>;
-            using raw = Observed<T>;
+            using type = std::weak_ptr<Observed<T, Tags>>;
+            using raw = Observed<T, Tags>;
         };
 
         template <typename T>
@@ -1693,36 +1722,36 @@ namespace Nui
         using ObservedAddMutableReference_raw = typename ObservedAddMutableReference<std::remove_reference_t<T>>::raw;
     }
 
-    template <typename T>
+    template <typename T, typename Tags = void>
     struct UnpackObserved
     {
         using type = T;
     };
-    template <typename T>
-    struct UnpackObserved<Observed<T>>
+    template <typename T, typename Tags>
+    struct UnpackObserved<Observed<T, Tags>>
     {
         using type = T;
     };
-    template <typename T>
-    struct UnpackObserved<std::weak_ptr<Observed<T>>>
+    template <typename T, typename Tags>
+    struct UnpackObserved<std::weak_ptr<Observed<T, Tags>>>
     {
         using type = T;
     };
-    template <typename T>
-    struct UnpackObserved<std::shared_ptr<Observed<T>>>
+    template <typename T, typename Tags>
+    struct UnpackObserved<std::shared_ptr<Observed<T, Tags>>>
     {
         using type = T;
     };
-    template <typename T>
-    struct UnpackObserved<std::weak_ptr<const Observed<T>>>
+    template <typename T, typename Tags>
+    struct UnpackObserved<std::weak_ptr<const Observed<T, Tags>>>
     {
         using type = T;
     };
-    template <typename T>
-    struct UnpackObserved<std::shared_ptr<const Observed<T>>>
+    template <typename T, typename Tags>
+    struct UnpackObserved<std::shared_ptr<const Observed<T, Tags>>>
     {
         using type = T;
     };
-    template <typename T>
-    using UnpackObserved_t = typename UnpackObserved<T>::type;
+    template <typename T, typename Tags = void>
+    using UnpackObserved_t = typename UnpackObserved<T, Tags>::type;
 }

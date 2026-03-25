@@ -1,7 +1,7 @@
 #pragma once
 
 #include <nui/concepts.hpp>
-#include <nui/frontend/event_system/observed_value.hpp>
+#include <nui/event_system/observed_value.hpp>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
