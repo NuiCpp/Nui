@@ -39,7 +39,7 @@ jobs:
       - name: Configure CMake
         run: |
           export PATH="/opt/homebrew/opt/llvm@19/bin:$PATH"
-          cmake -B ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}} -G"Ninja" -DNUI_ENABLE_TESTS=on -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DNUI_BUILD_EXAMPLES=on -DCMAKE_CXX_EXTENSIONS=on -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm@19/bin/clang++ -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm@19/bin/clang -DCMAKE_OSX_SYSROOT=$(xcrun --sdk macosx --show-sdk-path) -DCMAKE_EXE_LINKER_FLAGS="-L/opt/homebrew/opt/llvm@19/lib/c++ -L/opt/homebrew/opt/llvm@19/lib/unwind -lunwind" -DNUI_NPM=npm -DNUI_NODE=node -DCMAKE_CXX_STANDARD=20
+          cmake -B ${{github.workspace}}/build/clang_${{env.BUILD_TYPE}} -G"Ninja" -DNUI_ENABLE_TESTS=on -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DNUI_BUILD_EXAMPLES=off -DCMAKE_CXX_EXTENSIONS=on -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm@19/bin/clang++ -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm@19/bin/clang -DCMAKE_OSX_SYSROOT=$(xcrun --sdk macosx --show-sdk-path) -DCMAKE_EXE_LINKER_FLAGS="-L/opt/homebrew/opt/llvm@19/lib/c++ -L/opt/homebrew/opt/llvm@19/lib/unwind -lunwind" -DNUI_NPM=npm -DNUI_NODE=node -DCMAKE_CXX_STANDARD=20
         env:
           CPPFLAGS: "-I/opt/homebrew/opt/llvm@19/include"
 
