@@ -957,4 +957,62 @@ namespace Nui::Tests
 
         EXPECT_EQ(Nui::val::global("document")["body"]["textContent"].as<std::string>(), "Hello");
     }
+
+    TEST_F(TestRender, SharedObservedArePossibleToUseWithGenerate)
+    {
+        using Nui::Elements::body;
+
+        auto lambda = [](bool arg) mutable -> std::string {
+            return arg ? "Hello" : "Bye";
+        };
+        std::shared_ptr<Observed<bool>> bla = std::make_shared<Observed<bool>>(true);
+
+        render(body{}(observe(bla), lambda));
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["textContent"].as<std::string>(), "Hello");
+    }
+
+    TEST_F(TestRender, WeakObservedArePossibleToUseWithGenerate)
+    {
+        using Nui::Elements::body;
+
+        auto lambda = [](bool arg) mutable -> std::string {
+            return arg ? "Hello" : "Bye";
+        };
+        std::shared_ptr<Observed<bool>> bla = std::make_shared<Observed<bool>>(true);
+        std::weak_ptr<Observed<bool>> weakBla = bla;
+
+        render(body{}(observe(weakBla), lambda));
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["textContent"].as<std::string>(), "Hello");
+    }
+
+    TEST_F(TestRender, SharedObservedArePossibleToUseWithGenerate2)
+    {
+        using Nui::Elements::body;
+
+        auto lambda = [](bool arg) mutable -> std::string {
+            return arg ? "Hello" : "Bye";
+        };
+        std::shared_ptr<Observed<bool>> bla = std::make_shared<Observed<bool>>(true);
+
+        render(body{}(observe(bla).generate(lambda)));
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["textContent"].as<std::string>(), "Hello");
+    }
+
+    TEST_F(TestRender, WeakObservedArePossibleToUseWithGenerate2)
+    {
+        using Nui::Elements::body;
+
+        auto lambda = [](bool arg) mutable -> std::string {
+            return arg ? "Hello" : "Bye";
+        };
+        std::shared_ptr<Observed<bool>> bla = std::make_shared<Observed<bool>>(true);
+        std::weak_ptr<Observed<bool>> weakBla = bla;
+
+        render(body{}(observe(weakBla).generate(lambda)));
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["textContent"].as<std::string>(), "Hello");
+    }
 }

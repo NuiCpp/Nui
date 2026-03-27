@@ -663,4 +663,51 @@ namespace Nui::Tests
 
         EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "Goodbye World");
     }
+
+    TEST_F(TestAttributes, GeneratorCanTakeSharedObservedValuesAsArguments)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::class_;
+
+        std::shared_ptr<Observed<std::string>> classPart1 = std::make_shared<Observed<std::string>>("Hello");
+        std::shared_ptr<Observed<std::string>> classPart2 = std::make_shared<Observed<std::string>>("World");
+
+        render(
+            div{class_ = observe(classPart1, classPart2)
+                             .generate([](std::string const& part1, std::string const& part2) -> std::string {
+                                 return part1 + " " + part2;
+                             })}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "Hello World");
+
+        *classPart1 = "Goodbye";
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "Goodbye World");
+    }
+
+    TEST_F(TestAttributes, GeneratorCanTakeWeakObservedValuesAsArguments)
+    {
+        using Nui::Elements::div;
+        using Nui::Attributes::class_;
+
+        std::shared_ptr<Observed<std::string>> classPart1 = std::make_shared<Observed<std::string>>("Hello");
+        std::shared_ptr<Observed<std::string>> classPart2 = std::make_shared<Observed<std::string>>("World");
+
+        auto weak1 = std::weak_ptr{classPart1};
+        auto weak2 = std::weak_ptr{classPart2};
+
+        render(
+            div{class_ = observe(weak1, weak2)
+                             .generate([](std::string const& part1, std::string const& part2) -> std::string {
+                                 return part1 + " " + part2;
+                             })}());
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "Hello World");
+
+        *classPart1 = "Goodbye";
+        globalEventContext.executeActiveEventsImmediately();
+
+        EXPECT_EQ(Nui::val::global("document")["body"]["attributes"]["class"].as<std::string>(), "Goodbye World");
+    }
 }
