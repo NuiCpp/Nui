@@ -111,9 +111,30 @@ namespace Nui
                     }
                     else
                     {
+                        // Call renderer function that takes observed values as arguments, with the current values of
+                        // the observed values.
                         return std::apply(
                             [&](auto const&... observed) {
-                                return elementRenderer(observed.value()...);
+                                return elementRenderer([&observed]() {
+                                    // If weak pointer, lock and unpack:
+                                    if constexpr (IsWeakObserved<decltype(observed)>)
+                                    {
+                                        auto locked = observed.lock();
+                                        if (locked)
+                                            return locked->value();
+                                        return typename std::decay_t<decltype(observed)>::element_type::observed_type{};
+                                    }
+                                    // shared_ptr->value()
+                                    else if constexpr (IsSharedObserved<decltype(observed)>)
+                                    {
+                                        return observed->value();
+                                    }
+                                    // regular observed
+                                    else
+                                    {
+                                        return observed.value();
+                                    }
+                                }()...);
                             },
                             observedValues.observedValues());
                     }

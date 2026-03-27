@@ -5,6 +5,7 @@
 #include <nui/utility/tuple_for_each.hpp>
 #include <nui/utility/overloaded.hpp>
 #include <nui/concepts.hpp>
+#include <traits/functions.hpp>
 
 #include <tuple>
 
@@ -139,7 +140,26 @@ namespace Nui
             {
                 return std::apply(
                     [&](auto const&... observed) {
-                        return generator_(observed.value()...);
+                        return generator_([&observed]() {
+                            // If weak pointer, lock and unpack:
+                            if constexpr (IsWeakObserved<decltype(observed)>)
+                            {
+                                auto locked = observed.lock();
+                                if (locked)
+                                    return locked->value();
+                                return typename std::decay_t<decltype(observed)>::element_type::observed_type{};
+                            }
+                            // shared_ptr->value()
+                            else if constexpr (IsSharedObserved<decltype(observed)>)
+                            {
+                                return observed->value();
+                            }
+                            // regular observed
+                            else
+                            {
+                                return observed.value();
+                            }
+                        }()...);
                     },
                     this->observedValues_);
             }
@@ -173,7 +193,8 @@ namespace Nui
         template <typename RendererType>
         requires(
             std::invocable<RendererType> ||
-            std::invocable<std::decay_t<RendererType>, typename std::decay_t<ObservedValues>::observed_type...>)
+            std::invocable<std::decay_t<RendererType>, typename std::decay_t<ObservedValues>::observed_type...> ||
+            Traits::CallableOfArity<RendererType, sizeof...(ObservedValues)>)
         constexpr ObservedValueCombinatorWithGenerator<std::decay_t<RendererType>, ObservedValues...>
         generate(RendererType&& generator) const&
         {
@@ -184,7 +205,8 @@ namespace Nui
         template <typename RendererType>
         requires(
             std::invocable<RendererType> ||
-            std::invocable<std::decay_t<RendererType>, typename std::decay_t<ObservedValues>::observed_type...>)
+            std::invocable<std::decay_t<RendererType>, typename std::decay_t<ObservedValues>::observed_type...> ||
+            Traits::CallableOfArity<RendererType, sizeof...(ObservedValues)>)
         constexpr ObservedValueCombinatorWithGenerator<std::decay_t<RendererType>, ObservedValues...>
         generate(RendererType&& generator) &&
         {
