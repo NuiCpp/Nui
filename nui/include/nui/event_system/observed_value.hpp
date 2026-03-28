@@ -1552,7 +1552,7 @@ namespace Nui
             static constexpr bool value = true;
         };
 
-        template <typename T, typename Tags = void>
+        template <typename T>
         struct IsWeakObserved
         {
             static constexpr bool value = false;
@@ -1564,7 +1564,7 @@ namespace Nui
             static constexpr bool value = true;
         };
 
-        template <typename T, typename Tags = void>
+        template <typename T>
         struct IsSharedObserved
         {
             static constexpr bool value = false;
@@ -1576,11 +1576,11 @@ namespace Nui
             static constexpr bool value = true;
         };
 
-        template <typename T, typename Tags = void>
+        template <typename T>
         struct IsObservedLike
         {
             static constexpr bool value =
-                IsObserved<T, Tags>::value || IsWeakObserved<T, Tags>::value || IsSharedObserved<T, Tags>::value;
+                IsObserved<T>::value || IsWeakObserved<T>::value || IsSharedObserved<T>::value;
         };
     }
 
@@ -1620,14 +1620,14 @@ namespace Nui
         return tmp;
     }
 
-    template <typename T, typename Tags = void>
-    concept IsObserved = Detail::IsObserved<std::decay_t<T>, Tags>::value;
-    template <typename T, typename Tags = void>
-    concept IsSharedObserved = Detail::IsSharedObserved<std::decay_t<T>, Tags>::value;
-    template <typename T, typename Tags = void>
-    concept IsWeakObserved = Detail::IsWeakObserved<std::decay_t<T>, Tags>::value;
-    template <typename T, typename Tags = void>
-    concept IsObservedLike = Detail::IsObservedLike<std::decay_t<T>, Tags>::value;
+    template <typename T>
+    concept IsObserved = Detail::IsObserved<std::decay_t<T>>::value;
+    template <typename T>
+    concept IsSharedObserved = Detail::IsSharedObserved<std::decay_t<T>>::value;
+    template <typename T>
+    concept IsWeakObserved = Detail::IsWeakObserved<std::decay_t<T>>::value;
+    template <typename T>
+    concept IsObservedLike = Detail::IsObservedLike<std::decay_t<T>>::value;
 
     namespace Detail
     {
