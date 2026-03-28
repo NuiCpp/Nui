@@ -170,6 +170,50 @@ namespace Nui
             this->generator_ = std::move(generator);
         }
 
+        /**
+         * @brief Creates a new ObservedValueCombinatorWithGenerator that applies the provided function to the output of
+         * the current generator.
+         *
+         * @tparam FunctionT
+         * @param function
+         * @return ObservedValueCombinatorWithGenerator<FunctionT, ObservedValues...>
+         */
+        template <typename FunctionT>
+        auto regenerate(FunctionT&& function) const&
+        {
+            auto fn = [fn = std::forward<FunctionT>(function),
+                       gen = generator_](typename ObservedValues::observed_type const&... unpacked) {
+                return fn(gen(unpacked...));
+            };
+
+            return ObservedValueCombinatorWithGenerator<decltype(fn), ObservedValues...>{
+                this->observedValues_,
+                std::move(fn),
+            };
+        }
+
+        /**
+         * @brief Creates a new ObservedValueCombinatorWithGenerator that applies the provided function to the output of
+         * the current generator. (Specialization for rvalue *this)
+         *
+         * @tparam FunctionT
+         * @param function
+         * @return ObservedValueCombinatorWithGenerator<FunctionT, ObservedValues...>
+         */
+        template <typename FunctionT>
+        auto regenerate(FunctionT&& function) &&
+        {
+            auto fn = [fn = std::forward<FunctionT>(function),
+                       gen = std::move(generator_)](typename ObservedValues::observed_type const&... unpacked) {
+                return fn(gen(unpacked...));
+            };
+
+            return ObservedValueCombinatorWithGenerator<decltype(fn), ObservedValues...>{
+                std::move(this->observedValues_),
+                std::move(fn),
+            };
+        }
+
         RendererTypeNoRef generator() const&
         {
             return generator_;
