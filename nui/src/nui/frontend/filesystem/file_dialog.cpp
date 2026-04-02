@@ -38,7 +38,7 @@ namespace Nui::FileDialog
         convertOptions(opts, options);
         opts.set("allowMultiSelect", options.allowMultiSelect);
         const auto id = RpcClient::registerFunctionOnce([onResult](Nui::val const& param) {
-            if (param.typeOf().as<std::string>() == "null")
+            if (param.isNull() || param.isUndefined())
                 onResult(std::nullopt);
             else
             {
@@ -62,7 +62,7 @@ namespace Nui::FileDialog
         Nui::val opts = Nui::val::object();
         convertOptions(opts, options);
         const auto id = RpcClient::registerFunctionOnce([onResult = std::move(onResult)](Nui::val const& param) {
-            if (param.typeOf().as<std::string>() == "null")
+            if (param.isNull() || param.isUndefined())
                 onResult(std::nullopt);
             else
             {
@@ -86,7 +86,7 @@ namespace Nui::FileDialog
         convertOptions(opts, options);
         opts.set("forceOverwrite", options.forceOverwrite);
         const auto id = RpcClient::registerFunctionOnce([onResult = std::move(onResult)](Nui::val const& param) {
-            if (param.typeOf().as<std::string>() == "null")
+            if (param.isNull() || param.isUndefined())
                 onResult(std::nullopt);
             else
                 onResult(std::filesystem::path{param.as<std::string>()});
