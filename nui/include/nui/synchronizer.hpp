@@ -41,7 +41,7 @@ namespace Nui
         explicit Synchronizer(ObservedT& observed, std::shared_ptr<bool> const& eventComesFromRpc)
             : SynchronizerBase<ObservedT>{
                   RpcClient::autoRegisterFunction(
-                      "observed_" + std::to_string(syncId(observed)),
+                      "observed_" + std::string(syncId(observed)),
                       [&observed, eventComesFromRpc = eventComesFromRpc](Nui::val value) mutable {
                           {
                               *eventComesFromRpc = true;
@@ -53,7 +53,7 @@ namespace Nui
                       observed,
                       [eventComesFromRpc = eventComesFromRpc](auto const& value) mutable {
                           if (!*eventComesFromRpc)
-                              RpcClient::call("observed_" + std::to_string(syncId(ObservedT{})), convertToVal(value));
+                              RpcClient::call("observed_" + std::string(syncId(ObservedT{})), convertToVal(value));
                       }),
               }
         {}
@@ -68,7 +68,7 @@ namespace Nui
         explicit Synchronizer(RpcHub& hub, ObservedT& observed, std::shared_ptr<bool> const& eventComesFromRpc)
             : SynchronizerBase<ObservedT>{
                   hub.autoRegisterFunction(
-                      "observed_" + std::to_string(syncId(observed)),
+                      "observed_" + std::string(syncId(observed)),
                       [&observed, eventComesFromRpc = eventComesFromRpc](nlohmann::json const& value) mutable {
                           {
                               *eventComesFromRpc = true;
@@ -81,7 +81,7 @@ namespace Nui
                       observed,
                       [&hub, eventComesFromRpc = eventComesFromRpc](auto const& value) mutable {
                           if (!*eventComesFromRpc)
-                              hub.call("observed_" + std::to_string(syncId(ObservedT{})), nlohmann::json(value));
+                              hub.call("observed_" + std::string(syncId(ObservedT{})), nlohmann::json(value));
                       }),
               }
         {}
@@ -106,7 +106,7 @@ namespace Nui
         explicit Synchronizer(SharedObservedT const& observed, std::shared_ptr<bool> const& eventComesFromRpc)
             : SynchronizerBase<SharedObservedT>{
                   RpcClient::autoRegisterFunction(
-                      "observed_" + std::to_string(syncId(observed)),
+                      "observed_" + std::string(syncId(observed)),
                       [weak = std::weak_ptr{observed}, eventComesFromRpc = eventComesFromRpc](Nui::val value) mutable {
                           auto observed = weak.lock();
                           if (!observed)
@@ -122,7 +122,7 @@ namespace Nui
                       observed,
                       [eventComesFromRpc = eventComesFromRpc](auto const& value) mutable {
                           if (!*eventComesFromRpc)
-                              RpcClient::call("observed_" + std::to_string(syncId(ObservedT{})), convertToVal(value));
+                              RpcClient::call("observed_" + std::string(syncId(ObservedT{})), convertToVal(value));
                       }),
               }
         {}
@@ -140,7 +140,7 @@ namespace Nui
             std::shared_ptr<bool> const& eventComesFromRpc)
             : SynchronizerBase<SharedObservedT>{
                   hub.autoRegisterFunction(
-                      "observed_" + std::to_string(syncId(observed)),
+                      "observed_" + std::string(syncId(observed)),
                       [weak = std::weak_ptr{observed},
                        eventComesFromRpc = eventComesFromRpc](nlohmann::json const& value) mutable {
                           auto observed = weak.lock();
@@ -158,7 +158,7 @@ namespace Nui
                       observed,
                       [&hub, eventComesFromRpc = eventComesFromRpc](auto const& value) mutable {
                           if (!*eventComesFromRpc)
-                              hub.call("observed_" + std::to_string(syncId(ObservedT{})), nlohmann::json(value));
+                              hub.call("observed_" + std::string(syncId(ObservedT{})), nlohmann::json(value));
                       }),
               }
         {}
