@@ -24,7 +24,7 @@ function(nui_add_emscripten_target)
         NUI_ADD_EMSCRIPTEN_TARGET_ARGS
         "DISABLE_BIN2HPP;DISABLE_PARCEL_ADAPTER;ENABLE_TAILWIND;ENABLE_DOTENV;CONFIGURE_ALWAYS"
         "TARGET;PREJS;SOURCE_DIR;BIN2HPP_ENCODING"
-        "CMAKE_OPTIONS"
+        "CMAKE_OPTIONS;BUILD_OPTIONS"
         ${ARGN}
     )
 
@@ -152,7 +152,7 @@ function(nui_add_emscripten_target)
             # copy tailwind config if needed
             ${COPY_TAILWIND_CONFIG_COMMAND}
             # emscripten make
-            COMMAND cmake --build "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}" --target ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
+            COMMAND cmake --build "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}" --target ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_BUILD_OPTIONS}
             # convert result to header file containing the page
             ${BIN2HPP_COMMAND}
             BINARY_DIR "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
@@ -176,7 +176,7 @@ function(nui_add_emscripten_target)
             # copy tailwind config if needed
             ${COPY_TAILWIND_CONFIG_COMMAND}
             # emscripten make
-            COMMAND cmake --build "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}" --target ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel
+            COMMAND cmake --build "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}" --target ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET} ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}-parcel ${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_BUILD_OPTIONS}
             # convert result to header file containing the page
             ${BIN2HPP_COMMAND}
             BINARY_DIR "${CMAKE_BINARY_DIR}/module_${NUI_ADD_EMSCRIPTEN_TARGET_ARGS_TARGET}"
