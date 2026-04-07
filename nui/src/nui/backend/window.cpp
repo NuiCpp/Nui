@@ -139,6 +139,11 @@ namespace Nui
         {}
         virtual ~Implementation()
         {
+            if (view && !isRunning)
+            {
+                view->terminate();
+                view->run();
+            }
             pool.stop();
             pool.join();
         }
