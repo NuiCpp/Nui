@@ -211,7 +211,9 @@ namespace Nui::FileDialog
                 bool isSave,
                 std::string const& defaultPath)
             {
-                auto ok = [](int r) { return r >= 0; };
+                auto ok = [](int r) {
+                    return r >= 0;
+                };
 
                 if (!ok(sd_bus_message_open_container(m, 'a', "{sv}")))
                     return false;
@@ -243,7 +245,7 @@ namespace Nui::FileDialog
                         {
                             sd_bus_message_open_container(m, 'r', "us");
                             sd_bus_message_append(m, "us", 0u, mask.c_str()); // 0 = glob pattern
-                            sd_bus_message_close_container(m);                // r
+                            sd_bus_message_close_container(m); // r
                         }
                         sd_bus_message_close_container(m); // a
                         sd_bus_message_close_container(m); // r
@@ -302,9 +304,9 @@ namespace Nui::FileDialog
                         for (char c : parent)
                             sd_bus_message_append(m, "y", static_cast<uint8_t>(c));
                         sd_bus_message_append(m, "y", static_cast<uint8_t>(0)); // null terminator
-                        sd_bus_message_close_container(m);                       // a
-                        sd_bus_message_close_container(m);                       // v
-                        sd_bus_message_close_container(m);                       // e
+                        sd_bus_message_close_container(m); // a
+                        sd_bus_message_close_container(m); // v
+                        sd_bus_message_close_container(m); // e
                     }
                 }
 
@@ -354,10 +356,11 @@ namespace Nui::FileDialog
 
                 // Register the signal match BEFORE calling the method to avoid race conditions.
                 ResponseData responseData;
-                std::string matchRule = "type='signal',"
-                                        "interface='org.freedesktop.portal.Request',"
-                                        "member='Response',"
-                                        "path='" +
+                std::string matchRule =
+                    "type='signal',"
+                    "interface='org.freedesktop.portal.Request',"
+                    "member='Response',"
+                    "path='" +
                     handle_path + "'";
                 if (sd_bus_add_match(bus, &slot, matchRule.c_str(), responseHandler, &responseData) < 0)
                 {
@@ -393,7 +396,10 @@ namespace Nui::FileDialog
                     return std::nullopt;
                 }
 
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wc99-extensions"
                 sd_bus_error error = SD_BUS_ERROR_NULL;
+#    pragma clang diagnostic pop
                 sd_bus_message* reply = nullptr;
                 int r = sd_bus_call(bus, callMsg, 0, &error, &reply);
                 sd_bus_message_unref(callMsg);
@@ -440,7 +446,7 @@ namespace Nui::FileDialog
                 return std::optional<std::vector<std::filesystem::path>>{std::move(paths)};
             }
         } // namespace portal
-#endif    // __linux__
+#endif // __linux__
     }
     //---------------------------------------------------------------------------------------------------------------------
     std::optional<std::vector<std::filesystem::path>> showOpenDialog(OpenDialogOptions const& options)
@@ -467,11 +473,7 @@ namespace Nui::FileDialog
     {
 #ifdef __linux__
         auto attempt = portal::showDialog(
-            getTitle(options.title),
-            getDefaultPath(options.defaultPath),
-            {},
-            false,
-            portal::Type::Directory);
+            getTitle(options.title), getDefaultPath(options.defaultPath), {}, false, portal::Type::Directory);
         if (attempt.has_value())
             return *attempt;
 #endif
@@ -486,11 +488,7 @@ namespace Nui::FileDialog
     {
 #ifdef __linux__
         auto attempt = portal::showDialog(
-            getTitle(options.title),
-            getDefaultPath(options.defaultPath),
-            options.filters,
-            false,
-            portal::Type::Save);
+            getTitle(options.title), getDefaultPath(options.defaultPath), options.filters, false, portal::Type::Save);
         if (attempt.has_value())
         {
             if (!attempt->has_value() || (*attempt)->empty())

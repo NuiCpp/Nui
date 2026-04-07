@@ -22,7 +22,7 @@ namespace Nui
      * %data_home% Linux: $XDG_DATA_HOME. Windows: CSIDL_APPDATA
      * %data_home2% Linux: $XDG_DATA_HOME. Windows: CSIDL_MYDOCUMENTS
      * %data_home3% Linux: $XDG_DATA_HOME. Windows: home
-     *
+     * %cache_home% Linux: $XDG_CACHE_HOME. Windows: CSIDL_APPDATA_LOCAL
      *
      * @param path
      * @return std::filesystem::path
