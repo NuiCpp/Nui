@@ -92,6 +92,13 @@ namespace Nui
                 return {xdgDataHome};
             return getHome() / ".local/share";
         }
+        std::filesystem::path getXdgCacheHome()
+        {
+            auto const* xdgCacheHome = getenv("XDG_CACHE_HOME");
+            if (xdgCacheHome != nullptr)
+                return {xdgCacheHome};
+            return getHome() / ".cache";
+        }
 #endif
     }
 
@@ -150,6 +157,8 @@ namespace Nui
             return path;
         if (tryAndMap("%data_home3%", getHome))
             return path;
+        if (tryAndMap("%cache_home%", getLocalAppData))
+            return path;
 #else
         if (tryAndMap("%config_home%", getXdgConfigHome))
             return path;
@@ -168,6 +177,8 @@ namespace Nui
         if (tryAndMap("%data_home2%", getXdgDataHome))
             return path;
         if (tryAndMap("%data_home3%", getXdgDataHome))
+            return path;
+        if (tryAndMap("%cache_home%", getXdgCacheHome))
             return path;
 #endif
 
