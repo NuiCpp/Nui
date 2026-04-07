@@ -68,6 +68,10 @@ else()
             screen_nix.cpp
             environment_variables_nix.cpp
     )
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBSYSTEMD REQUIRED libsystemd)
+    target_include_directories(nui-backend PRIVATE ${LIBSYSTEMD_INCLUDE_DIRS})
+    target_link_libraries(nui-backend PRIVATE ${LIBSYSTEMD_LIBRARIES})
 endif()
 nui_set_target_output_directories(nui-backend)
 target_compile_features(nui-backend PUBLIC cxx_std_20)
