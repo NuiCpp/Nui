@@ -5,6 +5,7 @@ Nui enables you to build C++ user interfaces using a browser window tied to a ma
 Website: https://nuicpp.org
 
 Documentation: https://nuicpp.github.io/nui-documentation/
+AI Skill, which also is a pretty good TLDR: [Skill](claude-skill/nui-cpp/SKILL.md)
 
 ## Setup
 How to get going with nui is explained here in detail: [Installation](https://nuicpp.github.io/nui-documentation/docs/getting_started/installation)
@@ -23,22 +24,36 @@ Not automatically tested but should work:
   - MacOS 14+
   - Other Linux Distributions with new enough packages for C++20
 
-Planed:
-  - Android if this gets more traction here: https://github.com/webview/webview/issues/871
+Not supported:
+  - Mobile Platforms
+  - BSD Systems
 
 ## Examples
-Using SAPUI5 Components
+### nui-sftp
+nui-sftp is a terminal emulator, file explorer and ssh & sftp client built using nui. It is my nui dogfooding project. It is a good example of a non-trivial application built with nui, and is available here:
+https://github.com/5cript/nui-sftp
+
+![Example nui-sftp](https://s3.g.s4.mega.io/jgemkib4a5fte35rktt5wxrwkw4ejk4ybemkf/nui-scp/images/nui-sftp-session.png)
+![Example nui-sftp Settings](https://s3.g.s4.mega.io/jgemkib4a5fte35rktt5wxrwkw4ejk4ybemkf/nui-scp/images/nui-sftp-settings.png)
+
+### Using SAPUI5 Components
+(WARNING: I experience serious performance problems caused by these components when 100+ components are used, because each and every single component calls getComputedStyle on creation causing forced reflows.)
 ![Example SAPUI5](https://user-images.githubusercontent.com/6238896/280534443-090023ca-8831-4423-83bf-e9d16c4a9b53.png)
 
 To use them, see this repo: https://github.com/NuiCpp/ui5
 
-Using Bootstrap and some custom CSS
+### Using Bootstrap and some custom CSS
 ![Example Bootstrap](https://nuicpp.org/assets/example.png)
 
-Plenty found on https://nuicpp.org
+### Other
+More found on https://nuicpp.org
 
 ## Contributing
-Pull Requests are welcome, please format your changes and additions with clang-format (Ideally version 16+).
+Pull Requests are welcome, please format your changes and additions with clang-format (Ideally version 22+).
+
+## AI
+
+For you AI Vibe Coders out there, I have created a claud skill file which also douples as a TLDR documentation. It is available here: [Skill](claude-skill/nui-cpp/SKILL.md)
 
 ## Dependencies pulled by CMake
 Nui uses the following dependencies:
