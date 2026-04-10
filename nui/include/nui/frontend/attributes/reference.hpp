@@ -1,5 +1,6 @@
 #pragma once
 
+#include <nui/frontend/attributes/impl/attribute.hpp>
 #include <nui/frontend/dom/reference.hpp>
 
 namespace Nui::Attributes
@@ -19,7 +20,7 @@ namespace Nui::Attributes
         requires std::invocable<T, Nui::val&&>
         Attribute onMaterialize(T&& func) const
         {
-            return operator=([func = std::forward<T>(func)](std::weak_ptr<Dom::BasicElement>&& element) mutable {
+            return operator=([func = std::forward<T>(func)](std::weak_ptr<Dom::BasicElement> const& element) mutable {
                 func(element.lock()->val());
             });
         }
@@ -33,7 +34,7 @@ namespace Nui::Attributes
 
         Attribute operator=(Nui::val& ref) const
         {
-            return operator=([&ref](std::weak_ptr<Dom::BasicElement>&& element) mutable {
+            return operator=([&ref](std::weak_ptr<Dom::BasicElement> const& element) mutable {
                 ref = element.lock()->val();
             });
         }
