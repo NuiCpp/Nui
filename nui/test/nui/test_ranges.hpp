@@ -50,6 +50,68 @@ namespace Nui::Tests
         textBodyParityTest(vec, parent);
     }
 
+    // range() over a shared_ptr<Observed<...>> must be reactive (stored as a weak_ptr
+    // internally, locked per update). Reassigning the underlying Observed re-renders.
+    TEST_F(TestRanges, SharedPtrObservedReassignmentUpdatesView)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        Nui::val parent;
+        auto vec = std::make_shared<Observed<std::vector<char>>>(std::vector<char>{'A', 'B', 'C', 'D'});
+
+        render(body{reference = parent}(range(vec), [](long long, auto const& element) {
+            return div{}(std::string{element});
+        }));
+        textBodyParityTest(*vec, parent);
+
+        *vec = std::vector<char>{'X', 'Y', 'Z'};
+        globalEventContext.executeActiveEventsImmediately();
+        textBodyParityTest(*vec, parent);
+    }
+
+    // Element-level mutation (push_back) through the shared_ptr also re-renders.
+    TEST_F(TestRanges, SharedPtrObservedPushBackUpdatesView)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        Nui::val parent;
+        auto vec = std::make_shared<Observed<std::vector<char>>>(std::vector<char>{'A', 'B'});
+
+        render(body{reference = parent}(range(vec), [](long long, auto const& element) {
+            return div{}(std::string{element});
+        }));
+        textBodyParityTest(*vec, parent);
+
+        vec->push_back('C');
+        globalEventContext.executeActiveEventsImmediately();
+        textBodyParityTest(*vec, parent);
+    }
+
+    // weak_ptr<Observed<...>> is accepted too; it reacts while the owner keeps it alive.
+    TEST_F(TestRanges, WeakPtrObservedUpdatesView)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::body;
+        using namespace Nui::Attributes;
+
+        Nui::val parent;
+        auto vec = std::make_shared<Observed<std::vector<char>>>(std::vector<char>{'A', 'B', 'C', 'D'});
+        std::weak_ptr<Observed<std::vector<char>>> weak = vec;
+
+        render(body{reference = parent}(range(weak), [](long long, auto const& element) {
+            return div{}(std::string{element});
+        }));
+        textBodyParityTest(*vec, parent);
+
+        vec->push_back('E');
+        globalEventContext.executeActiveEventsImmediately();
+        textBodyParityTest(*vec, parent);
+    }
+
     TEST_F(TestRanges, PushBackUpdatesView)
     {
         Nui::val parent;

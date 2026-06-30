@@ -90,7 +90,10 @@ namespace Nui
         using BasicObservedRange<ObservedRange<ObservedValue>>::before_;
         using BasicObservedRange<ObservedRange<ObservedValue>>::after_;
 
-        static constexpr bool isRandomAccess = ObservedType::isRandomAccess;
+        // Unwrap through shared_ptr/weak_ptr<Observed> so the trait reads from the
+        // underlying Observed rather than the smart pointer (which has no isRandomAccess).
+        static constexpr bool isRandomAccess =
+            Detail::ObservedAddMutableReference_raw<ObservedType>::isRandomAccess;
 
         template <typename ObservedValueT>
         requires std::is_same_v<std::decay_t<ObservedValueT>, std::decay_t<ObservedValueT>>
@@ -166,7 +169,24 @@ namespace Nui
         return ObservedRange<const ObservedValue>{observedValues};
     }
 
+    /**
+     * @brief Reactive range over a shared_ptr/weak_ptr<Observed<Container>>.
+     *
+     * The smart pointer is stored internally as a weak_ptr (matching how shared/weak
+     * observed are treated elsewhere), locked per update, so the range reacts to
+     * mutations and reassignment of the underlying Observed. The caller must keep the
+     * shared_ptr alive for as long as the rendered range is mounted. Taken by value so
+     * the weak_ptr conversion is well-formed for both shared_ptr and weak_ptr inputs.
+     */
+    template <typename ObservedValue>
+    requires(IsSharedObserved<ObservedValue> || IsWeakObserved<ObservedValue>)
+    ObservedRange<std::decay_t<ObservedValue>> range(ObservedValue observedValues)
+    {
+        return ObservedRange<std::decay_t<ObservedValue>>{std::move(observedValues)};
+    }
+
     template <typename ContainerT, typename... Observed>
+    requires(!IsObservedLike<std::remove_cvref_t<ContainerT>>)
     UnoptimizedRange<IteratorAccessor<ContainerT const>, std::decay_t<Detail::ObservedAddReference_t<Observed>>...>
     range(ContainerT const& container, Observed&&... observed)
     {
@@ -179,6 +199,7 @@ namespace Nui
     }
 
     template <typename ContainerT, typename... Observed>
+    requires(!IsObservedLike<std::remove_cvref_t<ContainerT>>)
     UnoptimizedRange<IteratorAccessor<ContainerT>, std::decay_t<Detail::ObservedAddReference_t<Observed>>...>
     range(ContainerT& container, Observed&&... observed)
     {
@@ -237,6 +258,7 @@ namespace Nui
     }
 
     template <typename ContainerT>
+    requires(!IsObservedLike<std::remove_cvref_t<ContainerT>>)
     UnoptimizedRange<IteratorAccessor<ContainerT const>> range(ContainerT const& container)
     {
         return UnoptimizedRange<IteratorAccessor<ContainerT const>>{
@@ -250,7 +272,7 @@ namespace Nui
      *        even if the caller's local container goes out of scope immediately.
      */
     template <typename ContainerT>
-    requires(!IsObserved<std::remove_cvref_t<ContainerT>>)
+    requires(!IsObservedLike<std::remove_cvref_t<ContainerT>>)
     UnoptimizedRange<OwningIteratorAccessor<std::remove_cvref_t<ContainerT>>>
     range(ContainerT&& container)
     {
@@ -262,6 +284,7 @@ namespace Nui
 
 #ifdef NUI_HAS_STD_RANGES
     template <typename T, typename... Observed>
+    requires(!IsObservedLike<std::remove_cvref_t<T>>)
     UnoptimizedRange<
         std::ranges::subrange<std::ranges::iterator_t<T const>>,
         std::decay_t<Detail::ObservedAddReference_t<Observed>>...> range(T const& container, Observed&&... observed)
