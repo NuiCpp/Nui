@@ -61,9 +61,10 @@ namespace Nui::Detail
                     return &valueRange;
                 },
                 [&holder](::Nui::IsWeakObserved auto& valueRange) {
-                    if (holder.locked = valueRange.lock(); holder.locked)
-                        return holder.locked.get();
-                    return nullptr;
+                    holder.locked = valueRange.lock();
+                    // get() yields nullptr when the weak_ptr could not be locked; both
+                    // overloads must return the same Observed* type for auto deduction.
+                    return holder.locked.get();
                 },
             }(valueRange_);
         }
@@ -208,8 +209,7 @@ namespace Nui::Detail
             if (!parent)
                 return InvalidateRange;
 
-            auto valueRangeHolder =
-                ::Nui::Detail::HoldToken<std::decay_t<ObservedAddMutableReference_t<typename RangeT::ObservedType>>>{};
+            auto valueRangeHolder = CommonHoldToken<RangeT>{};
             auto* valueRange = getValueRange(valueRangeHolder);
             if (!valueRange)
                 return InvalidateRange;
