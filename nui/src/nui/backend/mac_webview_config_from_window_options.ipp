@@ -223,7 +223,7 @@ namespace Nui::MacOs
                 nsResponse,
                 "initWithURL:statusCode:HTTPVersion:headerFields:"_sel,
                 url,
-                response.statusCode,
+                static_cast<NSInteger>(response.statusCode),
                 "HTTP/1.1"_str,
                 headers);
 
