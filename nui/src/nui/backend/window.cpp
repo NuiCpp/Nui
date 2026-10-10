@@ -142,7 +142,14 @@ namespace Nui
         {
             if (view && !isRunning)
             {
+#ifdef __APPLE__
+                // NSApplication's run discards a stop requested before the loop started, ask from inside it.
+                view->dispatch([view = view.get()]() {
+                    view->terminate();
+                });
+#else
                 view->terminate();
+#endif
                 view->run();
             }
             pool.stop();
