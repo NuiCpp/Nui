@@ -20,6 +20,7 @@
 #    include <objc/objc-runtime.h>
 #    include <objc/NSObjCRuntime.h>
 #    include <CoreGraphics/CoreGraphics.h>
+#    include <pthread.h>
 #elif __linux__
 #    include <gtk/gtk.h>
 #    include <libsoup/soup.h>
@@ -82,11 +83,10 @@ namespace Nui
             .reasonPhrase = body ? "OK" : "Not Found",
             .headers =
                 {
-                    {"Content-Type"s, "text/plain"s},
                     {"Access-Control-Allow-Origin"s, "*"s},
                     {"Access-Control-Allow-Methods"s, "GET, POST, PUT, DELETE, OPTIONS"s},
                     {"Access-Control-Allow-Headers"s, "*"s},
-                    {"Content-Type"s, mime},
+                    {"Content-Type"s, body ? mime : "text/plain"s},
                 },
             .body = body ? *body : "File not found",
         };
@@ -96,6 +96,7 @@ namespace Nui
 
 #ifdef __APPLE__
 #    include "mac_webview_config_from_window_options.ipp"
+#    include "mac_main_menu.ipp"
 #elif defined(_WIN32)
 #    include <webview2_environment_options.hpp>
 #    ifndef _MSC_VER
@@ -281,7 +282,7 @@ namespace Nui
             setTitle(*options.title);
 
 #ifdef __APPLE__
-#elif defined(__linux__)
+        MacOs::installDefaultMainMenu();
 #endif
     }
     //---------------------------------------------------------------------------------------------------------------------
@@ -631,6 +632,12 @@ namespace Nui
             winImpl->toProcessOnWindowThread.push_back(std::move(func));
             PostThreadMessage(winImpl->windowThreadId, wakeUpMessage, 0, 0);
         }
+#elif defined(__APPLE__)
+        // AppKit and WKWebView may only be touched from the main thread.
+        if (pthread_main_np() != 0)
+            func();
+        else
+            impl_->view->dispatch(std::move(func));
 #else
         func();
 #endif
@@ -682,7 +689,16 @@ namespace Nui
             PostThreadMessage(winImpl->windowThreadId, wakeUpMessage, 0, 0);
         }
 #elif defined(__APPLE__)
-        impl_->view->eval(js);
+        if (pthread_main_np() != 0)
+        {
+            impl_->view->eval(js);
+        }
+        else
+        {
+            impl_->view->dispatch([view = impl_->view.get(), js]() {
+                view->eval(js);
+            });
+        }
 #else
         impl_->view->eval(js);
 #endif
