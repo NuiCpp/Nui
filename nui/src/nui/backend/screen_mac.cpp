@@ -27,11 +27,15 @@ namespace Nui
                 if (service)
                     IOObjectRelease(service);
             };
+            // Apple Silicon has no IOKit display service port, so the name stays empty there.
+            if (!service)
+                return strResult;
             CFDictionaryRef info = IODisplayCreateInfoDictionary(service, kIODisplayOnlyPreferredName);
+            if (!info)
+                return strResult;
             NUI_ON_SCOPE_EXIT
             {
-                if (info)
-                    CFRelease(info);
+                CFRelease(info);
             };
 
             CFDictionaryRef names =
@@ -57,13 +61,8 @@ namespace Nui
                 if (orderLangKeys && CFArrayGetCount(orderLangKeys))
                 {
                     CFStringRef langKey = reinterpret_cast<CFStringRef>(CFArrayGetValueAtIndex(orderLangKeys, 0));
+                    // Get rule: owned by the dictionary, must not be released.
                     displayName = reinterpret_cast<CFStringRef>(CFDictionaryGetValue(names, langKey));
-
-                    NUI_ON_SCOPE_EXIT
-                    {
-                        if (displayName)
-                            CFRelease(displayName);
-                    };
 
                     if (displayName)
                     {

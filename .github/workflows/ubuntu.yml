@@ -24,10 +24,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: libwebkit2gtk-4.1-dev libcurl4-openssl-dev libcrypto++-dev ninja-build libsystemd-dev # clang uses libtinfo, which apparently is in ncurses?
-          version: 1.0
+      # Plain apt: the caching action installed from a stale index, failed on a 404 and then cached the
+      # empty result under the same key, so later runs restored nothing.
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libcurl4-openssl-dev libcrypto++-dev ninja-build libsystemd-dev
 
       - name: Install boost
         uses: MarkusJx/install-boost@v2.4.1

@@ -17,15 +17,15 @@ namespace Nui::MacOs
         return invoke<Result>(objc_msgSend, args...);
     }
 
-    inline id operator"" _cls(const char* s, std::size_t)
+    inline id operator""_cls(const char* s, std::size_t)
     {
         return reinterpret_cast<id>(objc_getClass(s));
     }
-    inline SEL operator"" _sel(const char* s, std::size_t)
+    inline SEL operator""_sel(const char* s, std::size_t)
     {
         return sel_registerName(s);
     }
-    inline id operator"" _str(const char* s, std::size_t)
+    inline id operator""_str(const char* s, std::size_t)
     {
         return msg_send<id>("NSString"_cls, "stringWithUTF8String:"_sel, s);
     }

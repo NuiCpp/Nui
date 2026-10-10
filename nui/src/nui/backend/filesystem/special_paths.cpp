@@ -67,6 +67,48 @@ namespace Nui
         {
             return getHome();
         }
+#    ifdef __APPLE__
+        std::filesystem::path getTemp()
+        {
+            auto const* temporaryDirectory = getenv("TMPDIR");
+            if (temporaryDirectory != nullptr && *temporaryDirectory != '\0')
+                return {temporaryDirectory};
+            return "/tmp";
+        }
+        // macOS keeps configuration, state and data together, an explicit XDG variable still wins.
+        std::filesystem::path getApplicationSupport()
+        {
+            return getHome() / "Library" / "Application Support";
+        }
+        std::filesystem::path getXdgConfigHome()
+        {
+            auto const* xdgConfigHome = getenv("XDG_CONFIG_HOME");
+            if (xdgConfigHome != nullptr)
+                return {xdgConfigHome};
+            return getApplicationSupport();
+        }
+        std::filesystem::path getXdgStateHome()
+        {
+            auto const* xdgStateHome = getenv("XDG_STATE_HOME");
+            if (xdgStateHome != nullptr)
+                return {xdgStateHome};
+            return getApplicationSupport();
+        }
+        std::filesystem::path getXdgDataHome()
+        {
+            auto const* xdgDataHome = getenv("XDG_DATA_HOME");
+            if (xdgDataHome != nullptr)
+                return {xdgDataHome};
+            return getApplicationSupport();
+        }
+        std::filesystem::path getXdgCacheHome()
+        {
+            auto const* xdgCacheHome = getenv("XDG_CACHE_HOME");
+            if (xdgCacheHome != nullptr)
+                return {xdgCacheHome};
+            return getHome() / "Library" / "Caches";
+        }
+#    else
         std::filesystem::path getTemp()
         {
             return "/tmp";
@@ -99,6 +141,7 @@ namespace Nui
                 return {xdgCacheHome};
             return getHome() / ".cache";
         }
+#    endif
 #endif
     }
 
