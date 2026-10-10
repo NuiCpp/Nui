@@ -24,6 +24,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      # The image's package index goes stale and the mirror 404s on superseded debs, the action does not refresh it.
+      - name: Refresh package index
+        run: sudo apt-get update
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: libwebkit2gtk-4.1-dev libcurl4-openssl-dev libcrypto++-dev ninja-build libsystemd-dev # clang uses libtinfo, which apparently is in ncurses?
