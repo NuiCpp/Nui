@@ -574,9 +574,12 @@ namespace Nui
         if (!callback)
             throw std::runtime_error("Callback must be valid.");
 
-        runInJavascriptThread([this, name, callback]() {
-            std::scoped_lock lock{impl_->viewGuard};
-            impl_->callbacks[name] = callback;
+        runInJavascriptThread([weak = std::weak_ptr<Implementation>{impl_}, name, callback]() {
+            const auto impl = weak.lock();
+            if (!impl)
+                return;
+            std::scoped_lock lock{impl->viewGuard};
+            impl->callbacks[name] = callback;
             auto script = fmt::format(
                 R"(
                     (() => {{
@@ -598,17 +601,20 @@ namespace Nui
                 name,
                 name);
 
-            if (!impl_->isRunning)
-                impl_->view->init(script);
+            if (!impl->isRunning)
+                impl->view->init(script);
             else
-                impl_->view->eval(script);
+                impl->view->eval(script);
         });
     }
     //--------------------------------------------------------------------------------------------------------------------
     void Window::unbind(std::string const& name)
     {
-        runInJavascriptThread([this, name]() {
-            std::scoped_lock lock{impl_->viewGuard};
+        runInJavascriptThread([weak = std::weak_ptr<Implementation>{impl_}, name]() {
+            const auto impl = weak.lock();
+            if (!impl)
+                return;
+            std::scoped_lock lock{impl->viewGuard};
             auto script = fmt::format(
                 R"(
                     (() => {{
@@ -618,12 +624,12 @@ namespace Nui
                 )",
                 name);
 
-            impl_->callbacks.erase(name);
+            impl->callbacks.erase(name);
 
-            if (!impl_->isRunning)
-                impl_->view->init(script);
+            if (!impl->isRunning)
+                impl->view->init(script);
             else
-                impl_->view->eval(script);
+                impl->view->eval(script);
         });
     }
     //--------------------------------------------------------------------------------------------------------------------
@@ -641,10 +647,14 @@ namespace Nui
         }
 #elif defined(__APPLE__)
         // AppKit and WKWebView may only be touched from the main thread.
+        // Work still queued while the window is torn down must not run against its destroyed state.
         if (pthread_main_np() != 0)
             func();
         else
-            impl_->view->dispatch(std::move(func));
+            impl_->view->dispatch([weak = std::weak_ptr<Implementation>{impl_}, func = std::move(func)]() {
+                if (weak.lock())
+                    func();
+            });
 #else
         func();
 #endif
@@ -702,8 +712,9 @@ namespace Nui
         }
         else
         {
-            impl_->view->dispatch([view = impl_->view.get(), js]() {
-                view->eval(js);
+            impl_->view->dispatch([weak = std::weak_ptr<Implementation>{impl_}, js]() {
+                if (const auto impl = weak.lock())
+                    impl->view->eval(js);
             });
         }
 #else
