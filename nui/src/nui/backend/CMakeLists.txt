@@ -3,6 +3,7 @@ add_library(nui-backend
         window.cpp
         rpc_hub.cpp
         load_file.cpp
+        webkit_gtk_rendering.cpp
         filesystem/special_paths.cpp
         filesystem/file_dialog.cpp
         filesystem/file_dialog_options.cpp
