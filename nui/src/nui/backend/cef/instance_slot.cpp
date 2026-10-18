@@ -3,9 +3,10 @@
 #include <fmt/format.h>
 
 #include <fcntl.h>
-#include <signal.h>
 #include <sys/file.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 #include <cerrno>
@@ -105,21 +106,28 @@ namespace Nui::Detail::Cef
             return name;
         }
 
-        /// Chromium's own profile lock, a link to "<host>-<pid>". It still names a running process when the slot's
-        /// nui.lock was deleted while that process runs.
+        /// A running Chromium owner of the directory listens on the socket its SingletonSocket link points to, also
+        /// when the slot's nui.lock was deleted. Unlike the pid in SingletonLock this works across pid namespaces
+        /// (Flatpak instances) and is immune to pid reuse. Only reached for slots whose nui.lock was free, a live owner
+        /// then logs the empty connection as an invalid message.
         bool chromiumOwnerAlive(std::filesystem::path const& directory)
         {
             std::error_code error;
-            const auto target = std::filesystem::read_symlink(directory / "SingletonLock", error).string();
-            const auto dash = target.rfind('-');
-            if (error || dash == std::string::npos || target.substr(0, dash) != hostName())
+            // The link target is in a short temporary directory, sun_path is too small for cache paths.
+            const auto socketPath = std::filesystem::read_symlink(directory / "SingletonSocket", error).string();
+            sockaddr_un address{};
+            if (error || socketPath.empty() || socketPath.size() >= sizeof(address.sun_path))
                 return false;
-            const std::string_view pidText{target.data() + dash + 1, target.size() - dash - 1};
-            int pid = 0;
-            const auto [end, parseError] = std::from_chars(pidText.data(), pidText.data() + pidText.size(), pid);
-            if (parseError != std::errc{} || end != pidText.data() + pidText.size() || pid <= 0 || pid == ::getpid())
+            const FileDescriptor descriptor{new int{::socket(AF_UNIX, SOCK_STREAM, 0)}};
+            if (*descriptor < 0 || ::fcntl(*descriptor, F_SETFD, FD_CLOEXEC) != 0 ||
+                ::fcntl(*descriptor, F_SETFL, O_NONBLOCK) != 0)
                 return false;
-            return ::kill(pid, 0) == 0 || errno == EPERM;
+            address.sun_family = AF_UNIX;
+            std::memcpy(address.sun_path, socketPath.data(), socketPath.size());
+            if (::connect(*descriptor, reinterpret_cast<sockaddr const*>(&address), sizeof(address)) == 0)
+                return true;
+            // A full backlog still means a listener.
+            return errno == EAGAIN || errno == EINPROGRESS;
         }
 
         bool anySlotOwnerAlive(std::filesystem::path const& versionDirectory)
