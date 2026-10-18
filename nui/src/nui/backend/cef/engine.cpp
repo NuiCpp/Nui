@@ -391,7 +391,8 @@ namespace Nui::Detail::Cef
                 commandLine->AppendSwitchWithValue("optimization-guide-manifest-override", settings.emptyManifestFile);
             // Account lookups go to a host that never resolves instead of accounts.google.com. *.localhost alone would
             // reach local services on port 443, a port in the URL makes Chromium log an error on every start. The rule
-            // goes first, the first matching rule wins over a wildcard of the user.
+            // goes first, the first matching MAP rule wins over a wildcard of the user. EXCLUDE rules of the user still
+            // apply before it.
             if (!commandLine->HasSwitch("gaia-url"))
             {
                 commandLine->AppendSwitchWithValue("gaia-url", "https://gaia.localhost/");

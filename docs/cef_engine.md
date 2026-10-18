@@ -73,8 +73,9 @@ DevTools port when a window has `debug` enabled.
   example while only native (non browser) windows are open.
 - **`terminate()`** closes its window. The loop ends when it was the last one.
 - **`setHtml`** serves the page at `https://app.example/index.html` (the `windowsServeThroughAuthority` argument), the
-  same origin as WebView2. The native WebKit engines show it as `about:blank`. A window serves only its current page:
-  going back in history to the page of an earlier `setHtml` call shows 404.
+  same origin as WebView2. The native WebKit engines show it as `about:blank`. Authorities are lowercased like every URL
+  host. A window serves only its current page: going back in history to the page of an earlier `setHtml` call shows
+  404.
 - **Custom scheme handlers** run on the UI thread, one request at a time, like on the native engines.
   `CustomScheme::handlerThread = SchemeHandlerThread::Any` runs them on worker threads in parallel. Range requests are
   answered automatically (206 with `Content-Range`, 416, `Accept-Ranges`) for `bodyFile`, `body` and `bodyReader`
@@ -85,7 +86,9 @@ DevTools port when a window has `debug` enabled.
 - **Custom scheme names** must be known when the engine starts. Windows constructed before `run()` register theirs; a
   window created later with a new name throws, add the name to `EngineOptions::customSchemes`.
 - **`bind` and `init` after the browser exists** are kept for every later document of the window, also in a new renderer
-  process (cross site navigation, renderer crash), the native engines only evaluate them once.
+  process (cross site navigation, renderer crash), the native engines only evaluate them once. In the first document of
+  a new renderer process they arrive a few milliseconds late, after the document's own inline scripts. Calls made
+  before the browser exists are there from the start.
 - **`getNativeWindow` and `getNativeWebView`** do not exist (they return GTK and WebKit objects on the native engines,
   so their callers would not work anyway). Use `Nui::Cef::nativeWindowHandle`, `Nui::Cef::browser` and
   `Nui::Cef::portalParentWindow` from `<nui/cef/client_hooks.hpp>`, which needs the `Nui::cef` CMake target.
@@ -103,6 +106,8 @@ DevTools port when a window has `debug` enabled.
   after it started (Chromium installs its own), so they behave as with the native engines. SIGCHLD must not be ignored
   and must not have SA_NOCLDWAIT, Chromium waits for its child processes.
 - The frontend can check `globalThis.nui_rpc.engine` (`"cef"` or `"native"`).
+- **`TMPDIR`** longer than 62 characters is replaced by `/tmp` for the process: Chromium's singleton socket below it must
+  fit into a socket address, otherwise Chromium aborts.
 - **Desktop portal identity (Linux, outside Flatpak):** Chromium moves the process into the systemd scope
   `app-org.chromium.Chromium-<pid>.scope`, a name Nui cannot change. xdg-desktop-portal then attributes portal requests
   of the app (file chooser, notifications) to `org.chromium.Chromium`. Inside Flatpak the portal uses the Flatpak id.
@@ -181,7 +186,8 @@ forking worker processes) runs once.
 Chromium contacts Google services on its own. Nui turns this off: component updates, background networking, network
 time, AI mode checks, search preconnects, the optimization guide model manifest (an empty manifest override in the
 cache slot), account lookups (`--gaia-url` points to `gaia.localhost`, which a `--host-resolver-rules` entry placed
-before the application's own rules keeps from resolving), spell checking and network prediction, which
+before the application's own rules keeps from resolving; an `EXCLUDE` rule of the application that matches it still
+wins), spell checking and network prediction, which
 would also look up the `setHtml` authority in DNS. With a fresh cache the app makes no request to the internet.
 `browserArguments` can turn single features back on.
 
@@ -192,4 +198,4 @@ runs the network service in the browser process on Linux. Measured with CEF 154:
 8 instead of 10 processes and about 20 MiB less. More can be saved per application with `browserArguments`:
 `--process-per-site` (windows of the same app share one renderer process) and `--in-process-gpu` (no GPU process, no GPU
 sandbox). A spare renderer turned back on starts before later `setHtml` authorities exist and does not give pages from
-them the RPC bridge.
+them the RPC bridge. With the back-forward cache turned back on, pages restored from it lose the RPC bridge.
