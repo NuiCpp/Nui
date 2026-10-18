@@ -74,7 +74,7 @@ DevTools port when a window has `debug` enabled.
 - **`terminate()`** closes its window. The loop ends when it was the last one.
 - **`setHtml`** serves the page at `https://app.example/index.html` (the `windowsServeThroughAuthority` argument), the
   same origin as WebView2. The native WebKit engines show it as `about:blank`. Authorities are lowercased like every URL
-  host. A window serves only its current page: going back in history to the page of an earlier `setHtml` call shows
+  host, international names must be given in their punycode form (`xn--...`). A window serves only its current page: going back in history to the page of an earlier `setHtml` call shows
   404.
 - **Custom scheme handlers** run on the UI thread, one request at a time, like on the native engines.
   `CustomScheme::handlerThread = SchemeHandlerThread::Any` runs them on worker threads in parallel. Range requests are

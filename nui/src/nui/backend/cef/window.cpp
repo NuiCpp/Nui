@@ -29,6 +29,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -851,8 +852,12 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setHtml(std::string_view html, std::optional<std::string> windowsServeThroughAuthority)
     {
-        // Chromium lowercases URL hosts.
+        // Chromium lowercases URL hosts and converts international names to punycode, which needs a running engine.
         auto authority = windowsServeThroughAuthority.value_or(std::string{defaultHtmlAuthority});
+        if (std::ranges::any_of(authority, [](unsigned char character) {
+                return character >= 0x80u;
+            }))
+            throw std::invalid_argument("Nui: the setHtml authority " + authority + " is not ASCII, use its punycode form");
         std::ranges::transform(authority, authority.begin(), [](unsigned char character) {
             return static_cast<char>(std::tolower(character));
         });
