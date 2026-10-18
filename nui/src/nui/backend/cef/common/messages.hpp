@@ -14,6 +14,8 @@ namespace Nui::Detail::Cef
     // Renderer to browser, no payload: a renderer process asks once for the window's current init scripts and app
     // hosts, the extra_info of a browser only has those from its creation.
     inline constexpr char const* stateRequestMessageName = "nui.stateRequest";
+    // Browser to renderer, no payload: ends the answer to a state request.
+    inline constexpr char const* stateReplyMessageName = "nui.stateReply";
     // Browser to renderer: calls nui_rpc.frontend[name], payload [uint32 name size][name][json].
     inline constexpr char const* callMessageName = "nui.call";
     // Browser to renderer: UTF-8 script evaluated in the main frame.

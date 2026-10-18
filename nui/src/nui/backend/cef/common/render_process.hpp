@@ -40,6 +40,7 @@ namespace Nui::Detail::Cef
             int references{0};
             bool contextReady{false};
             bool stateRequested{false};
+            bool stateRequestPending{false};
             /// By their index in the window's list, which keeps the order and drops duplicates.
             std::map<std::uint32_t, std::string> initScripts{};
             /// Scripts below this index have all arrived and run in documents. Later ones wait for the gap to fill,
@@ -53,6 +54,10 @@ namespace Nui::Detail::Cef
         bool isAppDocument(BrowserState const& state, CefRefPtr<CefFrame> const& frame) const;
         /// Advances contiguousScripts, returns the scripts that became runnable in index order.
         static std::vector<std::string const*> advanceScripts(BrowserState& state);
+        /// Asks the browser for the window's state unless an answer is pending.
+        static void requestState(BrowserState& state, CefRefPtr<CefFrame> const& frame);
+        /// True when a script below the highest known index is missing.
+        static bool missingScripts(BrowserState const& state);
         void runOperation(CefRefPtr<CefFrame> const& frame, std::string const& name, std::string_view payload);
 
         std::unordered_map<int, BrowserState> browsers_{};

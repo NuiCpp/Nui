@@ -575,14 +575,18 @@ namespace Nui
             std::scoped_lock lock{mutex};
             scripts = initScripts;
         }
-        if (scripts.empty())
-            return;
-        send([&scripts]() {
-            std::vector<Detail::Cef::IndexedScript> indexed;
-            indexed.reserve(scripts.size());
-            for (std::size_t index = 0u; index != scripts.size(); ++index)
-                indexed.push_back({.index = static_cast<std::uint32_t>(index), .script = scripts[index]});
-            return Detail::Cef::makeInitScriptsMessage(indexed);
+        if (!scripts.empty())
+        {
+            send([&scripts]() {
+                std::vector<Detail::Cef::IndexedScript> indexed;
+                indexed.reserve(scripts.size());
+                for (std::size_t index = 0u; index != scripts.size(); ++index)
+                    indexed.push_back({.index = static_cast<std::uint32_t>(index), .script = scripts[index]});
+                return Detail::Cef::makeInitScriptsMessage(indexed);
+            });
+        }
+        send([]() {
+            return Detail::Cef::makeTextMessage(Detail::Cef::stateReplyMessageName, {});
         });
     }
     //---------------------------------------------------------------------------------------------------------------------

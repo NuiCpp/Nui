@@ -163,10 +163,12 @@ namespace Nui::Detail::Cef
             return;
         auto& state = iter->second;
         // Scripts added after the browser's creation only reached the processes that existed then.
-        if (!state.stateRequested)
+        // Every new document of a process with a gap asks again, an earlier answer may have been lost.
+        if (!state.stateRequested || missingScripts(state))
         {
             state.stateRequested = true;
-            frame->SendProcessMessage(PID_BROWSER, CefProcessMessage::Create(stateRequestMessageName));
+            state.stateRequestPending = false;
+            requestState(state, frame);
         }
         if (!isAppDocument(state, frame))
         {
@@ -203,6 +205,19 @@ namespace Nui::Detail::Cef
              ++iter, ++state.contiguousScripts)
             runnable.push_back(&iter->second);
         return runnable;
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    bool RenderProcess::missingScripts(BrowserState const& state)
+    {
+        return !state.initScripts.empty() && state.initScripts.rbegin()->first >= state.contiguousScripts;
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void RenderProcess::requestState(BrowserState& state, CefRefPtr<CefFrame> const& frame)
+    {
+        if (state.stateRequestPending || !frame)
+            return;
+        state.stateRequestPending = true;
+        frame->SendProcessMessage(PID_BROWSER, CefProcessMessage::Create(stateRequestMessageName));
     }
     //---------------------------------------------------------------------------------------------------------------------
     void RenderProcess::OnContextReleased(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context>)
@@ -252,7 +267,7 @@ namespace Nui::Detail::Cef
     {
         const auto name = message->GetName().ToString();
         if (name != callMessageName && name != evalMessageName && name != addInitScriptMessageName &&
-            name != addAppHostMessageName)
+            name != addAppHostMessageName && name != stateReplyMessageName)
             return false;
 
         const auto iter = browsers_.find(browser->GetIdentifier());
@@ -260,6 +275,11 @@ namespace Nui::Detail::Cef
             return true;
         auto& state = iter->second;
         const auto frame = browser->GetMainFrame();
+        if (name == stateReplyMessageName)
+        {
+            state.stateRequestPending = false;
+            return true;
+        }
 
         visitPayload(message, [&](std::string_view payload) {
             if (name == addAppHostMessageName)
@@ -275,6 +295,9 @@ namespace Nui::Detail::Cef
                 for (auto const& [index, script] : scripts)
                     state.initScripts.try_emplace(index, script);
                 const auto added = advanceScripts(state);
+                // A script is missing, a message to this process may have been lost while a document was replaced.
+                if (missingScripts(state))
+                    requestState(state, frame);
                 if (added.empty() || !state.contextReady || !frame)
                     return;
                 if (const auto context = frame->GetV8Context(); context && context->Enter())
