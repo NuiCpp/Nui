@@ -73,11 +73,14 @@ DevTools port when a window has `debug` enabled.
   example while only native (non browser) windows are open.
 - **`terminate()`** closes its window. The loop ends when it was the last one.
 - **`setHtml`** serves the page at `https://app.example/index.html` (the `windowsServeThroughAuthority` argument), the
-  same origin as WebView2. The native WebKit engines show it as `about:blank`.
+  same origin as WebView2. The native WebKit engines show it as `about:blank`. Keep one authority per window: a new
+  authority after the window exists only works while the page stays in the same renderer process.
 - **Custom scheme handlers** run on the UI thread, one request at a time, like on the native engines.
   `CustomScheme::handlerThread = SchemeHandlerThread::Any` runs them on worker threads in parallel. Range requests are
-  answered automatically for `bodyFile` and `body` responses. Request bodies of type Blob or stream do not reach custom
-  schemes (500).
+  answered automatically (206 with `Content-Range`, 416, `Accept-Ranges`) for `bodyFile`, `body` and `bodyReader`
+  with a `Content-Length`; HEAD requests get the headers only. `bodyReader` calls run on a shared pool of 4 to 16
+  threads and should not block for long. Request bodies of type Blob or stream do not reach custom schemes: reading
+  them in the handler (`getContent`, `readContent`) throws, which answers 500.
 - **Custom scheme names** must be known when the engine starts. Windows constructed before `run()` register theirs; a
   window created later with a new name throws, add the name to `EngineOptions::customSchemes`.
 - **`bind` and `init` after the browser exists** are kept for later documents of the same renderer, the native engines
@@ -92,7 +95,9 @@ DevTools port when a window has `debug` enabled.
 - **`runInJavascriptThread`** runs inline on the UI thread and is posted otherwise (WebKitGTK ran it inline on every
   thread).
 - **`configureWebKitGtkRendering`** does nothing.
-- **Signals:** handlers the application installed before the engine starts (SIGCHLD, SIGINT, SIGTERM, SIGHUP) are kept.
+- **Signals:** the dispositions of SIGCHLD, SIGINT, SIGTERM and SIGHUP from before the engine starts are restored
+  after it started (Chromium installs its own), so they behave as with the native engines. SIGCHLD must not be ignored
+  and must not have SA_NOCLDWAIT, Chromium waits for its child processes.
 - The frontend can check `globalThis.nui_rpc.engine` (`"cef"` or `"native"`).
 
 ### Several windows and several instances
@@ -149,9 +154,11 @@ nui_install(TARGETS my-app [DESTINATION bin] [ENGINE_DESTINATION lib/my-app] [CO
   selects the identity (default ad hoc), `NUI_CODESIGN_HARDENED_RUNTIME` signs for notarization (with the `allow-jit`
   entitlement CEF needs).
 
-**Flatpak:** Chromium's sandbox needs [zypak](https://github.com/refi64/zypak) (from `org.electronjs.Electron2.BaseApp`).
-Start the app through `zypak-wrapper` with `ZYPAK_CEF_LIBRARY_PATH` set to the installed `libcef.so`. Without zypak Nui
-runs CEF without sandbox and logs a warning.
+**Flatpak:** Chromium's sandbox needs [zypak](https://github.com/refi64/zypak) (from `org.electronjs.Electron2.BaseApp`)
+with `ZYPAK_CEF_LIBRARY_PATH` set to the installed `libcef.so`. `nui_install(TARGETS my-app FLATPAK_ZYPAK)` installs the
+executable next to CEF and a small launcher with its name to `DESTINATION` that does both, so the manifest's `command`
+is just the app name. Without zypak, or with zypak but without the library path, Nui runs CEF without sandbox and logs
+a warning instead of letting Chromium abort.
 
 ### Process model
 
@@ -159,9 +166,17 @@ All Chromium child processes (zygote, renderers, GPU, utilities) run `nui-cef-he
 runtime. The application's `main` never runs in a child process, so code before the first window (option parsing,
 forking worker processes) runs once.
 
+## Privacy
+
+Chromium contacts Google services on its own. Nui turns this off: component updates, background networking, network
+time, AI mode checks, search preconnects, the optimization guide model manifest (an empty manifest override in the
+cache slot), account lookups (`--gaia-url` points to `gaia.localhost`), spell checking and network prediction, which
+would also look up the `setHtml` authority in DNS. With a fresh cache the app makes no request to the internet.
+`browserArguments` can turn single features back on.
+
 ## Memory
 
-Nui disables the spare renderer and runs the network service in the browser process on Linux, and turns off component
-updates, background networking and spell checking. More can be saved per application with `browserArguments`:
+Nui disables the spare renderer and runs the network service in the browser process on Linux. Measured with CEF 154:
+8 instead of 10 processes and about 20 MiB less. More can be saved per application with `browserArguments`:
 `--process-per-site` (windows of the same app share one renderer process) and `--in-process-gpu` (no GPU process, no GPU
 sandbox).
