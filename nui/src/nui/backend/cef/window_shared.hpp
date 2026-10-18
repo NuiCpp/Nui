@@ -30,7 +30,7 @@ namespace Nui::Detail::Cef
         std::shared_mutex folderMappingGuard{};
         std::unordered_map<std::string, std::filesystem::path> folderMappings{};
 
-        /// Posts a task to the window's UI thread work, dropped once the window is closed.
-        std::function<void(std::function<void()>)> postToUi{};
+        /// Closes the window, set by the window. Called on the UI thread.
+        std::function<void()> requestClose{};
     };
 }

@@ -1,6 +1,6 @@
 #include <nui/backend/webkit_gtk_rendering.hpp>
 
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32) && !defined(__APPLE__) && !defined(NUI_ENGINE_CEF)
 #    include <fmt/format.h>
 
 #    include <unistd.h>
@@ -19,7 +19,7 @@
 
 namespace Nui
 {
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32) && !defined(__APPLE__) && !defined(NUI_ENGINE_CEF)
     namespace
     {
         constexpr std::array<char const*, 4> renderingVariables{

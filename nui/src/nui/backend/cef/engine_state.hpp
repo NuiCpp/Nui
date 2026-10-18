@@ -68,6 +68,11 @@ namespace Nui::Detail::Cef
         void windowOpened(std::function<void()> createBrowser);
         void windowClosed();
 
+        /**
+         * @brief Closes every window, for the platform's quit (macOS terminate:).
+         */
+        void closeAllWindows();
+
         void addKeepAlive();
         void removeKeepAlive();
 

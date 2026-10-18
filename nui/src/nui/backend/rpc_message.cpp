@@ -18,6 +18,7 @@ namespace Nui::Detail
                     globalThis.nui_rpc = (globalThis.nui_rpc || {{
                         frontend: {{}}, backend: {{}}, tempId: 0, initialized: false
                     }});
+                    globalThis.nui_rpc.engine = globalThis.nui_rpc.engine || "native";
                     globalThis.nui_rpc.backend[name] = (...args) => {{
                         globalThis.__webview__.post(JSON.stringify({{
                             type: "rpc",

@@ -728,7 +728,13 @@ namespace Nui::Detail::Cef
             impl_->pendingBrowserCreations.clear();
         }
         for (auto& create : creations)
+        {
+#ifdef __APPLE__
+            withAutoreleasePool(create);
+#else
             create();
+#endif
+        }
 
         CefRunMessageLoop();
 
@@ -793,6 +799,24 @@ namespace Nui::Detail::Cef
             --impl_->openWindows;
         }
         quitIfIdle();
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void EngineState::closeAllWindows()
+    {
+        std::vector<std::shared_ptr<WindowShared>> windows;
+        {
+            std::scoped_lock lock{impl_->mutex};
+            for (auto const& [identifier, weak] : impl_->browsers)
+            {
+                if (auto window = weak.lock())
+                    windows.push_back(std::move(window));
+            }
+        }
+        for (auto const& window : windows)
+        {
+            if (window->requestClose)
+                window->requestClose();
+        }
     }
     //---------------------------------------------------------------------------------------------------------------------
     void EngineState::addKeepAlive()

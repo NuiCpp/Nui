@@ -631,6 +631,10 @@ namespace Nui
         if (options.title)
             impl_->geometry.title = *options.title;
 
+        impl_->shared->requestClose = [weak = std::weak_ptr<Implementation>{impl_}]() {
+            if (const auto self = weak.lock())
+                self->closeFromUi();
+        };
         impl_->countedOpen = true;
         engine.windowOpened([weak = std::weak_ptr<Implementation>{impl_}]() {
             if (const auto self = weak.lock())

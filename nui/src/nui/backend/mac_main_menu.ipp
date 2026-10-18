@@ -50,8 +50,9 @@ namespace Nui::MacOs
      * @details WKWebView only receives Cmd+C/V/X/A/Z through the responder chain of a menu that
      *          carries those key equivalents. Quit closes the window instead of terminating, so the
      *          application unwinds through its normal shutdown path.
+     * @param quitAction Selector of the Quit item.
      */
-    void installDefaultMainMenu()
+    void installDefaultMainMenu(char const* quitAction = "performClose:")
     {
         id pool = msg_send<id>(msg_send<id>("NSAutoreleasePool"_cls, "alloc"_sel), "init"_sel);
 
@@ -68,7 +69,7 @@ namespace Nui::MacOs
         addItem(appMenu, "Hide Others", "hideOtherApplications:", "h", modifierCommand | modifierOption);
         addItem(appMenu, "Show All", "unhideAllApplications:", "", 0);
         addSeparator(appMenu);
-        addItem(appMenu, "Quit " + name, "performClose:", "q", modifierCommand);
+        addItem(appMenu, "Quit " + name, quitAction, "q", modifierCommand);
 
         id editMenu = addSubmenu(mainMenu, "Edit");
         addItem(editMenu, "Undo", "undo:", "z", modifierCommand);

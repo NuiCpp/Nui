@@ -44,6 +44,10 @@ namespace Nui::Detail::Cef
             })();
         )";
 
+        // Operations for a document that has no script context yet. More are dropped, like calls into a view
+        // without a page on the native engines.
+        constexpr std::size_t maximumPendingOperations = 10000u;
+
         CefString toCefString(std::string_view text)
         {
             CefString result;
@@ -236,7 +240,7 @@ namespace Nui::Detail::Cef
             }
             if (state.contextReady && frame)
                 runOperation(frame, name, payload);
-            else
+            else if (state.pending.size() < maximumPendingOperations)
                 state.pending.push_back(PendingOperation{.name = name, .payload = std::string{payload}});
         });
         return true;

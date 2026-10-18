@@ -43,7 +43,7 @@ namespace Nui
      * the renderer on.
      *
      * Call it at the top of main, before GTK or WebKit are initialized and before other threads exist, it uses setenv.
-     * Does nothing on Windows and macOS.
+     * Does nothing on Windows, macOS and with the CEF engine.
      *
      * @return The decision and its reason.
      */
