@@ -283,6 +283,9 @@ namespace Nui::Detail::Cef
             }
             if (result == LockResult::Busy || !lockedFileIsCurrent(*slotLock, lockPath) || chromiumOwnerAlive(directory))
                 continue;
+            // Links of a crashed owner. Chromium would wait for, and then kill, whatever process now has its pid.
+            for (auto const* link : {"SingletonLock", "SingletonSocket", "SingletonCookie"})
+                std::filesystem::remove(directory / link, filesystemError);
             chosen.emplace(InstanceSlot{directory, std::exchange(*slotLock, -1), std::exchange(*versionLock, -1)});
         }
 
