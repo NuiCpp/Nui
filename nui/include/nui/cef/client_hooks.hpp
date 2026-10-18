@@ -27,6 +27,8 @@ namespace Nui::Cef
         CefRefPtr<CefKeyboardHandler> keyboardHandler{};
         /// Replaces Nui's policy, which grants clipboard access to the app's own pages and denies everything else.
         CefRefPtr<CefPermissionHandler> permissionHandler{};
+        /// Range requests to the app's own origins (custom schemes, setHtml authorities) reach Nui's scheme handlers
+        /// with the header renamed to X-Nui-Range after the handler's OnBeforeResourceLoad, so Nui answers the range.
         CefRefPtr<CefRequestHandler> requestHandler{};
         /// Only OnBeforePopup is forwarded. Without it popups (target=_blank, window.open) are blocked.
         CefRefPtr<CefLifeSpanHandler> popupHandler{};

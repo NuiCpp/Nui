@@ -32,7 +32,6 @@ namespace Nui::Detail::Cef
         , public CefDisplayHandler
         , public CefPermissionHandler
         , public CefRequestHandler
-        , public CefResourceRequestHandler
     {
       public:
         Client(std::shared_ptr<BrowserEvents> events, Nui::Cef::ClientHooks hooks);
@@ -76,6 +75,19 @@ namespace Nui::Detail::Cef
             CefString const& source,
             int line) override;
 
+        // CefRequestHandler, forwarded to ClientHooks::requestHandler.
+        bool OnBeforeBrowse(
+            CefRefPtr<CefBrowser> browser,
+            CefRefPtr<CefFrame> frame,
+            CefRefPtr<CefRequest> request,
+            bool userGesture,
+            bool isRedirect) override;
+        bool OnOpenURLFromTab(
+            CefRefPtr<CefBrowser> browser,
+            CefRefPtr<CefFrame> frame,
+            CefString const& targetUrl,
+            WindowOpenDisposition targetDisposition,
+            bool userGesture) override;
         CefRefPtr<CefResourceRequestHandler> GetResourceRequestHandler(
             CefRefPtr<CefBrowser> browser,
             CefRefPtr<CefFrame> frame,
@@ -84,12 +96,39 @@ namespace Nui::Detail::Cef
             bool isDownload,
             CefString const& requestInitiator,
             bool& disableDefaultHandling) override;
-
-        CefResourceRequestHandler::ReturnValue OnBeforeResourceLoad(
+        bool GetAuthCredentials(
             CefRefPtr<CefBrowser> browser,
-            CefRefPtr<CefFrame> frame,
-            CefRefPtr<CefRequest> request,
+            CefString const& originUrl,
+            bool isProxy,
+            CefString const& host,
+            int port,
+            CefString const& realm,
+            CefString const& scheme,
+            CefRefPtr<CefAuthCallback> callback) override;
+        bool OnCertificateError(
+            CefRefPtr<CefBrowser> browser,
+            cef_errorcode_t certificateError,
+            CefString const& requestUrl,
+            CefRefPtr<CefSSLInfo> sslInfo,
             CefRefPtr<CefCallback> callback) override;
+        bool OnSelectClientCertificate(
+            CefRefPtr<CefBrowser> browser,
+            bool isProxy,
+            CefString const& host,
+            int port,
+            X509CertificateList const& certificates,
+            CefRefPtr<CefSelectClientCertificateCallback> callback) override;
+        void OnRenderViewReady(CefRefPtr<CefBrowser> browser) override;
+        bool OnRenderProcessUnresponsive(
+            CefRefPtr<CefBrowser> browser,
+            CefRefPtr<CefUnresponsiveProcessCallback> callback) override;
+        void OnRenderProcessResponsive(CefRefPtr<CefBrowser> browser) override;
+        void OnRenderProcessTerminated(
+            CefRefPtr<CefBrowser> browser,
+            TerminationStatus status,
+            int errorCode,
+            CefString const& errorString) override;
+        void OnDocumentAvailableInMainFrame(CefRefPtr<CefBrowser> browser) override;
 
         bool OnShowPermissionPrompt(
             CefRefPtr<CefBrowser> browser,
