@@ -95,14 +95,24 @@ namespace Nui::Detail::Cef
             // zypak replaces the zygote sandbox with Flatpak's own sandbox. For CEF it needs to know the library.
             if (std::getenv("ZYPAK_BIN") == nullptr)
                 return {.disable = true, .reason = "running in Flatpak without zypak"};
+            const auto loaded = (libcefDirectory / "libcef.so").lexically_normal();
             auto const* zypakLibrary = std::getenv("ZYPAK_CEF_LIBRARY_PATH");
-            std::error_code error;
-            if (zypakLibrary == nullptr || !std::filesystem::equivalent(zypakLibrary, libcefDirectory / "libcef.so", error))
+            if (zypakLibrary == nullptr)
             {
                 return {
                     .disable = true,
-                    .reason = "zypak is active but ZYPAK_CEF_LIBRARY_PATH does not name the loaded " +
-                        (libcefDirectory / "libcef.so").string(),
+                    .reason = "zypak is active but ZYPAK_CEF_LIBRARY_PATH is not set, start the app through the "
+                              "launcher of nui_install(FLATPAK_ZYPAK) or set it to " +
+                        loaded.string(),
+                };
+            }
+            std::error_code error;
+            if (!std::filesystem::equivalent(zypakLibrary, loaded, error))
+            {
+                return {
+                    .disable = true,
+                    .reason = std::string{"zypak is active but ZYPAK_CEF_LIBRARY_PATH="} + zypakLibrary +
+                        " does not name the loaded " + loaded.string(),
                 };
             }
             return {};
