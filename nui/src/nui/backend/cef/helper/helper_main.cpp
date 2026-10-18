@@ -45,7 +45,7 @@ int main(int argc, char** argv)
     CefRefPtr<CefApp> app = new App(
         listFromCommandLine(commandLine, customSchemesSwitch),
         nullptr,
-        new RenderProcess(listFromCommandLine(commandLine, appHostsSwitch)),
+        new RenderProcess(),
         {});
     return CefExecuteProcess(mainArgs, app, nullptr);
 }

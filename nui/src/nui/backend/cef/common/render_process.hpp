@@ -2,6 +2,8 @@
 
 #include <include/cef_render_process_handler.h>
 
+#include <cstdint>
+#include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -14,11 +16,6 @@ namespace Nui::Detail::Cef
     class RenderProcess : public CefRenderProcessHandler
     {
       public:
-        /**
-         * @param processAppHosts setHtml authorities the browser process knew when it started this process.
-         */
-        explicit RenderProcess(std::vector<std::string> processAppHosts);
-
         void OnBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extraInfo) override;
         void OnBrowserDestroyed(CefRefPtr<CefBrowser> browser) override;
         void OnContextCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context> context)
@@ -42,7 +39,9 @@ namespace Nui::Detail::Cef
         {
             int references{0};
             bool contextReady{false};
-            std::vector<std::string> initScripts{};
+            bool stateRequested{false};
+            /// By their index in the window's list, which keeps the order and drops duplicates.
+            std::map<std::uint32_t, std::string> initScripts{};
             std::vector<std::string> appSchemes{};
             std::vector<std::string> appHosts{};
             std::vector<PendingOperation> pending{};
@@ -51,7 +50,6 @@ namespace Nui::Detail::Cef
         bool isAppDocument(BrowserState const& state, CefRefPtr<CefFrame> const& frame) const;
         void runOperation(CefRefPtr<CefFrame> const& frame, std::string const& name, std::string_view payload);
 
-        std::vector<std::string> processAppHosts_;
         std::unordered_map<int, BrowserState> browsers_{};
         IMPLEMENT_REFCOUNTING(RenderProcess);
     };

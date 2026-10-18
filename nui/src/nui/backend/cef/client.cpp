@@ -332,7 +332,14 @@ namespace Nui::Detail::Cef
         CefProcessId,
         CefRefPtr<CefProcessMessage> message)
     {
-        if (message->GetName() != postMessageName)
+        const auto name = message->GetName().ToString();
+        if (name == stateRequestMessageName)
+        {
+            if (events_ && isOwnBrowser(browser) && frame && frame->IsMain())
+                events_->onStateRequest();
+            return true;
+        }
+        if (name != postMessageName)
             return false;
         // Only the main frame of an app document may call into the backend.
         if (!events_ || !isOwnBrowser(browser) || !frame || !frame->IsMain() ||

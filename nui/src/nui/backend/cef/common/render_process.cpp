@@ -1,6 +1,8 @@
 #include "render_process.hpp"
+#include "app.hpp"
 #include "messages.hpp"
 
+#include <include/cef_command_line.h>
 #include <include/cef_parser.h>
 #include <include/cef_v8.h>
 
@@ -108,10 +110,6 @@ namespace Nui::Detail::Cef
         }
     }
     //---------------------------------------------------------------------------------------------------------------------
-    RenderProcess::RenderProcess(std::vector<std::string> processAppHosts)
-        : processAppHosts_{std::move(processAppHosts)}
-    {}
-    //---------------------------------------------------------------------------------------------------------------------
     void RenderProcess::OnBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extraInfo)
     {
         // CEF can create the new browser object of a navigation before it destroys the old one in this process, so the
@@ -119,12 +117,14 @@ namespace Nui::Detail::Cef
         auto& state = browsers_[browser->GetIdentifier()];
         if (state.references++ != 0)
             return;
-        state.initScripts = stringList(extraInfo, initScriptsKey);
+        const auto scripts = stringList(extraInfo, initScriptsKey);
+        for (std::size_t index = 0u; index != scripts.size(); ++index)
+            state.initScripts.emplace(static_cast<std::uint32_t>(index), scripts[index]);
         state.appSchemes = stringList(extraInfo, appSchemesKey);
         state.appHosts = stringList(extraInfo, appHostsKey);
         // A cross site setHtml navigation to an authority added after the browser was created lands in a new process,
-        // which only knows it from its command line.
-        for (auto const& host : processAppHosts_)
+        // which only knows it from its own command line. Renderers forked from the zygote get it there only now.
+        for (auto const& host : listFromCommandLine(CefCommandLine::GetGlobalCommandLine(), appHostsSwitch))
         {
             if (std::ranges::find(state.appHosts, host) == state.appHosts.end())
                 state.appHosts.push_back(host);
@@ -161,6 +161,12 @@ namespace Nui::Detail::Cef
         if (iter == browsers_.end())
             return;
         auto& state = iter->second;
+        // Scripts added after the browser's creation only reached the processes that existed then.
+        if (!state.stateRequested)
+        {
+            state.stateRequested = true;
+            frame->SendProcessMessage(PID_BROWSER, CefProcessMessage::Create(stateRequestMessageName));
+        }
         if (!isAppDocument(state, frame))
         {
             state.contextReady = false;
@@ -174,7 +180,7 @@ namespace Nui::Detail::Cef
         context->GetGlobal()->SetValue("__webview__", webview, V8_PROPERTY_ATTRIBUTE_READONLY);
 
         evaluate(context, bootstrapScript, "nui://bootstrap");
-        for (auto const& script : state.initScripts)
+        for (auto const& [index, script] : state.initScripts)
             evaluate(context, script, "nui://init-script");
 
         state.contextReady = true;
@@ -249,16 +255,22 @@ namespace Nui::Detail::Cef
             }
             if (name == addInitScriptMessageName)
             {
-                if (payload.empty())
-                    return;
-                state.initScripts.emplace_back(payload);
-                if (state.contextReady && frame)
+                std::vector<IndexedScript> scripts;
+                splitInitScripts(payload, scripts);
+                std::vector<std::string const*> added;
+                for (auto const& [index, script] : scripts)
                 {
-                    if (const auto context = frame->GetV8Context(); context && context->Enter())
-                    {
-                        evaluate(context, state.initScripts.back(), "nui://init-script");
-                        context->Exit();
-                    }
+                    const auto [entry, inserted] = state.initScripts.try_emplace(index, script);
+                    if (inserted)
+                        added.push_back(&entry->second);
+                }
+                if (added.empty() || !state.contextReady || !frame)
+                    return;
+                if (const auto context = frame->GetV8Context(); context && context->Enter())
+                {
+                    for (auto const* script : added)
+                        evaluate(context, *script, "nui://init-script");
+                    context->Exit();
                 }
                 return;
             }

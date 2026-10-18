@@ -19,6 +19,8 @@ namespace Nui::Detail::Cef
         virtual void onAfterCreated(CefRefPtr<CefBrowser> browser) = 0;
         virtual void onBeforeClose(CefRefPtr<CefBrowser> browser) = 0;
         virtual void onPost(std::string_view message) = 0;
+        /// A new renderer process of the browser asks for the current init scripts and app hosts.
+        virtual void onStateRequest() = 0;
         virtual bool isAppUrl(std::string const& url) const = 0;
         virtual bool consoleOutput() const = 0;
     };

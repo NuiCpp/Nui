@@ -191,6 +191,7 @@ namespace Nui
         void onAfterCreated(CefRefPtr<CefBrowser> created) override;
         void onBeforeClose(CefRefPtr<CefBrowser> closing) override;
         void onPost(std::string_view message) override;
+        void onStateRequest() override;
         bool isAppUrl(std::string const& url) const override;
         bool consoleOutput() const override;
     };
@@ -475,8 +476,9 @@ namespace Nui
             if (std::ranges::find(appSchemes, scheme) != appSchemes.end())
                 return true;
         }
-        std::shared_lock lock{shared->htmlGuard};
-        return scheme == "https" && CefString(&parts.host).ToString() == shared->htmlAuthority;
+        // Any setHtml authority, a document of an earlier one may come back through history.
+        return scheme == "https" &&
+            Detail::Cef::EngineState::instance().isAppOrigin(scheme, CefString(&parts.host).ToString());
     }
     //---------------------------------------------------------------------------------------------------------------------
     bool Window::Implementation::consoleOutput() const
@@ -544,17 +546,43 @@ namespace Nui
         if (script.empty())
             return;
         bool sendNow = false;
+        std::uint32_t index = 0u;
         {
             std::scoped_lock lock{mutex};
+            index = static_cast<std::uint32_t>(initScripts.size());
             initScripts.push_back(script);
             sendNow = state == BrowserState::Pending || state == BrowserState::Created;
         }
         if (sendNow)
         {
-            send([&script]() {
-                return Detail::Cef::makeTextMessage(Detail::Cef::addInitScriptMessageName, script);
+            send([&script, index]() {
+                return Detail::Cef::makeInitScriptsMessage({{.index = index, .script = script}});
             });
         }
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void Window::Implementation::onStateRequest()
+    {
+        for (auto const& authority : Detail::Cef::EngineState::instance().htmlAuthorities())
+        {
+            send([&authority]() {
+                return Detail::Cef::makeTextMessage(Detail::Cef::addAppHostMessageName, authority);
+            });
+        }
+        std::vector<std::string> scripts;
+        {
+            std::scoped_lock lock{mutex};
+            scripts = initScripts;
+        }
+        if (scripts.empty())
+            return;
+        send([&scripts]() {
+            std::vector<Detail::Cef::IndexedScript> indexed;
+            indexed.reserve(scripts.size());
+            for (std::size_t index = 0u; index != scripts.size(); ++index)
+                indexed.push_back({.index = static_cast<std::uint32_t>(index), .script = scripts[index]});
+            return Detail::Cef::makeInitScriptsMessage(indexed);
+        });
     }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::Implementation::closeFromUi()

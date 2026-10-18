@@ -343,8 +343,12 @@ namespace Nui::Detail::Cef
             // CEF puts its own feature defaults on the command line before this point, they are kept.
             auto enableFeatures = splitList(commandLine->GetSwitchValue("enable-features").ToString(), ',');
             auto disableFeatures = splitList(commandLine->GetSwitchValue("disable-features").ToString(), ',');
-            // An idle spare renderer only speeds up the second window, it costs a process and memory.
+            // An idle spare renderer only speeds up the second window, it costs a process and memory. It would also start
+            // before later setHtml authorities are known.
             disableFeatures.emplace_back("SpareRendererForSitePerProcess");
+            // Apps rarely go back in history, a cached page keeps its renderer process alive after every cross site
+            // navigation.
+            disableFeatures.emplace_back("BackForwardCache");
             // Requests to Google services that the switches above do not stop: network time, AI mode eligibility and
             // search preconnects.
             disableFeatures.emplace_back("NetworkTimeServiceQuerying");
