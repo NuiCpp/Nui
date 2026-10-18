@@ -22,6 +22,7 @@
 #include <include/views/cef_window.h>
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
@@ -846,7 +847,11 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setHtml(std::string_view html, std::optional<std::string> windowsServeThroughAuthority)
     {
-        const auto authority = windowsServeThroughAuthority.value_or(std::string{defaultHtmlAuthority});
+        // Chromium lowercases URL hosts.
+        auto authority = windowsServeThroughAuthority.value_or(std::string{defaultHtmlAuthority});
+        std::ranges::transform(authority, authority.begin(), [](unsigned char character) {
+            return static_cast<char>(std::tolower(character));
+        });
         Detail::Cef::EngineState::instance().ensureHtmlAuthority(authority);
         bool newAuthority = false;
         {
