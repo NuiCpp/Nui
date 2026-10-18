@@ -3,6 +3,7 @@
 #include <include/cef_render_process_handler.h>
 
 #include <cstdint>
+#include <deque>
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -33,6 +34,8 @@ namespace Nui::Detail::Cef
         {
             std::string name;
             std::string payload;
+            /// Scripts the browser sent before this operation, they run first.
+            std::uint32_t scriptsBefore;
         };
 
         struct BrowserState
@@ -43,21 +46,25 @@ namespace Nui::Detail::Cef
             bool stateRequestPending{false};
             /// By their index in the window's list, which keeps the order and drops duplicates.
             std::map<std::uint32_t, std::string> initScripts{};
-            /// Scripts below this index have all arrived and run in documents. Later ones wait for the gap to fill,
-            /// in a new process the state reply fills it.
-            std::uint32_t contiguousScripts{0u};
+            /// Scripts below this index have all arrived. Later ones, and operations sent after them, wait for the gap
+            /// to fill, in a new process the state reply fills it.
+            std::uint32_t availableScripts{0u};
+            /// Scripts that ran in the current document.
+            std::uint32_t evaluatedScripts{0u};
             std::vector<std::string> appSchemes{};
             std::vector<std::string> appHosts{};
-            std::vector<PendingOperation> pending{};
+            /// Calls and evals in arrival order, waiting for the document or for earlier scripts.
+            std::deque<PendingOperation> pending{};
         };
 
         bool isAppDocument(BrowserState const& state, CefRefPtr<CefFrame> const& frame) const;
-        /// Advances contiguousScripts, returns the scripts that became runnable in index order.
-        static std::vector<std::string const*> advanceScripts(BrowserState& state);
+        static void advanceAvailableScripts(BrowserState& state);
         /// Asks the browser for the window's state unless an answer is pending.
         static void requestState(BrowserState& state, CefRefPtr<CefFrame> const& frame);
         /// True when a script below the highest known index is missing.
         static bool missingScripts(BrowserState const& state);
+        /// Runs available scripts and pending operations of the current document in the order the browser sent them.
+        void drain(BrowserState& state, CefRefPtr<CefFrame> const& frame, CefRefPtr<CefV8Context> const& context);
         void runOperation(CefRefPtr<CefFrame> const& frame, std::string const& name, std::string_view payload);
 
         std::unordered_map<int, BrowserState> browsers_{};

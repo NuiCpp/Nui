@@ -116,11 +116,16 @@ namespace Nui::Detail::Cef
         // state is reference counted and the first creation's state is kept.
         auto& state = browsers_[browser->GetIdentifier()];
         if (state.references++ != 0)
+        {
+            // The window comes back to a process that kept its state, scripts added meanwhile only reached others.
+            state.stateRequested = false;
+            state.stateRequestPending = false;
             return;
+        }
         const auto scripts = stringList(extraInfo, initScriptsKey);
         for (std::size_t index = 0u; index != scripts.size(); ++index)
             state.initScripts.emplace(static_cast<std::uint32_t>(index), scripts[index]);
-        advanceScripts(state);
+        advanceAvailableScripts(state);
         state.appSchemes = stringList(extraInfo, appSchemesKey);
         state.appHosts = stringList(extraInfo, appHostsKey);
         // A cross site setHtml navigation to an authority added after the browser was created lands in a new process,
@@ -183,33 +188,40 @@ namespace Nui::Detail::Cef
         context->GetGlobal()->SetValue("__webview__", webview, V8_PROPERTY_ATTRIBUTE_READONLY);
 
         evaluate(context, bootstrapScript, "nui://bootstrap");
-        for (auto const& [index, script] : state.initScripts)
-        {
-            if (index >= state.contiguousScripts)
-                break;
-            evaluate(context, script, "nui://init-script");
-        }
-
         state.contextReady = true;
-        auto pending = std::move(state.pending);
-        state.pending.clear();
-        for (auto const& operation : pending)
-            runOperation(frame, operation.name, operation.payload);
+        state.evaluatedScripts = 0u;
+        drain(state, frame, context);
     }
     //---------------------------------------------------------------------------------------------------------------------
-    std::vector<std::string const*> RenderProcess::advanceScripts(BrowserState& state)
+    void RenderProcess::advanceAvailableScripts(BrowserState& state)
     {
-        std::vector<std::string const*> runnable;
-        for (auto iter = state.initScripts.find(state.contiguousScripts); iter != state.initScripts.end() &&
-             iter->first == state.contiguousScripts;
-             ++iter, ++state.contiguousScripts)
-            runnable.push_back(&iter->second);
-        return runnable;
+        while (state.initScripts.contains(state.availableScripts))
+            ++state.availableScripts;
     }
     //---------------------------------------------------------------------------------------------------------------------
     bool RenderProcess::missingScripts(BrowserState const& state)
     {
-        return !state.initScripts.empty() && state.initScripts.rbegin()->first >= state.contiguousScripts;
+        return !state.initScripts.empty() && state.initScripts.rbegin()->first >= state.availableScripts;
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void RenderProcess::drain(
+        BrowserState& state,
+        CefRefPtr<CefFrame> const& frame,
+        CefRefPtr<CefV8Context> const& context)
+    {
+        while (true)
+        {
+            auto limit = state.availableScripts;
+            if (!state.pending.empty())
+                limit = std::min(limit, state.pending.front().scriptsBefore);
+            for (; state.evaluatedScripts < limit; ++state.evaluatedScripts)
+                evaluate(context, state.initScripts.at(state.evaluatedScripts), "nui://init-script");
+            if (state.pending.empty() || state.evaluatedScripts < state.pending.front().scriptsBefore)
+                return;
+            const auto operation = std::move(state.pending.front());
+            state.pending.pop_front();
+            runOperation(frame, operation.name, operation.payload);
+        }
     }
     //---------------------------------------------------------------------------------------------------------------------
     void RenderProcess::requestState(BrowserState& state, CefRefPtr<CefFrame> const& frame)
@@ -281,6 +293,7 @@ namespace Nui::Detail::Cef
             return true;
         }
 
+        bool changed = false;
         visitPayload(message, [&](std::string_view payload) {
             if (name == addAppHostMessageName)
             {
@@ -294,25 +307,34 @@ namespace Nui::Detail::Cef
                 splitInitScripts(payload, scripts);
                 for (auto const& [index, script] : scripts)
                     state.initScripts.try_emplace(index, script);
-                const auto added = advanceScripts(state);
+                advanceAvailableScripts(state);
                 // A script is missing, a message to this process may have been lost while a document was replaced.
                 if (missingScripts(state))
                     requestState(state, frame);
-                if (added.empty() || !state.contextReady || !frame)
-                    return;
-                if (const auto context = frame->GetV8Context(); context && context->Enter())
-                {
-                    for (auto const* script : added)
-                        evaluate(context, *script, "nui://init-script");
-                    context->Exit();
-                }
+                changed = true;
                 return;
             }
-            if (state.contextReady && frame)
+            const auto scriptsBefore = state.initScripts.empty() ? 0u : state.initScripts.rbegin()->first + 1u;
+            // Nothing waits: run without copying the payload. Every available script ran after its own message.
+            if (state.contextReady && frame && state.pending.empty() && scriptsBefore <= state.evaluatedScripts)
+            {
                 runOperation(frame, name, payload);
-            else if (state.pending.size() < maximumPendingOperations)
-                state.pending.push_back(PendingOperation{.name = name, .payload = std::string{payload}});
+                return;
+            }
+            if (state.pending.size() < maximumPendingOperations)
+            {
+                state.pending.push_back(
+                    PendingOperation{.name = name, .payload = std::string{payload}, .scriptsBefore = scriptsBefore});
+                changed = true;
+            }
         });
+        if (!changed || !state.contextReady || !frame)
+            return true;
+        if (const auto context = frame->GetV8Context(); context && context->Enter())
+        {
+            drain(state, frame, context);
+            context->Exit();
+        }
         return true;
     }
 }
