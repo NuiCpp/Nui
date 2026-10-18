@@ -8,8 +8,6 @@
 set(NUI_CODESIGN_IDENTITY "-" CACHE STRING "macOS: identity for codesign while installing, - signs ad hoc")
 option(NUI_CODESIGN_HARDENED_RUNTIME "macOS: sign with the hardened runtime (needed for notarization)" OFF)
 
-set(NUI_CEF_HELPER_SUFFIXES "" " (Alerts)" " (GPU)" " (Plugin)" " (Renderer)")
-
 function(nui_configure_application)
     cmake_parse_arguments(PARSE_ARGV 0 NUI_APP "" "TARGET;NAME;IDENTIFIER;VERSION;INFO_PLIST;ICON" "RESOURCES")
     if (NOT NUI_APP_TARGET)
@@ -93,8 +91,10 @@ macro(_nui_configure_macos_bundle)
         )
     endforeach()
 
+    # The helper variants Chromium starts on macOS, all of them run the one nui-cef-helper executable.
+    set(helperSuffixes "" " (Alerts)" " (GPU)" " (Plugin)" " (Renderer)")
     set(index 0)
-    foreach (suffix IN LISTS NUI_CEF_HELPER_SUFFIXES)
+    foreach (suffix IN LISTS helperSuffixes)
         string(REGEX REPLACE "[ ()]" "" identifierSuffix "${suffix}")
         string(TOLOWER "${identifierSuffix}" identifierSuffix)
         set(NUI_HELPER_IDENTIFIER "${NUI_APP_IDENTIFIER}.helper")
