@@ -1,4 +1,5 @@
-# nui_install(TARGETS <target>... [DESTINATION <dir>] [ENGINE_DESTINATION <dir>] [COMPONENT <component>])
+# nui_install(TARGETS <target>... [DESTINATION <dir>] [ENGINE_DESTINATION <dir>] [COMPONENT <component>]
+#             [FLATPAK_ZYPAK])
 #
 # Installs Nui application executables for the selected browser engine:
 #   native         install(TARGETS) only.
@@ -7,6 +8,10 @@
 #                  relative RPATH. libcef is stripped while installing (NUI_CEF_STRIP), locales can be limited
 #                  (NUI_CEF_LOCALES). With NUI_CEF_SYSTEM only the executables and the helper are installed.
 #   cef, macOS     the app bundles (see nui_configure_application) to DESTINATION, signed again after the copy.
+#
+# FLATPAK_ZYPAK (Linux, CEF): the executables go to ENGINE_DESTINATION and a small launcher with the executable's name
+# to DESTINATION. It starts the executable through zypak-wrapper (org.electronjs.Electron2.BaseApp) with
+# ZYPAK_CEF_LIBRARY_PATH set, which Chromium's sandbox needs inside Flatpak.
 
 include(GNUInstallDirs)
 
@@ -16,7 +21,10 @@ option(NUI_CEF_INSTALL_CHROME_SANDBOX "Install the setuid chrome-sandbox helper 
 option(NUI_CEF_SWIFTSHADER "Install SwiftShader, the software renderer used without GPU" ON)
 
 function(nui_install)
-    cmake_parse_arguments(PARSE_ARGV 0 NUI_INSTALL "" "DESTINATION;ENGINE_DESTINATION;COMPONENT" "TARGETS")
+    cmake_parse_arguments(PARSE_ARGV 0 NUI_INSTALL "FLATPAK_ZYPAK" "DESTINATION;ENGINE_DESTINATION;COMPONENT" "TARGETS")
+    if (NUI_INSTALL_UNPARSED_ARGUMENTS)
+        message(FATAL_ERROR "nui_install: unknown arguments ${NUI_INSTALL_UNPARSED_ARGUMENTS}")
+    endif()
     if (NOT NUI_INSTALL_TARGETS)
         message(FATAL_ERROR "nui_install: TARGETS is required")
     endif()
@@ -55,13 +63,22 @@ function(nui_install)
         set(NUI_INSTALL_ENGINE_DESTINATION "${CMAKE_INSTALL_LIBDIR}/${outputName}")
     endif()
 
-    # Relative path from the executables to the engine directory, for RPATH and the helper lookup.
+    set(launcherDestination "")
+    if (NUI_INSTALL_FLATPAK_ZYPAK)
+        set(launcherDestination "${NUI_INSTALL_DESTINATION}")
+        set(NUI_INSTALL_DESTINATION "${NUI_INSTALL_ENGINE_DESTINATION}")
+    endif()
+
+    # Relative path from the executables to the engine directory, for RPATH and the helper lookup. It cannot be known
+    # at configure time when only one of them is absolute (the prefix can change at install time).
+    if (IS_ABSOLUTE "${NUI_INSTALL_DESTINATION}" AND NOT IS_ABSOLUTE "${NUI_INSTALL_ENGINE_DESTINATION}" OR
+        NOT IS_ABSOLUTE "${NUI_INSTALL_DESTINATION}" AND IS_ABSOLUTE "${NUI_INSTALL_ENGINE_DESTINATION}")
+        message(FATAL_ERROR "nui_install: DESTINATION and ENGINE_DESTINATION must both be relative or both absolute")
+    endif()
     set(executableDirectory "${NUI_INSTALL_DESTINATION}")
     set(engineDirectory "${NUI_INSTALL_ENGINE_DESTINATION}")
     if (NOT IS_ABSOLUTE "${executableDirectory}")
         set(executableDirectory "/nui-prefix/${executableDirectory}")
-    endif()
-    if (NOT IS_ABSOLUTE "${engineDirectory}")
         set(engineDirectory "/nui-prefix/${engineDirectory}")
     endif()
     file(RELATIVE_PATH engineRelative "${executableDirectory}" "${engineDirectory}")
@@ -72,7 +89,11 @@ function(nui_install)
     if (NUI_CEF_IS_SYSTEM)
         set(libcefRunPath "${NUI_CEF_LIBRARY_DIR}")
         if (CMAKE_SYSROOT)
-            string(REPLACE "${CMAKE_SYSROOT}" "" libcefRunPath "${libcefRunPath}")
+            cmake_path(IS_PREFIX CMAKE_SYSROOT "${libcefRunPath}" NORMALIZE inSysroot)
+            if (inSysroot)
+                cmake_path(RELATIVE_PATH libcefRunPath BASE_DIRECTORY "${CMAKE_SYSROOT}")
+                set(libcefRunPath "/${libcefRunPath}")
+            endif()
         endif()
         set(executableRunPath "${libcefRunPath}")
         set(helperRunPath "${libcefRunPath}")
@@ -92,6 +113,10 @@ function(nui_install)
         endif()
     endforeach()
     install(TARGETS ${NUI_INSTALL_TARGETS} RUNTIME DESTINATION "${NUI_INSTALL_DESTINATION}" ${componentArguments})
+    if (NUI_INSTALL_FLATPAK_ZYPAK)
+        _nui_install_flatpak_launchers("${NUI_INSTALL_TARGETS}" "${launcherDestination}" "${NUI_INSTALL_ENGINE_DESTINATION}"
+            "${componentArguments}")
+    endif()
 
     get_property(installedEngineDirectories GLOBAL PROPERTY NUI_CEF_INSTALLED_ENGINE_DIRECTORIES)
     if ("${NUI_INSTALL_ENGINE_DESTINATION}" IN_LIST installedEngineDirectories)
@@ -171,4 +196,57 @@ function(_nui_install_cef_locales directory destination componentArguments)
         list(APPEND patterns PATTERN "${locale}.pak" PATTERN "${locale}_*.pak")
     endforeach()
     install(DIRECTORY "${directory}/" DESTINATION "${destination}/locales" ${componentArguments} FILES_MATCHING ${patterns})
+endfunction()
+
+# One launcher per executable: sets ZYPAK_CEF_LIBRARY_PATH and execs zypak-wrapper with the real executable.
+function(_nui_install_flatpak_launchers targets destination engineDestination componentArguments)
+    set(launcherDirectory "/nui-prefix/${destination}")
+    set(engineDirectory "/nui-prefix/${engineDestination}")
+    if (IS_ABSOLUTE "${destination}")
+        set(launcherDirectory "${destination}")
+        set(engineDirectory "${engineDestination}")
+    endif()
+    file(RELATIVE_PATH engineRelative "${launcherDirectory}" "${engineDirectory}")
+    foreach (target ${targets})
+        set(source "${CMAKE_BINARY_DIR}/nui-install/${target}_flatpak_launcher.cpp")
+        file(GENERATE OUTPUT "${source}" CONTENT "\
+// Generated by nui_install(FLATPAK_ZYPAK): starts $<TARGET_FILE_NAME:${target}> through zypak.
+#include <unistd.h>
+
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+#include <vector>
+
+int main(int argc, char** argv)
+{
+    char self[4096] = {};
+    const auto length = ::readlink(\"/proc/self/exe\", self, sizeof(self) - 1);
+    if (length <= 0)
+    {
+        std::perror(\"readlink /proc/self/exe\");
+        return 127;
+    }
+    const std::string executable{self, static_cast<std::size_t>(length)};
+    const auto engine = executable.substr(0, executable.rfind('/')) + \"/${engineRelative}\";
+    ::setenv(\"ZYPAK_CEF_LIBRARY_PATH\", (engine + \"/libcef.so\").c_str(), 1);
+    std::string wrapper{\"zypak-wrapper\"};
+    std::string target = engine + \"/$<TARGET_FILE_NAME:${target}>\";
+    std::vector<char*> arguments{wrapper.data(), target.data()};
+    for (int index = 1; index < argc; ++index)
+        arguments.push_back(argv[index]);
+    arguments.push_back(nullptr);
+    ::execvp(wrapper.c_str(), arguments.data());
+    std::perror(\"zypak-wrapper\");
+    return 127;
+}
+")
+        add_executable(${target}-flatpak-launcher "${source}")
+        set_target_properties(${target}-flatpak-launcher
+            PROPERTIES
+                OUTPUT_NAME "$<TARGET_FILE_BASE_NAME:${target}>"
+                RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/nui-flatpak-launcher$<0:>"
+        )
+        install(TARGETS ${target}-flatpak-launcher RUNTIME DESTINATION "${destination}" ${componentArguments})
+    endforeach()
 endfunction()

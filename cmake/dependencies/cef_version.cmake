@@ -66,19 +66,23 @@ function(nui_cef_download platform directory outArchive)
             set(${outArchive} "${archive}" PARENT_SCOPE)
             return()
         endif()
+        message(STATUS "${archive} does not match the pinned SHA256 ${sha256}, downloading it again")
         file(REMOVE "${archive}")
     endif()
     string(REPLACE "+" "%2B" encodedName "${name}")
     message(STATUS "Downloading ${NUI_CEF_DOWNLOAD_BASE_URL}/${encodedName}")
-    file(DOWNLOAD "${NUI_CEF_DOWNLOAD_BASE_URL}/${encodedName}" "${archive}.part"
-        EXPECTED_HASH SHA256=${sha256}
-        STATUS status
-        SHOW_PROGRESS
-    )
+    file(DOWNLOAD "${NUI_CEF_DOWNLOAD_BASE_URL}/${encodedName}" "${archive}.part" STATUS status SHOW_PROGRESS)
     list(GET status 0 code)
     if (NOT code EQUAL 0)
         file(REMOVE "${archive}.part")
-        message(FATAL_ERROR "Downloading the CEF distribution failed: ${status}")
+        message(FATAL_ERROR
+            "Downloading the CEF distribution failed: ${status}. For offline builds set NUI_FETCH_CEF=OFF and pass "
+            "NUI_CEF_ARCHIVE, NUI_CEF_ROOT or NUI_CEF_SYSTEM")
+    endif()
+    file(SHA256 "${archive}.part" downloaded)
+    if (NOT downloaded STREQUAL sha256)
+        file(REMOVE "${archive}.part")
+        message(FATAL_ERROR "The downloaded CEF distribution has SHA256 ${downloaded}, expected ${sha256}")
     endif()
     file(RENAME "${archive}.part" "${archive}")
     set(${outArchive} "${archive}" PARENT_SCOPE)
@@ -86,6 +90,9 @@ endfunction()
 
 # Extracts an archive into <directory>/<archive name without extension>, once. Returns the distribution root.
 function(nui_cef_extract archive directory outRoot)
+    if (NOT archive OR NOT EXISTS "${archive}")
+        message(FATAL_ERROR "The CEF archive '${archive}' does not exist")
+    endif()
     get_filename_component(name "${archive}" NAME)
     string(REGEX REPLACE "\\.tar\\.(bz2|xz|gz)$" "" stem "${name}")
     set(root "${directory}/${stem}")
