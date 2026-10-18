@@ -389,6 +389,16 @@ namespace Nui
         void eval(std::filesystem::path const& file);
 
         /**
+         * @brief Calls globalThis.nui_rpc.frontend[name] with a JSON argument. Used by the RpcHub.
+         *
+         * A missing function is recorded in globalThis.nui_rpc.errors. Callable from any thread.
+         *
+         * @param name The name of the frontend function.
+         * @param jsonArgument The argument as JSON text, or an empty string for no argument.
+         */
+        void callFrontend(std::string const& name, std::string const& jsonArgument);
+
+        /**
          * @brief Place javascript in the window.
          *
          * @param js

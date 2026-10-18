@@ -333,12 +333,12 @@ namespace Nui
         void callRemoteImpl(std::string const& name, nlohmann::json const& json) const
         {
             // window is threadsafe.
-            window_->eval(fmt::format(remoteCallScript, name, json.dump()));
+            window_->callFrontend(name, json.dump());
         }
         void callRemoteImpl(std::string const& name) const
         {
             // window is threadsafe.
-            window_->eval(fmt::format(remoteCallScript, name, "undefined"));
+            window_->callFrontend(name, "");
         }
 
       private:

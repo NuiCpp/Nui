@@ -2,6 +2,7 @@ add_library(nui-backend
     STATIC
         window.cpp
         rpc_hub.cpp
+        rpc_message.cpp
         load_file.cpp
         webkit_gtk_rendering.cpp
         filesystem/special_paths.cpp
