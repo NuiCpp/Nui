@@ -3,6 +3,7 @@
 #include <fmt/format.h>
 
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -104,6 +105,34 @@ namespace Nui::Detail::Cef
             return name;
         }
 
+        /// Chromium's own profile lock, a link to "<host>-<pid>". It still names a running process when the slot's
+        /// nui.lock was deleted while that process runs.
+        bool chromiumOwnerAlive(std::filesystem::path const& directory)
+        {
+            std::error_code error;
+            const auto target = std::filesystem::read_symlink(directory / "SingletonLock", error).string();
+            const auto dash = target.rfind('-');
+            if (error || dash == std::string::npos || target.substr(0, dash) != hostName())
+                return false;
+            const std::string_view pidText{target.data() + dash + 1, target.size() - dash - 1};
+            int pid = 0;
+            const auto [end, parseError] = std::from_chars(pidText.data(), pidText.data() + pidText.size(), pid);
+            if (parseError != std::errc{} || end != pidText.data() + pidText.size() || pid <= 0 || pid == ::getpid())
+                return false;
+            return ::kill(pid, 0) == 0 || errno == EPERM;
+        }
+
+        bool anySlotOwnerAlive(std::filesystem::path const& versionDirectory)
+        {
+            std::error_code error;
+            for (auto const& slot : std::filesystem::directory_iterator{versionDirectory / hostName(), error})
+            {
+                if (chromiumOwnerAlive(slot.path()))
+                    return true;
+            }
+            return false;
+        }
+
         std::optional<int> slotNumber(std::string const& name)
         {
             int value = 0;
@@ -126,7 +155,10 @@ namespace Nui::Detail::Cef
                     continue;
                 const auto lockPath = root / (name + ".lock");
                 const auto lock = openLockFile(lockPath);
-                if (*lock < 0 || tryLock(*lock, LOCK_EX) != LockResult::Locked)
+                // Another pruner may have removed the file between open and lock, a process of that version may have
+                // created a new one since.
+                if (*lock < 0 || tryLock(*lock, LOCK_EX) != LockResult::Locked || !lockedFileIsCurrent(*lock, lockPath) ||
+                    anySlotOwnerAlive(entry.path()))
                     continue;
                 std::filesystem::remove_all(entry.path(), error);
                 std::filesystem::remove(lockPath, error);
@@ -177,7 +209,8 @@ namespace Nui::Detail::Cef
         // its lock file too, so the lock is only valid if the file still is the one that was locked.
         const auto versionLockPath = root / (version + ".lock");
         FileDescriptor versionLock{new int{-1}};
-        for (int attempt = 0; attempt != 8; ++attempt)
+        bool versionLocked = false;
+        for (int attempt = 0; attempt != 8 && !versionLocked; ++attempt)
         {
             versionLock = openLockFile(versionLockPath);
             if (*versionLock < 0)
@@ -190,8 +223,12 @@ namespace Nui::Detail::Cef
                 error = fmt::format("Cannot lock {}: {}", versionLockPath.string(), std::strerror(errno));
                 return std::nullopt;
             }
-            if (lockedFileIsCurrent(*versionLock, versionLockPath))
-                break;
+            versionLocked = lockedFileIsCurrent(*versionLock, versionLockPath);
+        }
+        if (!versionLocked)
+        {
+            error = fmt::format("Cannot lock {}: the lock file keeps being replaced", versionLockPath.string());
+            return std::nullopt;
         }
         pruneOlderVersions(root, version);
 
@@ -236,7 +273,7 @@ namespace Nui::Detail::Cef
                 error = fmt::format("Cannot lock {}: {}", lockPath.string(), std::strerror(errno));
                 return std::nullopt;
             }
-            if (result == LockResult::Busy || !lockedFileIsCurrent(*slotLock, lockPath))
+            if (result == LockResult::Busy || !lockedFileIsCurrent(*slotLock, lockPath) || chromiumOwnerAlive(directory))
                 continue;
             chosen.emplace(InstanceSlot{directory, std::exchange(*slotLock, -1), std::exchange(*versionLock, -1)});
         }
@@ -247,7 +284,7 @@ namespace Nui::Detail::Cef
             if (!number || *number < persistentSlots || entry.path() == chosen->directory())
                 continue;
             const auto slotLock = openLockFile(entry.path() / "nui.lock");
-            if (*slotLock < 0 || tryLock(*slotLock, LOCK_EX) != LockResult::Locked)
+            if (*slotLock < 0 || tryLock(*slotLock, LOCK_EX) != LockResult::Locked || chromiumOwnerAlive(entry.path()))
                 continue;
             std::filesystem::remove_all(entry.path(), filesystemError);
         }
