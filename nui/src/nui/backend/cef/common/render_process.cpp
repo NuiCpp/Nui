@@ -120,6 +120,7 @@ namespace Nui::Detail::Cef
         const auto scripts = stringList(extraInfo, initScriptsKey);
         for (std::size_t index = 0u; index != scripts.size(); ++index)
             state.initScripts.emplace(static_cast<std::uint32_t>(index), scripts[index]);
+        advanceScripts(state);
         state.appSchemes = stringList(extraInfo, appSchemesKey);
         state.appHosts = stringList(extraInfo, appHostsKey);
         // A cross site setHtml navigation to an authority added after the browser was created lands in a new process,
@@ -181,13 +182,27 @@ namespace Nui::Detail::Cef
 
         evaluate(context, bootstrapScript, "nui://bootstrap");
         for (auto const& [index, script] : state.initScripts)
+        {
+            if (index >= state.contiguousScripts)
+                break;
             evaluate(context, script, "nui://init-script");
+        }
 
         state.contextReady = true;
         auto pending = std::move(state.pending);
         state.pending.clear();
         for (auto const& operation : pending)
             runOperation(frame, operation.name, operation.payload);
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    std::vector<std::string const*> RenderProcess::advanceScripts(BrowserState& state)
+    {
+        std::vector<std::string const*> runnable;
+        for (auto iter = state.initScripts.find(state.contiguousScripts); iter != state.initScripts.end() &&
+             iter->first == state.contiguousScripts;
+             ++iter, ++state.contiguousScripts)
+            runnable.push_back(&iter->second);
+        return runnable;
     }
     //---------------------------------------------------------------------------------------------------------------------
     void RenderProcess::OnContextReleased(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context>)
@@ -257,13 +272,9 @@ namespace Nui::Detail::Cef
             {
                 std::vector<IndexedScript> scripts;
                 splitInitScripts(payload, scripts);
-                std::vector<std::string const*> added;
                 for (auto const& [index, script] : scripts)
-                {
-                    const auto [entry, inserted] = state.initScripts.try_emplace(index, script);
-                    if (inserted)
-                        added.push_back(&entry->second);
-                }
+                    state.initScripts.try_emplace(index, script);
+                const auto added = advanceScripts(state);
                 if (added.empty() || !state.contextReady || !frame)
                     return;
                 if (const auto context = frame->GetV8Context(); context && context->Enter())
