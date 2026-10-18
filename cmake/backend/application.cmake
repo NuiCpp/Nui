@@ -16,13 +16,24 @@ function(nui_configure_application)
     if (NOT NUI_APP_TARGET)
         message(FATAL_ERROR "nui_configure_application: TARGET is required")
     endif()
-    # Arguments after RESOURCES all count as resources, which may also be generated later. A missing one written like
-    # a keyword is a misspelled keyword.
+    # A relative resource is a file of the source directory, otherwise of the binary directory (generated there).
+    # Arguments after RESOURCES all count as resources, so a missing one written like a keyword is a misspelled keyword.
+    set(resources "")
     foreach (resource ${NUI_APP_RESOURCES})
-        if (resource MATCHES "^[A-Z][A-Z0-9_]*$" AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${resource}")
-            message(FATAL_ERROR "nui_configure_application: unknown argument ${resource} (resource does not exist)")
+        if (NOT IS_ABSOLUTE "${resource}")
+            if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${resource}")
+                set(resource "${CMAKE_CURRENT_SOURCE_DIR}/${resource}")
+            elseif (resource MATCHES "^[A-Z][A-Z0-9_]*$" AND NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/${resource}")
+                message(FATAL_ERROR
+                    "nui_configure_application: unknown argument ${resource} (no such resource, pass resources that are "
+                    "generated later with an absolute path)")
+            else()
+                set(resource "${CMAKE_CURRENT_BINARY_DIR}/${resource}")
+            endif()
         endif()
+        list(APPEND resources "${resource}")
     endforeach()
+    set(NUI_APP_RESOURCES "${resources}")
     set(target ${NUI_APP_TARGET})
     if (NOT NUI_APP_NAME)
         set(NUI_APP_NAME ${target})

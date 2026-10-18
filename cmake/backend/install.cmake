@@ -134,7 +134,7 @@ function(nui_install)
     if (NUI_INSTALL_FLATPAK_ZYPAK)
         set(libcefPath "")
         if (NUI_CEF_IS_SYSTEM)
-            set(libcefPath "${libcefRunPath}/libcef.so")
+            cmake_path(APPEND libcefRunPath libcef.so OUTPUT_VARIABLE libcefPath)
         endif()
         _nui_install_flatpak_launchers("${NUI_INSTALL_TARGETS}" "${launcherDestination}" "${NUI_INSTALL_ENGINE_DESTINATION}"
             "${libcefPath}" "${componentArguments}")
@@ -237,8 +237,9 @@ function(_nui_install_flatpak_launchers targets destination engineDestination li
         set(engineDirectory "${engineDestination}")
     endif()
     file(RELATIVE_PATH engineRelative "${launcherDirectory}" "${engineDirectory}")
+    # Paths go into raw string literals, they may contain quotes and backslashes.
     if (libcefPath)
-        set(libcefExpression "std::string{\"${libcefPath}\"}")
+        set(libcefExpression "std::string{R\"nui(${libcefPath})nui\"}")
     else()
         set(libcefExpression "engine + \"/libcef.so\"")
     endif()
@@ -263,7 +264,7 @@ int main(int argc, char** argv)
         return 127;
     }
     const std::string executable{self, static_cast<std::size_t>(length)};
-    const auto engine = executable.substr(0, executable.rfind('/')) + \"/${engineRelative}\";
+    const auto engine = executable.substr(0, executable.rfind('/')) + R\"nui(/${engineRelative})nui\";
     ::setenv(\"ZYPAK_CEF_LIBRARY_PATH\", (${libcefExpression}).c_str(), 1);
     std::string wrapper{\"zypak-wrapper\"};
     std::string target = engine + \"/$<TARGET_FILE_NAME:${target}>\";
