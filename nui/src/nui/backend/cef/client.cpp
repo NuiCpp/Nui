@@ -240,7 +240,8 @@ namespace Nui::Detail::Cef
             application = hooks_.requestHandler->GetResourceRequestHandler(
                 browser, frame, request, isNavigation, isDownload, requestInitiator, disableDefaultHandling);
         }
-        if (request->GetHeaderByName("Range").empty())
+        // The app's OnBeforeResourceLoad may add a Range header, so with a handler every app request is wrapped.
+        if (!hooks_.requestHandler && request->GetHeaderByName("Range").empty())
             return application;
         CefURLParts parts;
         if (!CefParseURL(request->GetURL(), parts) ||

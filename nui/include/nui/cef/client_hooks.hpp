@@ -17,6 +17,11 @@
 
 namespace Nui::Cef
 {
+    /// Name of the Range header in requests to the app's own origins (custom schemes, setHtml authorities) once
+    /// ClientHooks::requestHandler's OnBeforeResourceLoad ran. Nui's scheme handlers answer the range themselves, CEF's
+    /// loader would apply it a second time. A CefResourceHandler of the app for such a request finds the range here.
+    inline constexpr char const* rangeHeaderName = "X-Nui-Range";
+
     /**
      * @brief Optional CEF handlers of a window. Nui's own client forwards to them.
      */
@@ -27,8 +32,8 @@ namespace Nui::Cef
         CefRefPtr<CefKeyboardHandler> keyboardHandler{};
         /// Replaces Nui's policy, which grants clipboard access to the app's own pages and denies everything else.
         CefRefPtr<CefPermissionHandler> permissionHandler{};
-        /// Range requests to the app's own origins (custom schemes, setHtml authorities) reach Nui's scheme handlers
-        /// with the header renamed to X-Nui-Range after the handler's OnBeforeResourceLoad, so Nui answers the range.
+        /// Its OnBeforeResourceLoad sees Range requests to the app's own origins with the original header, afterwards
+        /// Nui renames it to rangeHeaderName.
         CefRefPtr<CefRequestHandler> requestHandler{};
         /// Only OnBeforePopup is forwarded. Without it popups (target=_blank, window.open) are blocked.
         CefRefPtr<CefLifeSpanHandler> popupHandler{};
