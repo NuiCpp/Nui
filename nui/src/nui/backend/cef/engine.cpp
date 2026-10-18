@@ -20,6 +20,7 @@
 #include <include/cef_values.h>
 #include <include/cef_version_info.h>
 
+#include <boost/asio/post.hpp>
 #include <boost/asio/thread_pool.hpp>
 #include <fmt/format.h>
 
@@ -36,6 +37,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <condition_variable>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -262,18 +264,21 @@ namespace Nui::Detail::Cef
                 ::pthread_sigmask(SIG_SETMASK, nullptr, &mask_);
             }
 
-            bool childSignalIgnored() const
+            /// Chromium needs to reap its children with waitpid, which SIG_IGN and SA_NOCLDWAIT prevent.
+            bool childSignalReapsAutomatically() const
             {
-                return actions_.front().second.sa_handler == SIG_IGN;
+                auto const& action = actions_.front().second;
+                return ((action.sa_flags & SA_SIGINFO) == 0 && action.sa_handler == SIG_IGN) ||
+                    (action.sa_flags & SA_NOCLDWAIT) != 0;
             }
 
+            /// Chromium installs its own handlers for all of these during CefInitialize, even with
+            /// disable_signal_handlers. The application keeps exactly the dispositions it had, like with the native
+            /// engines, also SIG_DFL.
             void restore() const
             {
                 for (auto const& [signalNumber, action] : actions_)
-                {
-                    if ((action.sa_flags & SA_SIGINFO) != 0 || action.sa_handler != SIG_DFL)
-                        ::sigaction(signalNumber, &action, nullptr);
-                }
+                    ::sigaction(signalNumber, &action, nullptr);
                 ::pthread_sigmask(SIG_SETMASK, &mask_, nullptr);
             }
 
@@ -285,6 +290,7 @@ namespace Nui::Detail::Cef
         struct CommandLineSettings
         {
             std::vector<std::string> browserArguments{};
+            std::string emptyManifestFile{};
             bool disableSandbox{false};
             bool pickRemoteDebuggingPort{false};
         };
@@ -339,6 +345,11 @@ namespace Nui::Detail::Cef
             auto disableFeatures = splitList(commandLine->GetSwitchValue("disable-features").ToString(), ',');
             // An idle spare renderer only speeds up the second window, it costs a process and memory.
             disableFeatures.emplace_back("SpareRendererForSitePerProcess");
+            // Requests to Google services that the switches above do not stop: network time, AI mode eligibility and
+            // search preconnects.
+            disableFeatures.emplace_back("NetworkTimeServiceQuerying");
+            disableFeatures.emplace_back("AimEnabled");
+            disableFeatures.emplace_back("PreconnectToSearch");
 #ifndef __APPLE__
             // The network service is not sandboxed on Linux, in process it saves a process and memory.
             enableFeatures.emplace_back("NetworkServiceInProcess2");
@@ -351,6 +362,14 @@ namespace Nui::Detail::Cef
                 commandLine->AppendSwitchWithValue("enable-features", joinList(enableFeatures, ','));
             if (!disableFeatures.empty())
                 commandLine->AppendSwitchWithValue("disable-features", joinList(disableFeatures, ','));
+
+            // The optimization guide registers its model manifest component unconditionally. An empty manifest
+            // override keeps it from downloading.
+            if (!settings.emptyManifestFile.empty() && !commandLine->HasSwitch("optimization-guide-manifest-override"))
+                commandLine->AppendSwitchWithValue("optimization-guide-manifest-override", settings.emptyManifestFile);
+            // Account lookups go to a host that does not exist instead of accounts.google.com.
+            if (!commandLine->HasSwitch("gaia-url"))
+                commandLine->AppendSwitchWithValue("gaia-url", "https://gaia.localhost/");
 
             if (settings.disableSandbox)
                 commandLine->AppendSwitch("no-sandbox");
@@ -389,6 +408,10 @@ namespace Nui::Detail::Cef
                 auto noDictionaries = CefValue::Create();
                 noDictionaries->SetList(CefListValue::Create());
                 context->SetPreference("spellcheck.dictionaries", noDictionaries, error);
+                // No preconnects and DNS prefetching, they resolve the app's own https authority on the network.
+                auto noPrediction = CefValue::Create();
+                noPrediction->SetInt(2);
+                context->SetPreference("net.network_prediction_options", noPrediction, error);
             }
 
             void OnBeforeChildProcessLaunch(CefRefPtr<CefCommandLine> commandLine) override
@@ -451,6 +474,10 @@ namespace Nui::Detail::Cef
         std::optional<InstanceSlot> slot{};
         std::string desktopApplicationId{};
         std::unique_ptr<boost::asio::thread_pool> readerPool{};
+        std::mutex readerMutex{};
+        std::condition_variable readersDone{};
+        int runningReaders{0};
+        std::optional<int> remoteDebuggingPort{};
         CefRefPtr<CefApp> app{};
     };
     //---------------------------------------------------------------------------------------------------------------------
@@ -637,6 +664,14 @@ namespace Nui::Detail::Cef
             if (remoteDebuggingPort && *remoteDebuggingPort > 0)
                 settings.remote_debugging_port = *remoteDebuggingPort;
             commandLineSettings.pickRemoteDebuggingPort = remoteDebuggingPort && *remoteDebuggingPort == 0;
+            // Chromium writes the port file only for a picked port, an old one in a persistent slot would be stale.
+            std::error_code removeError;
+            std::filesystem::remove(slot->directory() / "DevToolsActivePort", removeError);
+
+            const auto manifest = slot->directory() / "nui-empty-manifest.json";
+            if (!std::filesystem::exists(manifest))
+                std::ofstream{manifest} << "{}";
+            commandLineSettings.emptyManifestFile = manifest.string();
 
 #ifndef __APPLE__
             const auto helper = findHelper(options);
@@ -667,15 +702,23 @@ namespace Nui::Detail::Cef
                 });
 
             const SignalSnapshot signals;
-            if (signals.childSignalIgnored())
-                throw std::runtime_error("Nui: SIGCHLD is ignored, Chromium cannot track its child processes then");
+            if (signals.childSignalReapsAutomatically())
+                throw std::runtime_error(
+                    "Nui: SIGCHLD is ignored or has SA_NOCLDWAIT, Chromium cannot track its child processes then");
 
             auto& arguments = processArguments(options.passProcessArguments);
             const CefMainArgs mainArgs{static_cast<int>(arguments.storage.size()), arguments.pointers.data()};
             const bool initialized = CefInitialize(mainArgs, settings, impl_->app, nullptr);
             signals.restore();
             if (!initialized)
-                throw std::runtime_error(fmt::format("Nui: CefInitialize failed with exit code {}", CefGetExitCode()));
+            {
+                const auto exitCode = CefGetExitCode();
+                if (exitCode == CEF_RESULT_CODE_NORMAL_EXIT_PROCESS_NOTIFIED)
+                    throw std::runtime_error(
+                        "Nui: another process uses the CEF cache directory " + slot->directory().string() +
+                        " (its lock file was removed while it runs), this launch was handed to it");
+                throw std::runtime_error(fmt::format("Nui: CefInitialize failed with exit code {}", exitCode));
+            }
 
             for (auto const& scheme : customSchemes)
                 CefRegisterSchemeHandlerFactory(scheme, "", new SchemeHandlerFactory(scheme));
@@ -689,7 +732,9 @@ namespace Nui::Detail::Cef
 #ifndef __APPLE__
                 impl_->desktopApplicationId = desktopIdentity(options);
 #endif
-                impl_->readerPool = std::make_unique<boost::asio::thread_pool>(4);
+                impl_->readerPool = std::make_unique<boost::asio::thread_pool>(
+                    std::clamp(std::thread::hardware_concurrency() / 2u, 4u, 16u));
+                impl_->remoteDebuggingPort = remoteDebuggingPort;
                 impl_->uiThread = std::this_thread::get_id();
                 impl_->phase = Phase::Started;
                 preStartTasks = std::move(impl_->preStartTasks);
@@ -749,8 +794,21 @@ namespace Nui::Detail::Cef
     {
         if (impl_->readerPool)
         {
+            // Body readers are application code that may block. Their pending tasks hold CEF objects, so they are
+            // either finished and destroyed before CefShutdown, or the pool is left behind with them.
             impl_->readerPool->stop();
-            impl_->readerPool->join();
+            std::unique_lock lock{impl_->readerMutex};
+            const bool finished = impl_->readersDone.wait_for(lock, std::chrono::seconds{5}, [this]() {
+                return impl_->runningReaders == 0;
+            });
+            lock.unlock();
+            if (finished)
+                impl_->readerPool->join();
+            else
+            {
+                std::cerr << "Nui: custom scheme body readers still run at shutdown, leaving them behind" << std::endl;
+                static_cast<void>(impl_->readerPool.release());
+            }
         }
         {
             std::scoped_lock lock{impl_->mutex};
@@ -789,7 +847,7 @@ namespace Nui::Detail::Cef
                 impl_->pendingBrowserCreations.push_back(std::move(createBrowser));
         }
         if (postNow)
-            Detail::Cef::postToUi(std::move(createBrowser));
+            postToUi(std::move(createBrowser));
     }
     //---------------------------------------------------------------------------------------------------------------------
     void EngineState::windowClosed()
@@ -842,7 +900,7 @@ namespace Nui::Detail::Cef
                 return;
         }
         // CefQuitMessageLoop must run on the UI thread, and the check is repeated there.
-        Detail::Cef::postToUi([]() {
+        postToUi([]() {
             auto& state = EngineState::instance();
             {
                 std::scoped_lock lock{state.impl_->mutex};
@@ -887,6 +945,7 @@ namespace Nui::Detail::Cef
     //---------------------------------------------------------------------------------------------------------------------
     void EngineState::postToUi(std::function<void()> function)
     {
+        CefRefPtr<CefTask> task;
         {
             std::scoped_lock lock{impl_->mutex};
             if (impl_->phase == Phase::Idle)
@@ -896,8 +955,10 @@ namespace Nui::Detail::Cef
             }
             if (impl_->phase != Phase::Started && impl_->phase != Phase::Running)
                 return;
+            // Posted while the lock keeps shutdown() from running CefShutdown concurrently.
+            task = new FunctionTask(std::move(function));
+            CefPostTask(TID_UI, task);
         }
-        Detail::Cef::postToUi(std::move(function));
     }
     //---------------------------------------------------------------------------------------------------------------------
     bool EngineState::onUiThread() const
@@ -908,22 +969,31 @@ namespace Nui::Detail::Cef
         return isMainThread();
     }
     //---------------------------------------------------------------------------------------------------------------------
-    boost::asio::thread_pool& EngineState::readerPool()
+    void EngineState::postReader(std::function<void()> function)
     {
-        return *impl_->readerPool;
+        {
+            std::scoped_lock lock{impl_->readerMutex};
+            ++impl_->runningReaders;
+        }
+        boost::asio::post(*impl_->readerPool, [this, function = std::move(function)]() {
+            function();
+            std::scoped_lock lock{impl_->readerMutex};
+            if (--impl_->runningReaders == 0)
+                impl_->readersDone.notify_all();
+        });
     }
     //---------------------------------------------------------------------------------------------------------------------
     std::optional<int> EngineState::remoteDebuggingPort() const
     {
         std::scoped_lock lock{impl_->mutex};
-        if (!impl_->slot)
+        if (!impl_->slot || !impl_->remoteDebuggingPort)
             return std::nullopt;
+        if (*impl_->remoteDebuggingPort > 0)
+            return impl_->remoteDebuggingPort;
         std::ifstream file{impl_->slot->directory() / "DevToolsActivePort"};
         int port = 0;
         if (file >> port && port > 0)
             return port;
-        if (impl_->options.remoteDebuggingPort && *impl_->options.remoteDebuggingPort > 0)
-            return impl_->options.remoteDebuggingPort;
         return std::nullopt;
     }
     //---------------------------------------------------------------------------------------------------------------------
@@ -935,6 +1005,20 @@ namespace Nui::Detail::Cef
     std::vector<std::string> const& EngineState::customSchemes() const
     {
         return impl_->customSchemes;
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    std::vector<std::string> EngineState::htmlAuthorities() const
+    {
+        std::scoped_lock lock{impl_->mutex};
+        return {impl_->htmlAuthorities.begin(), impl_->htmlAuthorities.end()};
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    bool EngineState::isAppOrigin(std::string const& scheme, std::string const& host) const
+    {
+        std::scoped_lock lock{impl_->mutex};
+        if (scheme == "https")
+            return impl_->htmlAuthorities.contains(host);
+        return std::ranges::find(impl_->customSchemes, scheme) != impl_->customSchemes.end();
     }
     //---------------------------------------------------------------------------------------------------------------------
     namespace

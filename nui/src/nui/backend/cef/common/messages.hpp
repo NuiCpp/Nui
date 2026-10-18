@@ -16,6 +16,8 @@ namespace Nui::Detail::Cef
     inline constexpr char const* evalMessageName = "nui.eval";
     // Browser to renderer: UTF-8 script, evaluated now and in every later main frame context of the browser.
     inline constexpr char const* addInitScriptMessageName = "nui.addInitScript";
+    // Browser to renderer: an https host whose documents get __webview__ (a later setHtml authority).
+    inline constexpr char const* addAppHostMessageName = "nui.addAppHost";
 
     // extra_info of a new browser: list of init scripts.
     inline constexpr char const* initScriptsKey = "nui.initScripts";
@@ -26,8 +28,9 @@ namespace Nui::Detail::Cef
     // Child process switch with the comma separated custom scheme names.
     inline constexpr char const* customSchemesSwitch = "nui-custom-schemes";
 
-    // Payloads from this size on travel in shared memory instead of the message's argument list.
-    inline constexpr std::size_t sharedMemoryThreshold = 64u * 1024u;
+    // Payloads from this size on travel in shared memory instead of the message's argument list. A shared memory
+    // message costs about 45 microseconds more and only pays off from about 1 MiB (measured with CEF 154).
+    inline constexpr std::size_t sharedMemoryThreshold = 1024u * 1024u;
 
     /**
      * @brief Creates a message whose payload is the concatenation of the given parts, in shared memory for large

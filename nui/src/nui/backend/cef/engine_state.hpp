@@ -89,12 +89,18 @@ namespace Nui::Detail::Cef
         /// Any thread. True on the UI thread of a started engine, or on the main thread before the start.
         bool onUiThread() const;
 
-        /// Any thread. Pool for blocking scheme body readers.
-        boost::asio::thread_pool& readerPool();
+        /// Any thread. Runs a custom scheme body reader call on the reader pool.
+        void postReader(std::function<void()> function);
 
         std::optional<int> remoteDebuggingPort() const;
         std::string const& desktopApplicationId() const;
         std::vector<std::string> const& customSchemes() const;
+
+        /// Any thread. Every https authority a window served setHtml from so far.
+        std::vector<std::string> htmlAuthorities() const;
+
+        /// Any thread. True for a registered custom scheme, or https with a setHtml authority.
+        bool isAppOrigin(std::string const& scheme, std::string const& host) const;
 
         /// Registers the https factory serving setHtml for an authority, if it is not registered yet.
         void ensureHtmlAuthority(std::string const& authority);

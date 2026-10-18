@@ -16,7 +16,14 @@ namespace Nui::Detail::Cef
             return true;
         }
         const auto arguments = message->GetArgumentList();
-        if (!arguments || arguments->GetSize() < 1u || arguments->GetType(0) != VTYPE_BINARY)
+        if (!arguments || arguments->GetSize() < 1u)
+            return false;
+        if (arguments->GetType(0) == VTYPE_NULL)
+        {
+            visitor(std::string_view{});
+            return true;
+        }
+        if (arguments->GetType(0) != VTYPE_BINARY)
             return false;
         const auto binary = arguments->GetBinary(0);
         const auto size = binary->GetSize();

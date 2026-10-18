@@ -31,6 +31,8 @@ namespace Nui::Detail::Cef
         , public CefLifeSpanHandler
         , public CefDisplayHandler
         , public CefPermissionHandler
+        , public CefRequestHandler
+        , public CefResourceRequestHandler
     {
       public:
         Client(std::shared_ptr<BrowserEvents> events, Nui::Cef::ClientHooks hooks);
@@ -73,6 +75,21 @@ namespace Nui::Detail::Cef
             CefString const& message,
             CefString const& source,
             int line) override;
+
+        CefRefPtr<CefResourceRequestHandler> GetResourceRequestHandler(
+            CefRefPtr<CefBrowser> browser,
+            CefRefPtr<CefFrame> frame,
+            CefRefPtr<CefRequest> request,
+            bool isNavigation,
+            bool isDownload,
+            CefString const& requestInitiator,
+            bool& disableDefaultHandling) override;
+
+        CefResourceRequestHandler::ReturnValue OnBeforeResourceLoad(
+            CefRefPtr<CefBrowser> browser,
+            CefRefPtr<CefFrame> frame,
+            CefRefPtr<CefRequest> request,
+            CefRefPtr<CefCallback> callback) override;
 
         bool OnShowPermissionPrompt(
             CefRefPtr<CefBrowser> browser,

@@ -8,6 +8,7 @@
 #include <nui/screen.hpp>
 #include "load_file.hpp"
 #include "rpc_message.hpp"
+#include "mime_type.hpp"
 
 #include <webview/webview.h>
 #include <roar/mime_type.hpp>
@@ -74,7 +75,7 @@ namespace Nui
 
         const auto path = url.pathAsString();
         const auto filePath = it->second / std::string{path.data() + 1, path.size() - 1};
-        const auto maybeMime = Roar::extensionToMime(filePath.extension().string());
+        const auto maybeMime = Detail::mimeTypeOfExtension(filePath.extension().string());
         const auto mime = maybeMime ? *maybeMime : "application/octet-stream";
 
         const auto body = loadFile(filePath);

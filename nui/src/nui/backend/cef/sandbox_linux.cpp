@@ -65,11 +65,13 @@ namespace Nui::Detail::Cef
                     ::_exit(1);
                 ::_exit(::unshare(CLONE_NEWUSER) == 0 ? 0 : 1);
             }
-            int status = 0;
-            while (::waitpid(child, &status, 0) < 0 && errno == EINTR)
+            int status = -1;
+            pid_t waited = -1;
+            do
             {
-            }
-            return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+                waited = ::waitpid(child, &status, 0);
+            } while (waited < 0 && errno == EINTR);
+            return waited == child && WIFEXITED(status) && WEXITSTATUS(status) == 0;
         }
 
         bool usableSetuidSandbox(std::filesystem::path const& path)
@@ -90,10 +92,20 @@ namespace Nui::Detail::Cef
     {
         if (std::filesystem::exists("/.flatpak-info"))
         {
-            // zypak replaces the zygote sandbox with Flatpak's own sandbox.
-            if (std::getenv("ZYPAK_BIN") != nullptr)
-                return {};
-            return {.disable = true, .reason = "running in Flatpak without zypak"};
+            // zypak replaces the zygote sandbox with Flatpak's own sandbox. For CEF it needs to know the library.
+            if (std::getenv("ZYPAK_BIN") == nullptr)
+                return {.disable = true, .reason = "running in Flatpak without zypak"};
+            auto const* zypakLibrary = std::getenv("ZYPAK_CEF_LIBRARY_PATH");
+            std::error_code error;
+            if (zypakLibrary == nullptr || !std::filesystem::equivalent(zypakLibrary, libcefDirectory / "libcef.so", error))
+            {
+                return {
+                    .disable = true,
+                    .reason = "zypak is active but ZYPAK_CEF_LIBRARY_PATH does not name the loaded " +
+                        (libcefDirectory / "libcef.so").string(),
+                };
+            }
+            return {};
         }
         if (::geteuid() == 0)
             return {.disable = true, .reason = "Chromium's sandbox does not run as root"};

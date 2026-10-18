@@ -28,11 +28,17 @@ namespace Nui::Detail::Cef
             }
         }
 
+        auto message = CefProcessMessage::Create(name);
+        // CefBinaryValue cannot be empty.
+        if (size == 0u)
+        {
+            message->GetArgumentList()->SetNull(0);
+            return message;
+        }
         std::string buffer;
         buffer.reserve(size);
         for (std::size_t index = 0u; index != count; ++index)
             buffer.append(parts[index]);
-        auto message = CefProcessMessage::Create(name);
         message->GetArgumentList()->SetBinary(0, CefBinaryValue::Create(buffer.data(), buffer.size()));
         return message;
     }

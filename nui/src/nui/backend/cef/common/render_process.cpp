@@ -215,7 +215,8 @@ namespace Nui::Detail::Cef
         CefRefPtr<CefProcessMessage> message)
     {
         const auto name = message->GetName().ToString();
-        if (name != callMessageName && name != evalMessageName && name != addInitScriptMessageName)
+        if (name != callMessageName && name != evalMessageName && name != addInitScriptMessageName &&
+            name != addAppHostMessageName)
             return false;
 
         const auto iter = browsers_.find(browser->GetIdentifier());
@@ -225,6 +226,12 @@ namespace Nui::Detail::Cef
         const auto frame = browser->GetMainFrame();
 
         visitPayload(message, [&](std::string_view payload) {
+            if (name == addAppHostMessageName)
+            {
+                if (std::ranges::find(state.appHosts, payload) == state.appHosts.end())
+                    state.appHosts.emplace_back(payload);
+                return;
+            }
             if (name == addInitScriptMessageName)
             {
                 state.initScripts.emplace_back(payload);

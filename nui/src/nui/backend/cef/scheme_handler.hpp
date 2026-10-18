@@ -6,6 +6,10 @@
 
 namespace Nui::Detail::Cef
 {
+    /// Name Nui's request handler gives the Range header of app requests, so CEF's loader does not apply the range on
+    /// top of Nui's own handling (see Client::OnBeforeResourceLoad).
+    inline constexpr char const* rangeHeaderName = "X-Nui-Range";
+
     /**
      * @brief Serves a Nui custom scheme. One factory per scheme name, requests go to the window of their browser.
      */

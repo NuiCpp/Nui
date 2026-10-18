@@ -1,6 +1,12 @@
 #include "client.hpp"
+#include "engine_state.hpp"
+#include "scheme_handler.hpp"
 #include "common/messages.hpp"
 
+#include <include/cef_parser.h>
+
+#include <algorithm>
+#include <cctype>
 #include <exception>
 #include <iostream>
 
@@ -45,7 +51,53 @@ namespace Nui::Detail::Cef
     //---------------------------------------------------------------------------------------------------------------------
     CefRefPtr<CefRequestHandler> Client::GetRequestHandler()
     {
-        return hooks_.requestHandler;
+        // An application handler replaces Nui's, CEF's loader then applies Range requests on top of the scheme handler.
+        if (hooks_.requestHandler)
+            return hooks_.requestHandler;
+        return this;
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    CefRefPtr<CefResourceRequestHandler> Client::GetResourceRequestHandler(
+        CefRefPtr<CefBrowser>,
+        CefRefPtr<CefFrame>,
+        CefRefPtr<CefRequest> request,
+        bool,
+        bool,
+        CefString const&,
+        bool&)
+    {
+        if (request->GetHeaderByName("Range").empty())
+            return nullptr;
+        CefURLParts parts;
+        if (!CefParseURL(request->GetURL(), parts))
+            return nullptr;
+        if (!EngineState::instance().isAppOrigin(CefString(&parts.scheme).ToString(), CefString(&parts.host).ToString()))
+            return nullptr;
+        return this;
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    CefResourceRequestHandler::ReturnValue Client::OnBeforeResourceLoad(
+        CefRefPtr<CefBrowser>,
+        CefRefPtr<CefFrame>,
+        CefRefPtr<CefRequest> request,
+        CefRefPtr<CefCallback>)
+    {
+        // Nui's scheme handler answers the range itself. CEF's loader would also apply it, rewrite Content-Length and
+        // fail requests with ranges it cannot satisfy.
+        CefRequest::HeaderMap headers;
+        request->GetHeaderMap(headers);
+        CefRequest::HeaderMap renamed;
+        for (auto const& [name, value] : headers)
+        {
+            const auto text = name.ToString();
+            const bool isRange = text.size() == 5u && (text[0] == 'R' || text[0] == 'r') &&
+                std::equal(text.begin() + 1, text.end(), "ange", [](char lhs, char rhs) {
+                    return std::tolower(static_cast<unsigned char>(lhs)) == rhs;
+                });
+            renamed.emplace(isRange ? CefString{rangeHeaderName} : name, value);
+        }
+        request->SetHeaderMap(renamed);
+        return RV_CONTINUE;
     }
     //---------------------------------------------------------------------------------------------------------------------
     bool Client::isOwnBrowser(CefRefPtr<CefBrowser> const& browser) const

@@ -7,12 +7,12 @@
 #    include "mac/application_mac.hpp"
 #endif
 #include "../load_file.hpp"
+#include "../mime_type.hpp"
 #include "../rpc_message.hpp"
 
 #include <nui/cef/client_hooks.hpp>
 #include <nui/window.hpp>
 
-#include <roar/mime_type.hpp>
 #include <fmt/format.h>
 #include <boost/asio/thread_pool.hpp>
 
@@ -110,7 +110,7 @@ namespace Nui
                         std::error_code error;
                         if (!file || !std::filesystem::is_regular_file(*file, error))
                             return CustomSchemeResponse{.statusCode = 404, .reasonPhrase = "Not Found", .body = "File not found"};
-                        const auto mime = Roar::extensionToMime(file->extension().string());
+                        const auto mime = Detail::mimeTypeOfExtension(file->extension().string());
                         return CustomSchemeResponse{
                             .statusCode = 200,
                             .reasonPhrase = "OK",
@@ -193,6 +193,11 @@ namespace Nui
             {
                 return *window.impl_;
             }
+
+            /**
+             * @brief Closes the window and waits for engine calls into it, shared by the destructor and move assignment.
+             */
+            static void tearDown(std::shared_ptr<Window::Implementation> const& impl);
         };
     }
 
@@ -349,11 +354,16 @@ namespace Nui
             for (std::size_t index = 0u; index != appSchemes.size(); ++index)
                 schemes->SetString(index, appSchemes[index]);
             extraInfo->SetList(Detail::Cef::appSchemesKey, schemes);
-            auto hosts = CefListValue::Create();
+            // Every authority known now, a later cross site setHtml lands in a new renderer that only has this list.
+            auto authorities = Detail::Cef::EngineState::instance().htmlAuthorities();
             {
                 std::shared_lock htmlLock{shared->htmlGuard};
-                hosts->SetString(0, shared->htmlAuthority);
+                if (std::ranges::find(authorities, shared->htmlAuthority) == authorities.end())
+                    authorities.push_back(shared->htmlAuthority);
             }
+            auto hosts = CefListValue::Create();
+            for (std::size_t index = 0u; index != authorities.size(); ++index)
+                hosts->SetString(index, authorities[index]);
             extraInfo->SetList(Detail::Cef::appHostsKey, hosts);
             url = targetUrl.empty() ? std::string{"about:blank"} : targetUrl;
             clientHooks = hooks;
@@ -642,47 +652,61 @@ namespace Nui
         });
     }
     //---------------------------------------------------------------------------------------------------------------------
-    Window::~Window()
+    void Detail::WindowAccess::tearDown(std::shared_ptr<Window::Implementation> const& impl)
     {
-        if (!impl_)
-            return;
         auto& engine = Detail::Cef::EngineState::instance();
         {
-            std::scoped_lock lock{impl_->mutex};
-            impl_->destroyed = true;
+            std::scoped_lock lock{impl->mutex};
+            impl->destroyed = true;
         }
-        impl_->pool.stop();
-        impl_->pool.join();
+        impl->pool.stop();
+        impl->pool.join();
 
         if (engine.started())
         {
             if (engine.onUiThread())
-                impl_->closeFromUi();
+                impl->closeFromUi();
             else
-                engine.postToUi([impl = impl_]() {
+                engine.postToUi([impl]() {
                     impl->closeFromUi();
                 });
         }
         else
         {
-            std::scoped_lock lock{impl_->mutex};
-            impl_->state = Implementation::BrowserState::Closed;
-            if (impl_->countedOpen && !engine.finished())
+            std::scoped_lock lock{impl->mutex};
+            impl->state = Window::Implementation::BrowserState::Closed;
+            if (impl->countedOpen && !engine.finished())
             {
-                impl_->countedOpen = false;
+                impl->countedOpen = false;
                 engine.windowClosed();
             }
         }
 
         // Engine threads may still be inside a scheme handler or a message callback of this window.
-        const auto ownEntries = Detail::Cef::GateEntry::heldByCurrentThread(impl_->shared->gate);
-        if (!impl_->shared->gate.closeAndWait(std::chrono::seconds{5}, ownEntries))
+        const auto ownEntries = Detail::Cef::GateEntry::heldByCurrentThread(impl->shared->gate);
+        if (!impl->shared->gate.closeAndWait(std::chrono::seconds{5}, ownEntries))
             std::cerr << "Nui: window destroyed while engine calls into it did not finish" << std::endl;
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    Window::~Window()
+    {
+        if (impl_)
+            Detail::WindowAccess::tearDown(impl_);
     }
     //---------------------------------------------------------------------------------------------------------------------
     Window::Window(Window&&) = default;
     //---------------------------------------------------------------------------------------------------------------------
-    Window& Window::operator=(Window&&) = default;
+    Window& Window::operator=(Window&& other)
+    {
+        if (this != &other)
+        {
+            if (impl_)
+                Detail::WindowAccess::tearDown(impl_);
+            impl_ = std::move(other.impl_);
+        }
+        return *this;
+    }
+
     //---------------------------------------------------------------------------------------------------------------------
     void Window::setTitle(std::string const& title)
     {
@@ -781,10 +805,19 @@ namespace Nui
     {
         const auto authority = windowsServeThroughAuthority.value_or(std::string{defaultHtmlAuthority});
         Detail::Cef::EngineState::instance().ensureHtmlAuthority(authority);
+        bool newAuthority = false;
         {
             std::unique_lock lock{impl_->shared->htmlGuard};
             impl_->shared->html = std::make_shared<std::string const>(html);
+            newAuthority = impl_->shared->htmlAuthority != authority;
             impl_->shared->htmlAuthority = authority;
+        }
+        // A renderer only knows the hosts from the browser's creation, it learns a new one before the navigation.
+        if (newAuthority)
+        {
+            impl_->send([&authority]() {
+                return Detail::Cef::makeTextMessage(Detail::Cef::addAppHostMessageName, authority);
+            });
         }
         navigate(fmt::format("https://{}/index.html", authority));
     }

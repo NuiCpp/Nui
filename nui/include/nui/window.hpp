@@ -312,6 +312,8 @@ namespace Nui
 
         /**
          * @brief Close the window and exit run.
+         *
+         * With the CEF engine run() returns once the last window has closed, other windows stay open.
          */
         void terminate();
 

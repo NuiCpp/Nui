@@ -4,7 +4,6 @@
 #include <include/cef_parser.h>
 #include <include/cef_resource_handler.h>
 
-#include <boost/asio/post.hpp>
 #include <fmt/format.h>
 
 #include <algorithm>
@@ -72,21 +71,41 @@ namespace Nui::Detail::Cef
             std::optional<std::uint64_t> suffixLength{};
         };
 
+        /// Parses a Range header like Chromium does: spaces are ignored, a list with one range is a single range.
         std::optional<ByteRange> parseRange(std::string_view header)
         {
+            std::string compact;
+            for (const auto character : header)
+            {
+                if (character != ' ' && character != '\t')
+                    compact += character;
+            }
             constexpr std::string_view prefix = "bytes=";
-            if (header.size() < prefix.size() || !equalsIgnoringCase(header.substr(0, prefix.size()), prefix))
+            std::string_view rest{compact};
+            if (rest.size() < prefix.size() || !equalsIgnoringCase(rest.substr(0, prefix.size()), prefix))
                 return std::nullopt;
-            header.remove_prefix(prefix.size());
-            if (header.find(',') != std::string_view::npos)
+            rest.remove_prefix(prefix.size());
+            std::optional<std::string_view> single;
+            while (!rest.empty())
+            {
+                const auto comma = rest.find(',');
+                const auto item = rest.substr(0, comma);
+                rest = comma == std::string_view::npos ? std::string_view{} : rest.substr(comma + 1);
+                if (item.empty())
+                    continue;
+                if (single)
+                    return std::nullopt;
+                single = item;
+            }
+            if (!single)
                 return std::nullopt;
-            const auto dash = header.find('-');
+            const auto dash = single->find('-');
             if (dash == std::string_view::npos)
                 return std::nullopt;
-            const auto firstText = header.substr(0, dash);
-            const auto lastText = header.substr(dash + 1);
+            const auto firstText = single->substr(0, dash);
+            const auto lastText = single->substr(dash + 1);
             ByteRange range{};
-            if (firstText.find_first_not_of(' ') == std::string_view::npos)
+            if (firstText.empty())
             {
                 range.suffixLength = parseNumber(lastText);
                 if (!range.suffixLength)
@@ -96,7 +115,7 @@ namespace Nui::Detail::Cef
             range.first = parseNumber(firstText);
             if (!range.first)
                 return std::nullopt;
-            if (lastText.find_first_not_of(' ') != std::string_view::npos)
+            if (!lastText.empty())
             {
                 range.last = parseNumber(lastText);
                 if (!range.last || *range.last < *range.first)
@@ -147,6 +166,7 @@ namespace Nui::Detail::Cef
 
             std::string const& content()
             {
+                throwIfUnsupported();
                 if (content_)
                     return *content_;
                 content_.emplace();
@@ -165,6 +185,7 @@ namespace Nui::Detail::Cef
 
             std::size_t read(char* buffer, std::size_t size)
             {
+                throwIfUnsupported();
                 while (partIndex_ < parts_.size())
                 {
                     auto& part = parts_[partIndex_];
@@ -192,6 +213,12 @@ namespace Nui::Detail::Cef
             }
 
           private:
+            void throwIfUnsupported() const
+            {
+                if (unsupported_)
+                    throw std::runtime_error("Unsupported request body, CEF does not pass Blob or stream bodies to custom schemes");
+            }
+
             std::vector<std::variant<std::string, std::filesystem::path>> parts_{};
             std::optional<std::string> content_{};
             std::size_t partIndex_{0u};
@@ -257,45 +284,17 @@ namespace Nui::Detail::Cef
 
             bool Skip(int64_t bytesToSkip, int64_t& bytesSkipped, CefRefPtr<CefResourceSkipCallback>) override
             {
-                if (handlerRanged_)
-                {
-                    // The handler answered the range itself, its body already starts at the requested offset.
-                    bytesSkipped = bytesToSkip;
-                    return true;
-                }
-                if (unsatisfiable_)
+                // CEF skips for every request with a Range header it parses, whatever the response. Only a range that
+                // Nui turned into a 206 here starts at that offset, every other body is served from its start.
+                if (!skipMovesBody_)
                 {
                     bytesSkipped = bytesToSkip;
                     return true;
                 }
-                const auto count = static_cast<std::uint64_t>(bytesToSkip);
-                if (file_)
+                if (!skipBody(static_cast<std::uint64_t>(bytesToSkip)))
                 {
-                    file_->seekg(static_cast<std::streamoff>(count), std::ios::cur);
-                    if (!file_->good())
-                    {
-                        bytesSkipped = ERR_FAILED;
-                        return false;
-                    }
-                }
-                else if (reader_)
-                {
-                    std::vector<char> discard(std::min<std::uint64_t>(count, 64u * 1024u));
-                    std::uint64_t skipped = 0u;
-                    while (skipped < count)
-                    {
-                        const auto chunk = std::min<std::uint64_t>(discard.size(), count - skipped);
-                        const auto read = callReader(discard.data(), static_cast<std::size_t>(chunk));
-                        if (read <= 0)
-                            break;
-                        skipped += static_cast<std::uint64_t>(read);
-                    }
-                    bytesSkipped = static_cast<int64_t>(skipped);
-                    return skipped == count;
-                }
-                else
-                {
-                    memoryOffset_ = std::min<std::size_t>(memoryOffset_ + count, memoryBody_ ? memoryBody_->size() : 0u);
+                    bytesSkipped = ERR_FAILED;
+                    return false;
                 }
                 bytesSkipped = bytesToSkip;
                 return true;
@@ -308,7 +307,7 @@ namespace Nui::Detail::Cef
                 auto capacity = static_cast<std::size_t>(bytesToRead);
                 if (remaining_)
                     capacity = static_cast<std::size_t>(std::min<std::uint64_t>(capacity, *remaining_));
-                if (capacity == 0u || unsatisfiable_ || canceled_)
+                if (capacity == 0u || unsatisfiable_ || headOnly_ || canceled_)
                 {
                     bytesRead = 0;
                     return false;
@@ -317,9 +316,17 @@ namespace Nui::Detail::Cef
                 if (reader_)
                 {
                     bytesRead = 0;
-                    boost::asio::post(
-                        EngineState::instance().readerPool(),
+                    EngineState::instance().postReader(
                         [self = CefRefPtr<ResourceHandler>{this}, destination, capacity, callback]() {
+                            if (self->pendingReaderSkip_ != 0u)
+                            {
+                                const auto skip = std::exchange(self->pendingReaderSkip_, 0u);
+                                if (!self->skipBody(skip))
+                                {
+                                    callback->Continue(ERR_FAILED);
+                                    return;
+                                }
+                            }
                             const auto read = self->callReader(destination, capacity);
                             if (read > 0 && self->remaining_)
                                 *self->remaining_ -= static_cast<std::uint64_t>(read);
@@ -360,6 +367,33 @@ namespace Nui::Detail::Cef
             }
 
           private:
+            /// Moves the start of the body forward. Blocking for body readers, only called on reader threads.
+            bool skipBody(std::uint64_t count)
+            {
+                if (file_)
+                {
+                    file_->seekg(static_cast<std::streamoff>(count), std::ios::cur);
+                    return file_->good();
+                }
+                if (reader_)
+                {
+                    std::vector<char> discard(static_cast<std::size_t>(std::min<std::uint64_t>(count, 64u * 1024u)));
+                    std::uint64_t skipped = 0u;
+                    while (skipped < count)
+                    {
+                        const auto chunk = std::min<std::uint64_t>(discard.size(), count - skipped);
+                        const auto read = callReader(discard.data(), static_cast<std::size_t>(chunk));
+                        if (read <= 0)
+                            return false;
+                        skipped += static_cast<std::uint64_t>(read);
+                    }
+                    return true;
+                }
+                memoryOffset_ = static_cast<std::size_t>(
+                    std::min<std::uint64_t>(memoryOffset_ + count, memoryBody_ ? memoryBody_->size() : 0u));
+                return true;
+            }
+
             /// Reads from the body reader of the handler. Returns the byte count, 0 at the end, a net error below 0.
             int callReader(char* buffer, std::size_t size)
             {
@@ -390,14 +424,18 @@ namespace Nui::Detail::Cef
                 request->GetHeaderMap(headerMap);
                 std::unordered_multimap<std::string, std::string> headers;
                 for (auto const& [key, value] : headerMap)
-                    headers.emplace(key.ToString(), value.ToString());
+                {
+                    auto name = key.ToString();
+                    if (equalsIgnoringCase(name, rangeHeaderName))
+                        name = "Range";
+                    headers.emplace(std::move(name), value.ToString());
+                }
 
                 auto body = std::make_shared<RequestBody>(request);
                 if (body->unsupported())
                 {
                     std::cerr << "Nui: request to " << request->GetURL().ToString()
                               << " has a body type CEF does not pass to custom schemes (Blob or stream)" << std::endl;
-                    return errorResponse(500, "Unsupported request body");
                 }
 
                 CustomSchemeRequest customRequest{
@@ -482,21 +520,26 @@ namespace Nui::Detail::Cef
                     headers_.emplace("Access-Control-Allow-Origin", scheme_->allowedOrigins.front());
 
                 responseLength_ = totalSize ? static_cast<int64_t>(*totalSize) : -1;
+                headOnly_ = request->GetMethod().ToString() == "HEAD";
+                if (statusCode_ == 200 && totalSize && !findHeader(headers_, "Accept-Ranges"))
+                    headers_.emplace("Accept-Ranges", "bytes");
                 applyRange(request, totalSize);
             }
 
             void applyRange(CefRefPtr<CefRequest> const& request, std::optional<std::uint64_t> totalSize)
             {
                 if (statusCode_ == 206 || findHeader(headers_, "Content-Range"))
-                {
-                    handlerRanged_ = true;
                     return;
-                }
-                const auto rangeHeader = request->GetHeaderByName("Range").ToString();
-                if (statusCode_ != 200 || rangeHeader.empty())
+                // Nui's request handler renames Range so CEF's loader leaves it alone and Nui positions the body here.
+                // Without that rename (an application CefRequestHandler) CEF skips to the first byte itself.
+                auto rangeHeader = request->GetHeaderByName(rangeHeaderName).ToString();
+                const bool ownRange = !rangeHeader.empty();
+                if (!ownRange)
+                    rangeHeader = request->GetHeaderByName("Range").ToString();
+                if (statusCode_ != 200 || rangeHeader.empty() || !totalSize)
                     return;
                 const auto range = parseRange(rangeHeader);
-                if (!range || !totalSize)
+                if (!range)
                     return;
 
                 const auto total = *totalSize;
@@ -505,19 +548,12 @@ namespace Nui::Detail::Cef
                 if (range->suffixLength)
                 {
                     const auto length = std::min(*range->suffixLength, total);
-                    first = total - length;
-                    // CEF only skips ranges with a first byte, a suffix range is positioned here.
-                    if (file_)
-                        file_->seekg(static_cast<std::streamoff>(first));
-                    else if (memoryBody_)
-                        memoryOffset_ = static_cast<std::size_t>(first);
-                    else
-                        return;
                     if (length == 0u)
                     {
                         unsatisfiable(total);
                         return;
                     }
+                    first = total - length;
                 }
                 else
                 {
@@ -531,13 +567,25 @@ namespace Nui::Detail::Cef
                         last = std::min(*range->last, total - 1u);
                 }
 
+                // CEF only skips ranges with a first byte. Everything else, and every renamed range, is positioned here.
+                if (ownRange || range->suffixLength)
+                {
+                    if (reader_)
+                        pendingReaderSkip_ = first;
+                    else if (!skipBody(first))
+                    {
+                        statusCode_ = 500;
+                        return;
+                    }
+                }
+                else
+                    skipMovesBody_ = true;
+
                 statusCode_ = 206;
                 reasonPhrase_ = "Partial Content";
                 remaining_ = last - first + 1u;
                 responseLength_ = static_cast<int64_t>(*remaining_);
                 headers_.emplace("Content-Range", fmt::format("bytes {}-{}/{}", first, last, total));
-                if (!findHeader(headers_, "Accept-Ranges"))
-                    headers_.emplace("Accept-Ranges", "bytes");
             }
 
             void unsatisfiable(std::uint64_t total)
@@ -566,8 +614,10 @@ namespace Nui::Detail::Cef
             std::shared_ptr<std::string const> memoryBody_{};
             std::size_t memoryOffset_{0u};
             std::optional<std::uint64_t> remaining_{};
-            bool handlerRanged_{false};
+            std::uint64_t pendingReaderSkip_{0u};
+            bool skipMovesBody_{false};
             bool unsatisfiable_{false};
+            bool headOnly_{false};
             std::atomic<bool> canceled_{false};
 
             IMPLEMENT_REFCOUNTING(ResourceHandler);

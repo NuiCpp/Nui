@@ -4,13 +4,18 @@
 
 #include <fcntl.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <cerrno>
+#include <charconv>
 #include <cstring>
 #include <memory>
+#include <optional>
+#include <string_view>
 #include <system_error>
 #include <utility>
+#include <vector>
 
 namespace Nui::Detail::Cef
 {
@@ -32,22 +37,63 @@ namespace Nui::Detail::Cef
             return FileDescriptor{new int{::open(path.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0600)}};
         }
 
-        bool tryLock(int descriptor, int operation)
+        enum class LockResult
+        {
+            Locked,
+            Busy,
+            Failed,
+        };
+
+        LockResult tryLock(int descriptor, int operation)
         {
             while (true)
             {
                 if (::flock(descriptor, operation | LOCK_NB) == 0)
-                    return true;
+                    return LockResult::Locked;
+                if (errno == EWOULDBLOCK)
+                    return LockResult::Busy;
                 if (errno != EINTR)
-                    return false;
+                    return LockResult::Failed;
             }
         }
 
-        void lockBlocking(int descriptor, int operation)
+        bool lockBlocking(int descriptor, int operation)
         {
-            while (::flock(descriptor, operation) != 0 && errno == EINTR)
+            while (::flock(descriptor, operation) != 0)
             {
+                if (errno != EINTR)
+                    return false;
             }
+            return true;
+        }
+
+        /// The lock file may have been replaced (deleted by a cache cleaner) after it was opened, the lock is then
+        /// worthless.
+        bool lockedFileIsCurrent(int descriptor, std::filesystem::path const& path)
+        {
+            struct stat opened{};
+            struct stat current{};
+            return ::fstat(descriptor, &opened) == 0 && ::stat(path.c_str(), &current) == 0 &&
+                opened.st_ino == current.st_ino && opened.st_dev == current.st_dev;
+        }
+
+        std::optional<std::vector<int>> parseVersion(std::string_view text)
+        {
+            std::vector<int> parts;
+            while (!text.empty())
+            {
+                const auto dot = text.find('.');
+                const auto part = text.substr(0, dot);
+                int value = 0;
+                const auto [end, error] = std::from_chars(part.data(), part.data() + part.size(), value);
+                if (part.empty() || error != std::errc{} || end != part.data() + part.size())
+                    return std::nullopt;
+                parts.push_back(value);
+                text = dot == std::string_view::npos ? std::string_view{} : text.substr(dot + 1);
+            }
+            if (parts.empty())
+                return std::nullopt;
+            return parts;
         }
 
         std::string hostName()
@@ -58,24 +104,32 @@ namespace Nui::Detail::Cef
             return name;
         }
 
-        bool isSlotName(std::string const& name)
+        std::optional<int> slotNumber(std::string const& name)
         {
-            return !name.empty() && name.find_first_not_of("0123456789") == std::string::npos;
+            int value = 0;
+            const auto [end, error] = std::from_chars(name.data(), name.data() + name.size(), value);
+            if (name.empty() || error != std::errc{} || end != name.data() + name.size() || value < 0)
+                return std::nullopt;
+            return value;
         }
 
-        // Removes the directories of other CEF versions that no running process uses.
-        void pruneOtherVersions(std::filesystem::path const& root, std::string const& version)
+        // Removes the directories of older CEF versions that no running process uses.
+        void pruneOlderVersions(std::filesystem::path const& root, std::string const& version)
         {
+            const auto current = parseVersion(version);
             std::error_code error;
             for (auto const& entry : std::filesystem::directory_iterator{root, error})
             {
                 const auto name = entry.path().filename().string();
-                if (!entry.is_directory(error) || name == version)
+                const auto other = parseVersion(name);
+                if (!entry.is_directory(error) || !current || !other || !(*other < *current))
                     continue;
-                const auto lock = openLockFile(root / (name + ".lock"));
-                if (*lock < 0 || !tryLock(*lock, LOCK_EX))
+                const auto lockPath = root / (name + ".lock");
+                const auto lock = openLockFile(lockPath);
+                if (*lock < 0 || tryLock(*lock, LOCK_EX) != LockResult::Locked)
                     continue;
                 std::filesystem::remove_all(entry.path(), error);
+                std::filesystem::remove(lockPath, error);
             }
         }
     }
@@ -119,15 +173,27 @@ namespace Nui::Detail::Cef
             return std::nullopt;
         }
 
-        // A shared lock on the version marks the version directory as in use, it is never unlinked.
-        auto versionLock = openLockFile(root / (version + ".lock"));
-        if (*versionLock < 0)
+        // A shared lock on the version marks the version directory as in use. The pruner of an older version removes
+        // its lock file too, so the lock is only valid if the file still is the one that was locked.
+        const auto versionLockPath = root / (version + ".lock");
+        FileDescriptor versionLock{new int{-1}};
+        for (int attempt = 0; attempt != 8; ++attempt)
         {
-            error = fmt::format("Cannot open {}: {}", (root / (version + ".lock")).string(), std::strerror(errno));
-            return std::nullopt;
+            versionLock = openLockFile(versionLockPath);
+            if (*versionLock < 0)
+            {
+                error = fmt::format("Cannot open {}: {}", versionLockPath.string(), std::strerror(errno));
+                return std::nullopt;
+            }
+            if (!lockBlocking(*versionLock, LOCK_SH))
+            {
+                error = fmt::format("Cannot lock {}: {}", versionLockPath.string(), std::strerror(errno));
+                return std::nullopt;
+            }
+            if (lockedFileIsCurrent(*versionLock, versionLockPath))
+                break;
         }
-        lockBlocking(*versionLock, LOCK_SH);
-        pruneOtherVersions(root, version);
+        pruneOlderVersions(root, version);
 
         const auto hostDirectory = root / version / hostName();
         std::filesystem::create_directories(hostDirectory, filesystemError);
@@ -140,36 +206,48 @@ namespace Nui::Detail::Cef
         // Slot selection and pruning happen under one exclusive table lock, so no starting process opens a slot lock
         // while its directory is removed.
         const auto tableLock = openLockFile(hostDirectory / "slots.lock");
-        if (*tableLock < 0)
+        if (*tableLock < 0 || !lockBlocking(*tableLock, LOCK_EX))
         {
-            error = fmt::format("Cannot open the slot table lock: {}", std::strerror(errno));
+            error = fmt::format("Cannot lock the slot table in {}: {}", hostDirectory.string(), std::strerror(errno));
             return std::nullopt;
         }
-        lockBlocking(*tableLock, LOCK_EX);
 
+        constexpr int maximumSlots = 1024;
         std::optional<InstanceSlot> chosen;
         for (int slot = 0; !chosen; ++slot)
         {
-            const auto directory = hostDirectory / std::to_string(slot);
-            std::filesystem::create_directories(directory, filesystemError);
-            auto slotLock = openLockFile(directory / "nui.lock");
-            if (*slotLock < 0)
+            if (slot == maximumSlots)
             {
-                error = fmt::format("Cannot open {}: {}", (directory / "nui.lock").string(), std::strerror(errno));
+                error = fmt::format("All {} cache slots in {} are in use", maximumSlots, hostDirectory.string());
                 return std::nullopt;
             }
-            if (!tryLock(*slotLock, LOCK_EX))
+            const auto directory = hostDirectory / std::to_string(slot);
+            std::filesystem::create_directories(directory, filesystemError);
+            const auto lockPath = directory / "nui.lock";
+            auto slotLock = openLockFile(lockPath);
+            if (*slotLock < 0)
+            {
+                error = fmt::format("Cannot open {}: {}", lockPath.string(), std::strerror(errno));
+                return std::nullopt;
+            }
+            const auto result = tryLock(*slotLock, LOCK_EX);
+            if (result == LockResult::Failed)
+            {
+                error = fmt::format("Cannot lock {}: {}", lockPath.string(), std::strerror(errno));
+                return std::nullopt;
+            }
+            if (result == LockResult::Busy || !lockedFileIsCurrent(*slotLock, lockPath))
                 continue;
             chosen.emplace(InstanceSlot{directory, std::exchange(*slotLock, -1), std::exchange(*versionLock, -1)});
         }
 
         for (auto const& entry : std::filesystem::directory_iterator{hostDirectory, filesystemError})
         {
-            const auto name = entry.path().filename().string();
-            if (!isSlotName(name) || std::stoi(name) < persistentSlots || entry.path() == chosen->directory())
+            const auto number = slotNumber(entry.path().filename().string());
+            if (!number || *number < persistentSlots || entry.path() == chosen->directory())
                 continue;
             const auto slotLock = openLockFile(entry.path() / "nui.lock");
-            if (*slotLock < 0 || !tryLock(*slotLock, LOCK_EX))
+            if (*slotLock < 0 || tryLock(*slotLock, LOCK_EX) != LockResult::Locked)
                 continue;
             std::filesystem::remove_all(entry.path(), filesystemError);
         }
