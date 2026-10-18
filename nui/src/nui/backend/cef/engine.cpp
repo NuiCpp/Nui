@@ -34,6 +34,7 @@
 #    include <link.h>
 #endif
 #include <signal.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -286,6 +287,23 @@ namespace Nui::Detail::Cef
             std::vector<std::pair<int, struct sigaction>> actions_{};
             sigset_t mask_{};
         };
+
+        /// Chromium's process singleton listens on $TMPDIR/org.chromium.Chromium.XXXXXX/SingletonSocket and aborts when
+        /// that path does not fit into a socket address.
+        void shortenTemporaryDirectory()
+        {
+            auto const* temporary = std::getenv("TMPDIR");
+            if (temporary == nullptr || *temporary == '\0')
+                return;
+            std::string_view directory{temporary};
+            while (directory.size() > 1u && directory.back() == '/')
+                directory.remove_suffix(1);
+            constexpr auto socketSuffix = std::string_view{"/org.chromium.Chromium.XXXXXX/SingletonSocket"}.size();
+            if (directory.size() + socketSuffix < sizeof(sockaddr_un{}.sun_path))
+                return;
+            std::cerr << "Nui: TMPDIR is too long for Chromium's singleton socket, using /tmp" << std::endl;
+            ::setenv("TMPDIR", "/tmp", 1);
+        }
 
         struct CommandLineSettings
         {
@@ -773,6 +791,7 @@ namespace Nui::Detail::Cef
                         adjustBrowserCommandLine(commandLine, commandLineSettings);
                 });
 
+            shortenTemporaryDirectory();
             auto& arguments = processArguments(options.passProcessArguments);
             const CefMainArgs mainArgs{static_cast<int>(arguments.storage.size()), arguments.pointers.data()};
             const bool initialized = CefInitialize(mainArgs, settings, impl_->app, nullptr);
