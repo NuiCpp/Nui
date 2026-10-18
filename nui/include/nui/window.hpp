@@ -157,7 +157,10 @@ namespace Nui
         /// May open the dev tools?
         bool debug = false;
 
-        /// Custom schemes to register.
+        /// Custom schemes to register. The handlers belong to this window, other windows can serve the same scheme
+        /// names with their own handlers. On Windows all windows of a process share one WebView2 browser process, which
+        /// needs the same registrations (scheme names, allowedOrigins, treatAsSecure, hasAuthorityComponent) in each of
+        /// them, a window with different ones cannot be created.
         std::vector<CustomScheme> customSchemes = {};
 
         /// WINDOWS ONLY
