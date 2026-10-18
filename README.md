@@ -28,6 +28,11 @@ Not supported:
   - Mobile Platforms
   - BSD Systems
 
+### Browser engines
+Nui uses the platform webview by default: WebKitGTK on Linux, WKWebView on macOS and WebView2 on Windows.
+On Linux and macOS, `-DNUI_BROWSER_ENGINE=cef` switches to the Chromium Embedded Framework without code changes,
+see [The CEF browser engine](docs/cef_engine.md).
+
 ## Examples
 ### nui-sftp
 nui-sftp is a terminal emulator, file explorer and ssh & sftp client built using nui. It is my nui dogfooding project. It is a good example of a non-trivial application built with nui, and is available here:
