@@ -102,10 +102,21 @@ function(nui_cef_extract archive directory outRoot)
         message(STATUS "Extracting ${name}")
         set(temporary "${directory}/.extract-${stem}")
         file(REMOVE_RECURSE "${temporary}")
-        file(ARCHIVE_EXTRACT INPUT "${archive}" DESTINATION "${temporary}")
+        file(MAKE_DIRECTORY "${temporary}")
+        # In a child process, so a broken archive leaves no partly extracted tree behind.
+        execute_process(
+            COMMAND "${CMAKE_COMMAND}" -E tar xf "${archive}"
+            WORKING_DIRECTORY "${temporary}"
+            RESULT_VARIABLE result
+            ERROR_VARIABLE errors)
+        if (NOT result EQUAL 0)
+            file(REMOVE_RECURSE "${temporary}")
+            message(FATAL_ERROR "Extracting ${archive} failed: ${errors}")
+        endif()
         file(GLOB extracted LIST_DIRECTORIES true "${temporary}/*")
         list(LENGTH extracted count)
         if (NOT count EQUAL 1)
+            file(REMOVE_RECURSE "${temporary}")
             message(FATAL_ERROR "Unexpected layout of ${archive}")
         endif()
         file(REMOVE_RECURSE "${root}")

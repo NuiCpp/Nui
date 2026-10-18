@@ -16,6 +16,13 @@ function(nui_configure_application)
     if (NOT NUI_APP_TARGET)
         message(FATAL_ERROR "nui_configure_application: TARGET is required")
     endif()
+    # Arguments after RESOURCES all count as resources, which may also be generated later. A missing one written like
+    # a keyword is a misspelled keyword.
+    foreach (resource ${NUI_APP_RESOURCES})
+        if (resource MATCHES "^[A-Z][A-Z0-9_]*$" AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${resource}")
+            message(FATAL_ERROR "nui_configure_application: unknown argument ${resource} (resource does not exist)")
+        endif()
+    endforeach()
     set(target ${NUI_APP_TARGET})
     if (NOT NUI_APP_NAME)
         set(NUI_APP_NAME ${target})
