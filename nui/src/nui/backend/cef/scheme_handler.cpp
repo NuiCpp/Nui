@@ -424,7 +424,12 @@ namespace Nui::Detail::Cef
                     return ERR_ABORTED;
                 try
                 {
-                    return static_cast<int>(std::min(reader_(buffer, size), size));
+                    const auto count = reader_(buffer, size);
+                    if (count <= size)
+                        return static_cast<int>(count);
+                    std::cerr << "Nui: bodyReader of a custom scheme returned " << count << " bytes for a buffer of "
+                              << size << std::endl;
+                    return ERR_FAILED;
                 }
                 catch (std::exception const& exception)
                 {
@@ -509,6 +514,8 @@ namespace Nui::Detail::Cef
                     reader_ = std::move(response.bodyReader);
                     if (const auto length = findHeader(response.headers, "Content-Length"))
                         totalSize = parseNumber(*length);
+                    // The body ends at the declared length, whatever the reader would deliver.
+                    remaining_ = totalSize;
                 }
                 else if (!file_)
                 {

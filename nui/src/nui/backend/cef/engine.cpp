@@ -483,7 +483,9 @@ namespace Nui::Detail::Cef
                     readers.changed.wait(lock, [&readers]() {
                         return readers.completing == 0;
                     });
-                    abandoned = true;
+                    // The last reader may have finished while it handed its result to CEF.
+                    abandoned = readers.pending != 0;
+                    readers.abandoned = abandoned;
                 }
             }
             if (!pool)
