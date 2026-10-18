@@ -3,7 +3,8 @@
 #
 # Application properties of a Nui executable. With the CEF engine on macOS it turns the executable into an app bundle
 # with the CEF framework and the helper apps, which CEF needs to run, also in the build tree. Call it in the directory
-# that defines the target. Otherwise it only records the properties.
+# that defines the target. Otherwise it only records the properties. RESOURCES are paths, relative ones to the source
+# directory or, for generated files, the binary directory.
 
 set(NUI_CODESIGN_IDENTITY "-" CACHE STRING "macOS: identity for codesign while installing, - signs ad hoc")
 option(NUI_CODESIGN_HARDENED_RUNTIME "macOS: sign with the hardened runtime (needed for notarization)" OFF)
@@ -20,6 +21,9 @@ function(nui_configure_application)
     # Arguments after RESOURCES all count as resources, so a missing one written like a keyword is a misspelled keyword.
     set(resources "")
     foreach (resource ${NUI_APP_RESOURCES})
+        if (resource MATCHES "\\$<")
+            message(FATAL_ERROR "nui_configure_application: RESOURCES takes paths, not generator expressions: ${resource}")
+        endif()
         if (NOT IS_ABSOLUTE "${resource}")
             if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${resource}")
                 set(resource "${CMAKE_CURRENT_SOURCE_DIR}/${resource}")

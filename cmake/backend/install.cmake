@@ -126,7 +126,7 @@ function(nui_install)
         if (NUI_CEF_IS_SYSTEM)
             set(source "${CMAKE_BINARY_DIR}/nui-install/${target}_helper_path.cpp")
             file(GENERATE OUTPUT "${source}"
-                CONTENT "extern \"C\" char const nuiCefHelperRelativePath[] = \"${engineRelative}/nui-cef-helper\";\n")
+                CONTENT "extern \"C\" char const nuiCefHelperRelativePath[] = R\"nui(${engineRelative}/nui-cef-helper)nui\";\n")
             target_sources(${target} PRIVATE "${source}")
         endif()
     endforeach()

@@ -113,6 +113,7 @@ function(nui_cef_extract archive directory outRoot)
             file(REMOVE_RECURSE "${temporary}")
             # The first line is the reason, the child adds its own "CMake Error" lines after it.
             string(REGEX MATCH "^[^\n]*" reason "${errors}")
+            string(REGEX REPLACE "^CMake Error: " "" reason "${reason}")
             message(FATAL_ERROR "Extracting ${archive} failed: ${reason}")
         endif()
         file(GLOB extracted LIST_DIRECTORIES true "${temporary}/*")
