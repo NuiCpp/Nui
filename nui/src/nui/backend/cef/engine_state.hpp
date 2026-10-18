@@ -4,8 +4,6 @@
 
 #include <nui/engine.hpp>
 
-#include <boost/asio/thread_pool.hpp>
-
 #include <functional>
 #include <memory>
 #include <optional>
@@ -89,8 +87,18 @@ namespace Nui::Detail::Cef
         /// Any thread. True on the UI thread of a started engine, or on the main thread before the start.
         bool onUiThread() const;
 
-        /// Any thread. Runs a custom scheme body reader call on the reader pool.
-        void postReader(std::function<void()> function);
+        /**
+         * @brief Any thread. Runs a custom scheme body reader call on the reader pool.
+         *
+         * @param work Calls the application's reader, may block. Returns a byte count or a net error.
+         * @param complete Hands the result of work to CEF. Not called for readers that only return after CefShutdown,
+         * its CEF objects are leaked then.
+         * @return False when the pool is gone (the engine shuts down), neither function runs then.
+         */
+        bool postReader(std::function<int()> work, std::function<void(int)> complete);
+
+        /// Any thread. True when the shutdown stopped waiting for body readers that still block.
+        bool readersAbandoned() const;
 
         std::optional<int> remoteDebuggingPort() const;
         std::string const& desktopApplicationId() const;

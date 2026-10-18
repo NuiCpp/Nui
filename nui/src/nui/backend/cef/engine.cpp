@@ -367,9 +367,16 @@ namespace Nui::Detail::Cef
             // override keeps it from downloading.
             if (!settings.emptyManifestFile.empty() && !commandLine->HasSwitch("optimization-guide-manifest-override"))
                 commandLine->AppendSwitchWithValue("optimization-guide-manifest-override", settings.emptyManifestFile);
-            // Account lookups go to a host that does not exist instead of accounts.google.com.
+            // Account lookups go to a host that never resolves instead of accounts.google.com. *.localhost alone would
+            // reach local services on port 443, a port in the URL makes Chromium log an error on every start.
             if (!commandLine->HasSwitch("gaia-url"))
+            {
                 commandLine->AppendSwitchWithValue("gaia-url", "https://gaia.localhost/");
+                auto rules = commandLine->GetSwitchValue("host-resolver-rules").ToString();
+                rules += rules.empty() ? "MAP gaia.localhost ~NOTFOUND" : ", MAP gaia.localhost ~NOTFOUND";
+                commandLine->RemoveSwitch("host-resolver-rules");
+                commandLine->AppendSwitchWithValue("host-resolver-rules", rules);
+            }
 
             if (settings.disableSandbox)
                 commandLine->AppendSwitch("no-sandbox");
@@ -416,8 +423,10 @@ namespace Nui::Detail::Cef
 
             void OnBeforeChildProcessLaunch(CefRefPtr<CefCommandLine> commandLine) override
             {
-                // Helpers are separate executables, they get the scheme names from here.
+                // Helpers are separate executables, they get the scheme names from here. A renderer started for a cross
+                // site setHtml navigation learns the authorities known by then the same way.
                 commandLine->AppendSwitchWithValue(customSchemesSwitch, joinList(customSchemes_, ','));
+                commandLine->AppendSwitchWithValue(appHostsSwitch, joinList(EngineState::instance().htmlAuthorities(), ','));
             }
 
             bool OnAlreadyRunningAppRelaunch(CefRefPtr<CefCommandLine>, CefString const&) override
@@ -431,6 +440,59 @@ namespace Nui::Detail::Cef
             std::vector<std::string> customSchemes_;
             IMPLEMENT_REFCOUNTING(BrowserProcess);
         };
+
+        /**
+         * @brief The body reader pool and its bookkeeping. Every reader task shares it, so a reader that returns after
+         * the shutdown (or after static destruction) still finds it.
+         */
+        struct ReaderControl
+        {
+            std::mutex mutex{};
+            std::condition_variable changed{};
+            std::unique_ptr<boost::asio::thread_pool> pool{};
+            /// Posted tasks that did not finish yet.
+            int pending{0};
+            /// Tasks handing their result to CEF right now.
+            int completing{0};
+            bool stopping{false};
+            bool abandoned{false};
+        };
+
+        /**
+         * @brief Lets queued reader tasks finish without calling the application and waits up to 5 s for running
+         * readers. Readers that still block then are left behind with the pool.
+         */
+        void stopReaders(ReaderControl& readers)
+        {
+            std::unique_ptr<boost::asio::thread_pool> pool;
+            bool abandoned = false;
+            {
+                std::unique_lock lock{readers.mutex};
+                pool = std::move(readers.pool);
+                readers.stopping = true;
+                const bool idle = readers.changed.wait_for(lock, std::chrono::seconds{5}, [&readers]() {
+                    return readers.pending == 0;
+                });
+                if (!idle)
+                {
+                    readers.abandoned = true;
+                    readers.changed.wait(lock, [&readers]() {
+                        return readers.completing == 0;
+                    });
+                    abandoned = true;
+                }
+            }
+            if (!pool)
+                return;
+            if (!abandoned)
+            {
+                pool->join();
+                return;
+            }
+            std::cerr << "Nui: custom scheme body readers still block at shutdown, leaving them behind" << std::endl;
+            pool->stop();
+            static_cast<void>(pool.release());
+        }
 
         enum class Phase
         {
@@ -473,10 +535,7 @@ namespace Nui::Detail::Cef
 
         std::optional<InstanceSlot> slot{};
         std::string desktopApplicationId{};
-        std::unique_ptr<boost::asio::thread_pool> readerPool{};
-        std::mutex readerMutex{};
-        std::condition_variable readersDone{};
-        int runningReaders{0};
+        std::shared_ptr<ReaderControl> readers{std::make_shared<ReaderControl>()};
         std::optional<int> remoteDebuggingPort{};
         CefRefPtr<CefApp> app{};
     };
@@ -567,15 +626,13 @@ namespace Nui::Detail::Cef
     //---------------------------------------------------------------------------------------------------------------------
     void EngineState::ensureHtmlAuthority(std::string const& authority)
     {
-        bool registerNow = false;
-        {
-            std::scoped_lock lock{impl_->mutex};
-            if (!impl_->htmlAuthorities.insert(authority).second)
-                return;
-            registerNow = impl_->phase == Phase::Started || impl_->phase == Phase::Running;
-        }
-        if (registerNow)
-            CefRegisterSchemeHandlerFactory("https", authority, new HtmlHandlerFactory());
+        CefRefPtr<CefSchemeHandlerFactory> factory = new HtmlHandlerFactory();
+        std::scoped_lock lock{impl_->mutex};
+        if (!impl_->htmlAuthorities.insert(authority).second)
+            return;
+        // Registered while the lock keeps shutdown() from running CefShutdown concurrently.
+        if (impl_->phase == Phase::Started || impl_->phase == Phase::Running)
+            CefRegisterSchemeHandlerFactory("https", authority, factory);
     }
     //---------------------------------------------------------------------------------------------------------------------
     bool EngineState::started() const
@@ -623,6 +680,12 @@ namespace Nui::Detail::Cef
                         loadedCefVersion(),
                         CEF_API_VERSION));
             }
+
+            // Before the sandbox probe, whose child process cannot be waited for either then.
+            const SignalSnapshot signals;
+            if (signals.childSignalReapsAutomatically())
+                throw std::runtime_error(
+                    "Nui: SIGCHLD is ignored or has SA_NOCLDWAIT, Chromium cannot track its child processes then");
 
             EngineOptions options;
             std::vector<std::string> customSchemes;
@@ -701,11 +764,6 @@ namespace Nui::Detail::Cef
                         adjustBrowserCommandLine(commandLine, commandLineSettings);
                 });
 
-            const SignalSnapshot signals;
-            if (signals.childSignalReapsAutomatically())
-                throw std::runtime_error(
-                    "Nui: SIGCHLD is ignored or has SA_NOCLDWAIT, Chromium cannot track its child processes then");
-
             auto& arguments = processArguments(options.passProcessArguments);
             const CefMainArgs mainArgs{static_cast<int>(arguments.storage.size()), arguments.pointers.data()};
             const bool initialized = CefInitialize(mainArgs, settings, impl_->app, nullptr);
@@ -725,6 +783,11 @@ namespace Nui::Detail::Cef
             for (auto const& authority : htmlAuthorities)
                 CefRegisterSchemeHandlerFactory("https", authority, new HtmlHandlerFactory());
 
+            {
+                std::scoped_lock lock{impl_->readers->mutex};
+                impl_->readers->pool = std::make_unique<boost::asio::thread_pool>(
+                    std::clamp(std::thread::hardware_concurrency() / 2u, 4u, 16u));
+            }
             std::vector<std::function<void()>> preStartTasks;
             {
                 std::scoped_lock lock{impl_->mutex};
@@ -732,8 +795,6 @@ namespace Nui::Detail::Cef
 #ifndef __APPLE__
                 impl_->desktopApplicationId = desktopIdentity(options);
 #endif
-                impl_->readerPool = std::make_unique<boost::asio::thread_pool>(
-                    std::clamp(std::thread::hardware_concurrency() / 2u, 4u, 16u));
                 impl_->remoteDebuggingPort = remoteDebuggingPort;
                 impl_->uiThread = std::this_thread::get_id();
                 impl_->phase = Phase::Started;
@@ -792,24 +853,8 @@ namespace Nui::Detail::Cef
     //---------------------------------------------------------------------------------------------------------------------
     void EngineState::shutdown()
     {
-        if (impl_->readerPool)
-        {
-            // Body readers are application code that may block. Their pending tasks hold CEF objects, so they are
-            // either finished and destroyed before CefShutdown, or the pool is left behind with them.
-            impl_->readerPool->stop();
-            std::unique_lock lock{impl_->readerMutex};
-            const bool finished = impl_->readersDone.wait_for(lock, std::chrono::seconds{5}, [this]() {
-                return impl_->runningReaders == 0;
-            });
-            lock.unlock();
-            if (finished)
-                impl_->readerPool->join();
-            else
-            {
-                std::cerr << "Nui: custom scheme body readers still run at shutdown, leaving them behind" << std::endl;
-                static_cast<void>(impl_->readerPool.release());
-            }
-        }
+        // Reader tasks hold CEF objects, they finish before CefShutdown or never touch CEF again.
+        stopReaders(*impl_->readers);
         {
             std::scoped_lock lock{impl_->mutex};
             impl_->browsers.clear();
@@ -969,18 +1014,45 @@ namespace Nui::Detail::Cef
         return isMainThread();
     }
     //---------------------------------------------------------------------------------------------------------------------
-    void EngineState::postReader(std::function<void()> function)
+    bool EngineState::postReader(std::function<int()> work, std::function<void(int)> complete)
     {
-        {
-            std::scoped_lock lock{impl_->readerMutex};
-            ++impl_->runningReaders;
-        }
-        boost::asio::post(*impl_->readerPool, [this, function = std::move(function)]() {
-            function();
-            std::scoped_lock lock{impl_->readerMutex};
-            if (--impl_->runningReaders == 0)
-                impl_->readersDone.notify_all();
+        auto readers = impl_->readers;
+        std::scoped_lock postLock{readers->mutex};
+        if (!readers->pool)
+            return false;
+        ++readers->pending;
+        boost::asio::post(*readers->pool, [readers, work = std::move(work), complete = std::move(complete)]() mutable {
+            bool stopping = false;
+            {
+                std::scoped_lock lock{readers->mutex};
+                stopping = readers->stopping;
+            }
+            // Tasks that start during the shutdown do not call the application anymore.
+            const int result = stopping ? static_cast<int>(ERR_ABORTED) : work();
+            {
+                std::scoped_lock lock{readers->mutex};
+                if (readers->abandoned)
+                {
+                    // CefShutdown ran or runs, its objects must neither be used nor released anymore.
+                    static_cast<void>(new std::function<void(int)>(std::move(complete)));
+                    return;
+                }
+                ++readers->completing;
+            }
+            complete(result);
+            complete = nullptr;
+            std::scoped_lock lock{readers->mutex};
+            --readers->completing;
+            --readers->pending;
+            readers->changed.notify_all();
         });
+        return true;
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    bool EngineState::readersAbandoned() const
+    {
+        std::scoped_lock lock{impl_->readers->mutex};
+        return impl_->readers->abandoned;
     }
     //---------------------------------------------------------------------------------------------------------------------
     std::optional<int> EngineState::remoteDebuggingPort() const

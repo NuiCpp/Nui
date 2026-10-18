@@ -14,9 +14,12 @@ namespace Nui::Detail::Cef
     int customSchemeOptions();
 
     /**
-     * @brief Reads the scheme names the browser process passed with --nui-custom-schemes.
+     * @brief Reads a comma separated list the browser process passed to a child process, without duplicates.
+     *
+     * @param commandLine Command line of the child process.
+     * @param switchName customSchemesSwitch or appHostsSwitch.
      */
-    std::vector<std::string> customSchemesFromCommandLine(CefRefPtr<CefCommandLine> const& commandLine);
+    std::vector<std::string> listFromCommandLine(CefRefPtr<CefCommandLine> const& commandLine, char const* switchName);
 
     /**
      * @brief The CefApp of the browser process and of the helper processes.

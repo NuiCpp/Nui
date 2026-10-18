@@ -83,6 +83,16 @@ namespace Nui
             return file;
         }
 
+        CustomSchemeResponse textResponse(int statusCode, std::string body)
+        {
+            return CustomSchemeResponse{
+                .statusCode = statusCode,
+                .reasonPhrase = statusCode == 404 ? "Not Found" : "Internal Server Error",
+                .headers = {{"Content-Type", "text/plain; charset=utf-8"}},
+                .body = std::move(body),
+            };
+        }
+
         CustomScheme folderMappingScheme(std::string scheme, std::weak_ptr<Detail::Cef::WindowShared> weakShared)
         {
             using namespace std::string_literals;
@@ -93,10 +103,10 @@ namespace Nui
                     [weakShared](CustomSchemeRequest const& request) {
                         const auto shared = weakShared.lock();
                         if (!shared)
-                            return CustomSchemeResponse{.statusCode = 404, .body = "Window is closed"};
+                            return textResponse(404, "Window is closed");
                         CefURLParts parts;
                         if (!CefParseURL(request.uri, parts))
-                            return CustomSchemeResponse{.statusCode = 500, .body = "Could not parse url"};
+                            return textResponse(500, "Could not parse url");
                         const auto host = CefString(&parts.host).ToString();
                         std::optional<std::filesystem::path> folder;
                         {
@@ -105,11 +115,11 @@ namespace Nui
                                 folder = iter->second;
                         }
                         if (!folder)
-                            return CustomSchemeResponse{.statusCode = 404, .body = "Host name not found for mapping"};
+                            return textResponse(404, "Host name not found for mapping");
                         const auto file = mappedFile(*folder, CefString(&parts.path).ToString());
                         std::error_code error;
                         if (!file || !std::filesystem::is_regular_file(*file, error))
-                            return CustomSchemeResponse{.statusCode = 404, .reasonPhrase = "Not Found", .body = "File not found"};
+                            return textResponse(404, "File not found");
                         const auto mime = Detail::mimeTypeOfExtension(file->extension().string());
                         return CustomSchemeResponse{
                             .statusCode = 200,
@@ -531,6 +541,8 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::Implementation::addScript(std::string script)
     {
+        if (script.empty())
+            return;
         bool sendNow = false;
         {
             std::scoped_lock lock{mutex};
@@ -682,9 +694,12 @@ namespace Nui
             }
         }
 
-        // Engine threads may still be inside a scheme handler or a message callback of this window.
+        // Engine threads may still be inside a scheme handler or a message callback of this window. Body readers the
+        // shutdown already gave up on are not waited for again.
         const auto ownEntries = Detail::Cef::GateEntry::heldByCurrentThread(impl->shared->gate);
-        if (!impl->shared->gate.closeAndWait(std::chrono::seconds{5}, ownEntries))
+        const bool abandoned = engine.readersAbandoned();
+        const auto timeout = abandoned ? std::chrono::milliseconds{0} : std::chrono::milliseconds{5000};
+        if (!impl->shared->gate.closeAndWait(timeout, ownEntries) && !abandoned)
             std::cerr << "Nui: window destroyed while engine calls into it did not finish" << std::endl;
     }
     //---------------------------------------------------------------------------------------------------------------------
@@ -897,6 +912,8 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::eval(std::string const& js)
     {
+        if (js.empty())
+            return;
         impl_->send([&js]() {
             return Detail::Cef::makeTextMessage(Detail::Cef::evalMessageName, js);
         });

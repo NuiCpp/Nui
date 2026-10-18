@@ -14,24 +14,24 @@ namespace Nui::Detail::Cef
             CEF_SCHEME_OPTION_FETCH_ENABLED;
     }
     //---------------------------------------------------------------------------------------------------------------------
-    std::vector<std::string> customSchemesFromCommandLine(CefRefPtr<CefCommandLine> const& commandLine)
+    std::vector<std::string> listFromCommandLine(CefRefPtr<CefCommandLine> const& commandLine, char const* switchName)
     {
-        std::vector<std::string> schemes;
-        if (!commandLine || !commandLine->HasSwitch(customSchemesSwitch))
-            return schemes;
-        const auto value = commandLine->GetSwitchValue(customSchemesSwitch).ToString();
+        std::vector<std::string> items;
+        if (!commandLine || !commandLine->HasSwitch(switchName))
+            return items;
+        const auto value = commandLine->GetSwitchValue(switchName).ToString();
         std::string_view rest{value};
         while (!rest.empty())
         {
             const auto comma = rest.find(',');
-            const auto scheme = rest.substr(0, comma);
-            if (!scheme.empty() && std::ranges::find(schemes, scheme) == schemes.end())
-                schemes.emplace_back(scheme);
+            const auto item = rest.substr(0, comma);
+            if (!item.empty() && std::ranges::find(items, item) == items.end())
+                items.emplace_back(item);
             if (comma == std::string_view::npos)
                 break;
             rest.remove_prefix(comma + 1);
         }
-        return schemes;
+        return items;
     }
     //---------------------------------------------------------------------------------------------------------------------
     App::App(

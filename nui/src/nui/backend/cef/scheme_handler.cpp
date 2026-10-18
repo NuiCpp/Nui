@@ -17,6 +17,7 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -131,6 +132,7 @@ namespace Nui::Detail::Cef
         {
           public:
             explicit RequestBody(CefRefPtr<CefRequest> const& request)
+                : url_{request->GetURL().ToString()}
             {
                 const auto postData = request->GetPostData();
                 if (!postData)
@@ -157,11 +159,6 @@ namespace Nui::Detail::Cef
                             break;
                     }
                 }
-            }
-
-            bool unsupported() const
-            {
-                return unsupported_;
             }
 
             std::string const& content()
@@ -213,18 +210,26 @@ namespace Nui::Detail::Cef
             }
 
           private:
-            void throwIfUnsupported() const
+            void throwIfUnsupported()
             {
-                if (unsupported_)
-                    throw std::runtime_error("Unsupported request body, CEF does not pass Blob or stream bodies to custom schemes");
+                if (!unsupported_)
+                    return;
+                if (!std::exchange(loggedUnsupported_, true))
+                {
+                    std::cerr << "Nui: the handler for " << url_
+                              << " reads a request body CEF does not pass to custom schemes (Blob or stream)" << std::endl;
+                }
+                throw std::runtime_error("Unsupported request body, CEF does not pass Blob or stream bodies to custom schemes");
             }
 
+            std::string url_;
             std::vector<std::variant<std::string, std::filesystem::path>> parts_{};
             std::optional<std::string> content_{};
             std::size_t partIndex_{0u};
             std::size_t partOffset_{0u};
             std::optional<std::ifstream> file_{};
             bool unsupported_{false};
+            bool loggedUnsupported_{false};
         };
 
         CustomSchemeResponse errorResponse(int statusCode, std::string body)
@@ -278,6 +283,13 @@ namespace Nui::Detail::Cef
                 CefResponse::HeaderMap headerMap;
                 for (auto const& [key, value] : headers_)
                     headerMap.emplace(key, value);
+                // CEF drops the mime type, charset and length of error responses, the plain headers arrive.
+                if (statusCode_ >= 400)
+                {
+                    headerMap.emplace("Content-Type", charset_.empty() ? mimeType_ : mimeType_ + "; charset=" + charset_);
+                    if (responseLength_ >= 0)
+                        headerMap.emplace("Content-Length", std::to_string(responseLength_));
+                }
                 response->SetHeaderMap(headerMap);
                 responseLength = responseLength_;
             }
@@ -288,6 +300,12 @@ namespace Nui::Detail::Cef
                 // Nui turned into a 206 here starts at that offset, every other body is served from its start.
                 if (!skipMovesBody_)
                 {
+                    bytesSkipped = bytesToSkip;
+                    return true;
+                }
+                if (reader_)
+                {
+                    pendingReaderSkip_ += static_cast<std::uint64_t>(bytesToSkip);
                     bytesSkipped = bytesToSkip;
                     return true;
                 }
@@ -315,24 +333,28 @@ namespace Nui::Detail::Cef
 
                 if (reader_)
                 {
-                    bytesRead = 0;
-                    EngineState::instance().postReader(
-                        [self = CefRefPtr<ResourceHandler>{this}, destination, capacity, callback]() {
-                            if (self->pendingReaderSkip_ != 0u)
+                    // The application's reader fills a buffer of the handler: a reader the shutdown gave up on may
+                    // return after CEF freed its own buffer.
+                    if (readerBuffer_.size() < capacity)
+                        readerBuffer_.resize(capacity);
+                    const bool posted = EngineState::instance().postReader(
+                        [self = CefRefPtr<ResourceHandler>{this}, capacity]() {
+                            if (self->pendingReaderSkip_ != 0u &&
+                                !self->skipBody(std::exchange(self->pendingReaderSkip_, 0u)))
+                                return static_cast<int>(ERR_FAILED);
+                            return self->callReader(self->readerBuffer_.data(), capacity);
+                        },
+                        [self = CefRefPtr<ResourceHandler>{this}, destination, callback](int read) {
+                            if (read > 0)
                             {
-                                const auto skip = std::exchange(self->pendingReaderSkip_, 0u);
-                                if (!self->skipBody(skip))
-                                {
-                                    callback->Continue(ERR_FAILED);
-                                    return;
-                                }
+                                std::memcpy(destination, self->readerBuffer_.data(), static_cast<std::size_t>(read));
+                                if (self->remaining_)
+                                    *self->remaining_ -= static_cast<std::uint64_t>(read);
                             }
-                            const auto read = self->callReader(destination, capacity);
-                            if (read > 0 && self->remaining_)
-                                *self->remaining_ -= static_cast<std::uint64_t>(read);
                             callback->Continue(read);
                         });
-                    return true;
+                    bytesRead = posted ? 0 : static_cast<int>(ERR_ABORTED);
+                    return posted;
                 }
 
                 std::size_t count = 0u;
@@ -402,7 +424,7 @@ namespace Nui::Detail::Cef
                     return ERR_ABORTED;
                 try
                 {
-                    return static_cast<int>(reader_(buffer, size));
+                    return static_cast<int>(std::min(reader_(buffer, size), size));
                 }
                 catch (std::exception const& exception)
                 {
@@ -432,11 +454,6 @@ namespace Nui::Detail::Cef
                 }
 
                 auto body = std::make_shared<RequestBody>(request);
-                if (body->unsupported())
-                {
-                    std::cerr << "Nui: request to " << request->GetURL().ToString()
-                              << " has a body type CEF does not pass to custom schemes (Blob or stream)" << std::endl;
-                }
 
                 CustomSchemeRequest customRequest{
                     .scheme = scheme_->scheme,
@@ -611,6 +628,7 @@ namespace Nui::Detail::Cef
 
             std::optional<std::ifstream> file_{};
             std::function<std::size_t(char*, std::size_t)> reader_{};
+            std::vector<char> readerBuffer_{};
             std::shared_ptr<std::string const> memoryBody_{};
             std::size_t memoryOffset_{0u};
             std::optional<std::uint64_t> remaining_{};

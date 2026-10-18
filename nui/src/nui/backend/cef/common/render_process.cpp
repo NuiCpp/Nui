@@ -95,6 +95,9 @@ namespace Nui::Detail::Cef
 
         void evaluate(CefRefPtr<CefV8Context> const& context, std::string const& script, char const* origin)
         {
+            // CEF rejects empty code.
+            if (script.empty())
+                return;
             CefRefPtr<CefV8Value> result;
             CefRefPtr<CefV8Exception> exception;
             if (!context->Eval(script, origin, 1, result, exception) && exception)
@@ -104,6 +107,10 @@ namespace Nui::Detail::Cef
             }
         }
     }
+    //---------------------------------------------------------------------------------------------------------------------
+    RenderProcess::RenderProcess(std::vector<std::string> processAppHosts)
+        : processAppHosts_{std::move(processAppHosts)}
+    {}
     //---------------------------------------------------------------------------------------------------------------------
     void RenderProcess::OnBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extraInfo)
     {
@@ -115,6 +122,13 @@ namespace Nui::Detail::Cef
         state.initScripts = stringList(extraInfo, initScriptsKey);
         state.appSchemes = stringList(extraInfo, appSchemesKey);
         state.appHosts = stringList(extraInfo, appHostsKey);
+        // A cross site setHtml navigation to an authority added after the browser was created lands in a new process,
+        // which only knows it from its command line.
+        for (auto const& host : processAppHosts_)
+        {
+            if (std::ranges::find(state.appHosts, host) == state.appHosts.end())
+                state.appHosts.push_back(host);
+        }
     }
     //---------------------------------------------------------------------------------------------------------------------
     void RenderProcess::OnBrowserDestroyed(CefRefPtr<CefBrowser> browser)
@@ -182,7 +196,8 @@ namespace Nui::Detail::Cef
     {
         if (name == evalMessageName)
         {
-            frame->ExecuteJavaScript(toCefString(payload), frame->GetURL(), 0);
+            if (!payload.empty())
+                frame->ExecuteJavaScript(toCefString(payload), frame->GetURL(), 0);
             return;
         }
         if (name != callMessageName)
@@ -234,6 +249,8 @@ namespace Nui::Detail::Cef
             }
             if (name == addInitScriptMessageName)
             {
+                if (payload.empty())
+                    return;
                 state.initScripts.emplace_back(payload);
                 if (state.contextReady && frame)
                 {

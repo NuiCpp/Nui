@@ -73,13 +73,13 @@ DevTools port when a window has `debug` enabled.
   example while only native (non browser) windows are open.
 - **`terminate()`** closes its window. The loop ends when it was the last one.
 - **`setHtml`** serves the page at `https://app.example/index.html` (the `windowsServeThroughAuthority` argument), the
-  same origin as WebView2. The native WebKit engines show it as `about:blank`. Keep one authority per window: a new
-  authority after the window exists only works while the page stays in the same renderer process.
+  same origin as WebView2. The native WebKit engines show it as `about:blank`.
 - **Custom scheme handlers** run on the UI thread, one request at a time, like on the native engines.
   `CustomScheme::handlerThread = SchemeHandlerThread::Any` runs them on worker threads in parallel. Range requests are
   answered automatically (206 with `Content-Range`, 416, `Accept-Ranges`) for `bodyFile`, `body` and `bodyReader`
   with a `Content-Length`; HEAD requests get the headers only. `bodyReader` calls run on a shared pool of 4 to 16
-  threads and should not block for long. Request bodies of type Blob or stream do not reach custom schemes: reading
+  threads and should not block for long: after the last window closed Nui waits at most 5 s for them, then leaves them
+  behind. Request bodies of type Blob or stream do not reach custom schemes: reading
   them in the handler (`getContent`, `readContent`) throws, which answers 500.
 - **Custom scheme names** must be known when the engine starts. Windows constructed before `run()` register theirs; a
   window created later with a new name throws, add the name to `EngineOptions::customSchemes`.
@@ -91,7 +91,9 @@ DevTools port when a window has `debug` enabled.
 - **Popups** (`target=_blank`, `window.open`) are blocked, like on the native engines without a handler.
 - **Context menu, drag and drop, keyboard, permissions, navigation:** CEF handler objects can be passed with
   `Nui::Cef::setClientHooks(window, {...})` before the browser is created. Without a permission handler the app's own
-  pages get clipboard access and everything else is denied.
+  pages get clipboard access and everything else is denied. With a request handler, Range requests to the app's own
+  origins reach Nui's scheme handlers with the header renamed to `X-Nui-Range` after the handler's
+  `OnBeforeResourceLoad`, so Nui still answers them.
 - **`runInJavascriptThread`** runs inline on the UI thread and is posted otherwise (WebKitGTK ran it inline on every
   thread).
 - **`configureWebKitGtkRendering`** does nothing.
@@ -107,7 +109,8 @@ process, RPC functions and scheme handlers.
 
 Chromium allows one process per cache directory and hands later launches to the first one. Nui gives every process its
 own cache slot instead (`<cache>/<applicationId>/cef/<version>/<host>/<n>`, locked with `flock`), so two launches of
-one binary, a debug next to a release build, or parallel tests are independent. Slots 0 to 3 are kept for their GPU
+one binary, a debug next to a release build, or parallel tests are independent. A slot whose Chromium lock names a
+running process stays in use, also when a cache cleaner deleted Nui's lock file. Slots 0 to 3 are kept for their GPU
 caches, higher ones and the directories of older CEF versions are removed when nobody uses them. The profile itself is
 in memory (incognito): pages keep no storage.
 
@@ -170,7 +173,8 @@ forking worker processes) runs once.
 
 Chromium contacts Google services on its own. Nui turns this off: component updates, background networking, network
 time, AI mode checks, search preconnects, the optimization guide model manifest (an empty manifest override in the
-cache slot), account lookups (`--gaia-url` points to `gaia.localhost`), spell checking and network prediction, which
+cache slot), account lookups (`--gaia-url` points to `gaia.localhost`, which a `--host-resolver-rules` entry keeps
+from resolving), spell checking and network prediction, which
 would also look up the `setHtml` authority in DNS. With a fresh cache the app makes no request to the internet.
 `browserArguments` can turn single features back on.
 

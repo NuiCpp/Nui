@@ -27,6 +27,8 @@ namespace Nui::Detail::Cef
 
     // Child process switch with the comma separated custom scheme names.
     inline constexpr char const* customSchemesSwitch = "nui-custom-schemes";
+    // Child process switch with the comma separated setHtml authorities known when the process started.
+    inline constexpr char const* appHostsSwitch = "nui-app-hosts";
 
     // Payloads from this size on travel in shared memory instead of the message's argument list. A shared memory
     // message costs about 45 microseconds more and only pays off from about 1 MiB (measured with CEF 154).

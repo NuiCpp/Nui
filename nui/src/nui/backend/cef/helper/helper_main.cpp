@@ -1,4 +1,5 @@
 #include "../common/app.hpp"
+#include "../common/messages.hpp"
 #include "../common/render_process.hpp"
 
 #include <include/base/cef_compiler_specific.h>
@@ -40,7 +41,11 @@ int main(int argc, char** argv)
     commandLine->InitFromArgv(argc, argv);
 #endif
 
-    CefRefPtr<CefApp> app = new Nui::Detail::Cef::App(
-        Nui::Detail::Cef::customSchemesFromCommandLine(commandLine), nullptr, new Nui::Detail::Cef::RenderProcess(), {});
+    using namespace Nui::Detail::Cef;
+    CefRefPtr<CefApp> app = new App(
+        listFromCommandLine(commandLine, customSchemesSwitch),
+        nullptr,
+        new RenderProcess(listFromCommandLine(commandLine, appHostsSwitch)),
+        {});
     return CefExecuteProcess(mainArgs, app, nullptr);
 }
