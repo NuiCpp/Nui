@@ -4,7 +4,6 @@
 #include <nui/backend/filesystem/file_dialog.hpp>
 #include <nui/utility/scope_exit.hpp>
 #include <nui/utility/utf.hpp>
-#include <nui/data_structures/selectables_registry.hpp>
 #include <nui/screen.hpp>
 #include "load_file.hpp"
 

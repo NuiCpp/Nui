@@ -88,8 +88,6 @@ namespace Nui::Impl::Linux
 
     struct SchemeContext
     {
-        std::size_t id;
-        std::weak_ptr<Window::LinuxImplementation> impl;
         CustomScheme schemeInfo;
         std::mutex asyncResponsesGuard;
         std::map<int, AsyncResponse> asyncResponses;
@@ -124,7 +122,20 @@ std::size_t strlenLimited(char const* str, std::size_t limit)
 
 namespace Nui::Impl::Linux
 {
-    inline void uriSchemeRequestCallbackImpl(WebKitURISchemeRequest* request, gpointer userData);
+    /**
+     * @brief Fails a custom scheme request, the page sees a network error.
+     */
+    inline void finishWithError(WebKitURISchemeRequest* request, char const* message)
+    {
+        std::unique_ptr<GError, decltype(&g_error_free)> error{
+            g_error_new(WEBKIT_DOWNLOAD_ERROR_DESTINATION, 1, "%s", message), &g_error_free};
+        webkit_uri_scheme_request_finish_error(request, error.get());
+    }
+
+    /**
+     * @brief Serves a custom scheme request with the handler of the window that owns the requesting web view.
+     */
+    inline void dispatchSchemeRequest(WebKitURISchemeRequest* request, std::string const& scheme);
 }
 
 extern "C" {
@@ -134,51 +145,33 @@ extern "C" {
         // synthetic finish_error so the renderer is unblocked.
         try
         {
-            Nui::Impl::Linux::uriSchemeRequestCallbackImpl(request, userData);
+            Nui::Impl::Linux::dispatchSchemeRequest(request, *static_cast<std::string const*>(userData));
         }
         catch (std::exception const& ex)
         {
-            GError* error = g_error_new(WEBKIT_DOWNLOAD_ERROR_DESTINATION, 1, "%s", ex.what());
-            std::unique_ptr<GError, decltype(&g_error_free)> errorOwner{error, &g_error_free};
-            webkit_uri_scheme_request_finish_error(request, error);
+            Nui::Impl::Linux::finishWithError(request, ex.what());
         }
         catch (...)
         {
-            GError* error = g_error_new(
-                WEBKIT_DOWNLOAD_ERROR_DESTINATION, 1, "Unknown C++ exception in custom scheme handler");
-            std::unique_ptr<GError, decltype(&g_error_free)> errorOwner{error, &g_error_free};
-            webkit_uri_scheme_request_finish_error(request, error);
+            Nui::Impl::Linux::finishWithError(request, "Unknown C++ exception in custom scheme handler");
         }
     }
 }
 
 namespace Nui::Impl::Linux
 {
-    inline void uriSchemeRequestCallbackImpl(WebKitURISchemeRequest* request, gpointer userData)
+    /**
+     * @brief Answers a custom scheme request with the handler of a scheme context. The caller keeps the context alive.
+     */
+    inline void serveSchemeRequest(WebKitURISchemeRequest* request, SchemeContext* schemeContext)
     {
         using namespace std::string_literals;
 
-        auto* schemeContext = static_cast<Nui::Impl::Linux::SchemeContext*>(userData);
         schemeContext->gcResponses();
 
         // const auto path = std::string_view{webkit_uri_scheme_request_get_path(request)};
         // const auto scheme = std::string_view{webkit_uri_scheme_request_get_scheme(request)};
         const auto uri = std::string_view{webkit_uri_scheme_request_get_uri(request)};
-
-        auto exitError = Nui::ScopeExit{[&]() noexcept {
-            auto* error =
-                g_error_new(WEBKIT_DOWNLOAD_ERROR_DESTINATION, 1, "Invalid custom scheme / Host name mapping.");
-            auto freeError = Nui::ScopeExit{[error]() noexcept {
-                g_error_free(error);
-            }};
-            webkit_uri_scheme_request_finish_error(request, error);
-        }};
-
-        auto impl = schemeContext->impl.lock();
-        if (!impl)
-            return;
-
-        exitError.disarm();
 
         char const* cmethod = webkit_uri_scheme_request_get_http_method(request);
         if (cmethod == nullptr)
@@ -388,9 +381,10 @@ namespace Nui::Impl::Linux
 }
 
 extern "C" {
-    void uriSchemeDestroyNotify(void*)
+    void uriSchemeDestroyNotify(void* userData)
     {
-        // Useless, because called when everything is already destroyed
+        // Called when the web context is finalized, takes back the scheme name given at the registration.
+        std::unique_ptr<std::string> scheme{static_cast<std::string*>(userData)};
     }
 }
 
@@ -400,24 +394,151 @@ namespace Nui
     struct Window::LinuxImplementation : public Window::Implementation
     {
         HostNameMappingInfo hostNameMappingInfo;
-        std::recursive_mutex schemeResponseRegistryGuard;
-        SelectablesRegistry<std::unique_ptr<Nui::Impl::Linux::SchemeContext>> schemeResponseRegistry;
-        std::list<std::string> schemes{};
+        std::mutex schemeContextsGuard;
+        /// Custom schemes of this window by name.
+        std::unordered_map<std::string, std::unique_ptr<Nui::Impl::Linux::SchemeContext>> schemeContexts;
+        /// Set when the scheme handlers are registered, the view lives as long as the base implementation.
+        WebKitWebView* webView;
 
         LinuxImplementation()
             : Implementation{}
             , hostNameMappingInfo{}
-            , schemeResponseRegistryGuard{}
-            , schemeResponseRegistry{}
-            , schemes{}
+            , schemeContextsGuard{}
+            , schemeContexts{}
+            , webView{nullptr}
         {}
+        ~LinuxImplementation() override;
 
         void registerSchemeHandlers(WindowOptions const& options) override;
         void registerSchemeHandler(CustomScheme const& scheme);
+
+        /**
+         * @brief The context of a custom scheme of this window, nullptr if the window has no scheme of that name.
+         */
+        Nui::Impl::Linux::SchemeContext* schemeContextOf(std::string const& scheme);
     };
+    // #####################################################################################################################
+}
+
+namespace Nui::Impl::Linux
+{
+    /**
+     * @brief The windows of the process by their web view.
+     *
+     * WebKitGTK takes one handler per scheme name and web context, and all windows share the default context. That
+     * handler finds the window of the requesting web view here.
+     */
+    class WindowRegistry
+    {
+      public:
+        static WindowRegistry& instance()
+        {
+            static WindowRegistry registry;
+            return registry;
+        }
+
+        void add(WebKitWebView* webView, std::weak_ptr<Window::LinuxImplementation> window)
+        {
+            std::scoped_lock lock{guard_};
+            windows_.insert_or_assign(webView, std::move(window));
+        }
+
+        void remove(WebKitWebView* webView)
+        {
+            std::scoped_lock lock{guard_};
+            windows_.erase(webView);
+        }
+
+        /**
+         * @brief The window of a web view, or for requests without a web view the only window with the scheme.
+         */
+        std::shared_ptr<Window::LinuxImplementation> windowOf(WebKitWebView* webView, std::string const& scheme) const
+        {
+            std::vector<std::weak_ptr<Window::LinuxImplementation>> windows;
+            {
+                std::scoped_lock lock{guard_};
+                if (webView != nullptr)
+                {
+                    const auto iter = windows_.find(webView);
+                    return iter == windows_.end() ? nullptr : iter->second.lock();
+                }
+                for (auto const& entry : windows_)
+                    windows.push_back(entry.second);
+            }
+            // Outside the lock, a window released here may remove itself.
+            std::shared_ptr<Window::LinuxImplementation> candidate;
+            for (auto const& weak : windows)
+            {
+                auto window = weak.lock();
+                if (!window || window->schemeContextOf(scheme) == nullptr)
+                    continue;
+                if (candidate)
+                    return nullptr;
+                candidate = std::move(window);
+            }
+            return candidate;
+        }
+
+      private:
+        mutable std::mutex guard_{};
+        std::unordered_map<WebKitWebView*, std::weak_ptr<Window::LinuxImplementation>> windows_{};
+    };
+
+    /**
+     * @brief Registers the scheme on the web context unless a window did so before, WebKitGTK refuses a second one.
+     */
+    inline void registerSchemeOnContext(WebKitWebContext* webContext, std::string const& scheme)
+    {
+        const auto key = "nui-custom-scheme-" + scheme;
+        if (g_object_get_data(G_OBJECT(webContext), key.c_str()) != nullptr)
+            return;
+        g_object_set_data(G_OBJECT(webContext), key.c_str(), GINT_TO_POINTER(1));
+        webkit_web_context_register_uri_scheme(
+            webContext,
+            scheme.c_str(),
+            &uriSchemeRequestCallback,
+            std::make_unique<std::string>(scheme).release(),
+            &uriSchemeDestroyNotify);
+    }
+
+    inline void dispatchSchemeRequest(WebKitURISchemeRequest* request, std::string const& scheme)
+    {
+        // Holds the window, and with it the scheme context, while the handler runs.
+        const auto window =
+            WindowRegistry::instance().windowOf(webkit_uri_scheme_request_get_web_view(request), scheme);
+        if (!window)
+        {
+            finishWithError(request, "No window for this request");
+            return;
+        }
+        auto* schemeContext = window->schemeContextOf(scheme);
+        if (schemeContext == nullptr)
+        {
+            finishWithError(request, "Scheme not registered by this window");
+            return;
+        }
+        serveSchemeRequest(request, schemeContext);
+    }
+}
+
+namespace Nui
+{
+    // #####################################################################################################################
+    Window::LinuxImplementation::~LinuxImplementation()
+    {
+        // The base still owns the view, so no other window can have its address yet.
+        if (webView != nullptr)
+            Nui::Impl::Linux::WindowRegistry::instance().remove(webView);
+    }
     //---------------------------------------------------------------------------------------------------------------------
     void Window::LinuxImplementation::registerSchemeHandlers(WindowOptions const& options)
     {
+        auto nativeWebView = static_cast<webview::browser_engine&>(*view).webview();
+        if (!nativeWebView.has_value())
+            throw std::runtime_error("Could not get native webview for registering custom scheme handler!");
+        webView = WEBKIT_WEB_VIEW(nativeWebView.value());
+        Nui::Impl::Linux::WindowRegistry::instance().add(webView, weak_from_base<LinuxImplementation>());
+
         for (auto const& scheme : options.customSchemes)
             registerSchemeHandler(scheme);
 
@@ -439,20 +560,23 @@ namespace Nui
     //---------------------------------------------------------------------------------------------------------------------
     void Window::LinuxImplementation::registerSchemeHandler(CustomScheme const& scheme)
     {
-        std::lock_guard schemeResponseRegistryLock{schemeResponseRegistryGuard};
-        const auto id = schemeResponseRegistry.emplace(std::make_unique<Nui::Impl::Linux::SchemeContext>());
-        auto& entry = schemeResponseRegistry[id];
-        entry->id = id;
-        entry->impl = shared_from_base<LinuxImplementation>();
-        entry->schemeInfo = scheme;
-
-        schemes.push_back(scheme.scheme);
-        auto nativeWebView = static_cast<webview::browser_engine&>(*view).webview();
-        if (!nativeWebView.has_value())
-            throw std::runtime_error("Could not get native webview for registering custom scheme handler!");
-        auto* webContext = webkit_web_view_get_context(WEBKIT_WEB_VIEW(nativeWebView.value()));
-        webkit_web_context_register_uri_scheme(
-            webContext, schemes.back().c_str(), &uriSchemeRequestCallback, entry.get(), &uriSchemeDestroyNotify);
+        {
+            std::scoped_lock lock{schemeContextsGuard};
+            auto& schemeContext = schemeContexts[scheme.scheme];
+            // A later scheme of the same name is ignored.
+            if (schemeContext)
+                return;
+            schemeContext = std::make_unique<Nui::Impl::Linux::SchemeContext>();
+            schemeContext->schemeInfo = scheme;
+        }
+        Nui::Impl::Linux::registerSchemeOnContext(webkit_web_view_get_context(webView), scheme.scheme);
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    Nui::Impl::Linux::SchemeContext* Window::LinuxImplementation::schemeContextOf(std::string const& scheme)
+    {
+        std::scoped_lock lock{schemeContextsGuard};
+        const auto iter = schemeContexts.find(scheme);
+        return iter == schemeContexts.end() ? nullptr : iter->second.get();
     }
     // #####################################################################################################################
 }
