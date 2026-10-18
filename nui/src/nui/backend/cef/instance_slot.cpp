@@ -130,6 +130,15 @@ namespace Nui::Detail::Cef
             return errno == EAGAIN || errno == EINPROGRESS;
         }
 
+        /// The singleton socket directory of a crashed owner in /tmp, only the slot's link points to it.
+        void removeStaleSocketDirectory(std::filesystem::path const& directory)
+        {
+            std::error_code error;
+            const auto socket = std::filesystem::read_symlink(directory / "SingletonSocket", error);
+            if (!error && socket.parent_path().filename().string().starts_with("org.chromium.Chromium."))
+                std::filesystem::remove_all(socket.parent_path(), error);
+        }
+
         bool anySlotOwnerAlive(std::filesystem::path const& versionDirectory)
         {
             std::error_code error;
@@ -168,6 +177,8 @@ namespace Nui::Detail::Cef
                 if (*lock < 0 || tryLock(*lock, LOCK_EX) != LockResult::Locked || !lockedFileIsCurrent(*lock, lockPath) ||
                     anySlotOwnerAlive(entry.path()))
                     continue;
+                for (auto const& slot : std::filesystem::directory_iterator{entry.path() / hostName(), error})
+                    removeStaleSocketDirectory(slot.path());
                 std::filesystem::remove_all(entry.path(), error);
                 std::filesystem::remove(lockPath, error);
             }
@@ -285,9 +296,7 @@ namespace Nui::Detail::Cef
                 continue;
             // Links of a crashed owner. Chromium would wait for, and then kill, whatever process now has its pid. The
             // owner's socket directory in /tmp is left over too.
-            const auto staleSocket = std::filesystem::read_symlink(directory / "SingletonSocket", filesystemError);
-            if (!filesystemError && staleSocket.parent_path().filename().string().starts_with("org.chromium.Chromium."))
-                std::filesystem::remove_all(staleSocket.parent_path(), filesystemError);
+            removeStaleSocketDirectory(directory);
             for (auto const* link : {"SingletonLock", "SingletonSocket", "SingletonCookie"})
                 std::filesystem::remove(directory / link, filesystemError);
             chosen.emplace(InstanceSlot{directory, std::exchange(*slotLock, -1), std::exchange(*versionLock, -1)});
@@ -301,6 +310,7 @@ namespace Nui::Detail::Cef
             const auto slotLock = openLockFile(entry.path() / "nui.lock");
             if (*slotLock < 0 || tryLock(*slotLock, LOCK_EX) != LockResult::Locked || chromiumOwnerAlive(entry.path()))
                 continue;
+            removeStaleSocketDirectory(entry.path());
             std::filesystem::remove_all(entry.path(), filesystemError);
         }
         return chosen;
