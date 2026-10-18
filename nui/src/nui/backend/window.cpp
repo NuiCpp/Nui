@@ -7,6 +7,8 @@
 #include <nui/data_structures/selectables_registry.hpp>
 #include <nui/screen.hpp>
 #include "load_file.hpp"
+#include "rpc_message.hpp"
+#include "mime_type.hpp"
 
 #include <webview/webview.h>
 #include <roar/mime_type.hpp>
@@ -73,7 +75,7 @@ namespace Nui
 
         const auto path = url.pathAsString();
         const auto filePath = it->second / std::string{path.data() + 1, path.size() - 1};
-        const auto maybeMime = Roar::extensionToMime(filePath.extension().string());
+        const auto maybeMime = Detail::mimeTypeOfExtension(filePath.extension().string());
         const auto mime = maybeMime ? *maybeMime : "application/octet-stream";
 
         const auto body = loadFile(filePath);
@@ -249,37 +251,20 @@ namespace Nui
         }
 #endif
 
-        impl_->view->install_message_hook([this](std::string const& msg) {
-            std::scoped_lock lock{impl_->viewGuard};
-            try
-            {
-                const auto obj = nlohmann::json::parse(msg);
-                auto type = obj.find("type");
-                if (type != obj.end() && type->is_string() && type->get<std::string>() == "rpc_alive")
-                {
-                    if (impl_->onRpcAliveMessage)
-                        impl_->onRpcAliveMessage();
-                    return false;
-                }
-
-                if (!obj.contains("id"))
-                    return impl_->onRpcError("Message does not contain a callback id!"), false;
-
-                const auto id = obj["id"].get<std::string>();
-                auto callbackIter = impl_->callbacks.find(id);
-                if (callbackIter == impl_->callbacks.end())
-                    return impl_->onRpcError("Callback with id " + id + " does not exist!"), false;
-
-                if (!obj.contains("args"))
-                    callbackIter->second(nlohmann::json{});
-                else
-                    callbackIter->second(obj["args"]);
-            }
-            catch (std::exception const& exc)
-            {
-                impl_->onRpcError(
-                    "Exception in webview message handler for message: " + msg + "\nException: " + exc.what());
-            }
+        // The view, and with it this hook, is owned by the implementation, so the raw pointer survives moves of Window.
+        impl_->view->install_message_hook([impl = impl_.get()](std::string const& msg) {
+            std::scoped_lock lock{impl->viewGuard};
+            Detail::dispatchRpcMessage(
+                msg,
+                Detail::RpcMessageHandlers{
+                    .findCallback =
+                        [impl](std::string const& id) {
+                            const auto callback = impl->callbacks.find(id);
+                            return callback == impl->callbacks.end() ? Detail::RpcCallback{} : callback->second;
+                        },
+                    .onRpcAlive = impl->onRpcAliveMessage,
+                    .onRpcError = impl->onRpcError,
+                });
             return false;
         });
 
@@ -580,26 +565,7 @@ namespace Nui
                 return;
             std::scoped_lock lock{impl->viewGuard};
             impl->callbacks[name] = callback;
-            auto script = fmt::format(
-                R"(
-                    (() => {{
-                        const name = "{}";
-                        const id = "{}";
-                        globalThis.nui_rpc = (globalThis.nui_rpc || {{
-                            frontend: {{}}, backend: {{}}, tempId: 0, initialized: false
-                        }});
-                        globalThis.nui_rpc.backend[name] = (...args) => {{
-                            globalThis.__webview__.post(JSON.stringify({{
-                                type: "rpc",
-                                name: name,
-                                id: id,
-                                args: [...args]
-                            }}));
-                        }};
-                    }})();
-                )",
-                name,
-                name);
+            const auto script = Detail::bindScript(name);
 
             if (!impl->isRunning)
                 impl->view->init(script);
@@ -615,14 +581,7 @@ namespace Nui
             if (!impl)
                 return;
             std::scoped_lock lock{impl->viewGuard};
-            auto script = fmt::format(
-                R"(
-                    (() => {{
-                        const name = "{}";
-                        delete globalThis.nui_rpc.backend[name];
-                    }})();
-                )",
-                name);
+            const auto script = Detail::unbindScript(name);
 
             impl->callbacks.erase(name);
 
@@ -720,6 +679,11 @@ namespace Nui
 #else
         impl_->view->eval(js);
 #endif
+    }
+    //---------------------------------------------------------------------------------------------------------------------
+    void Window::callFrontend(std::string const& name, std::string const& jsonArgument)
+    {
+        eval(Detail::callFrontendScript(name, jsonArgument));
     }
     //---------------------------------------------------------------------------------------------------------------------
     void* Window::getNativeWebView()

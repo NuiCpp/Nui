@@ -12,3 +12,12 @@ option(NUI_FIND_PACKAGE_CONFIG "Use CONFIG mode for find_package" off)
 option(NUI_OMIT_FRONTEND "Do not build the frontend, sometimes useful for environments where emscripten is hard to use" off)
 
 option(NUI_ENABLE_TOOLING_CONFIGURE "Enable patching and configuring of acorn and emscription? (default on)" on)
+
+set(NUI_BROWSER_ENGINE "native" CACHE STRING "Browser engine of the backend: native (WebKitGTK, WKWebView, WebView2) or cef")
+set_property(CACHE NUI_BROWSER_ENGINE PROPERTY STRINGS native cef)
+if (NOT NUI_BROWSER_ENGINE MATCHES "^(native|cef)$")
+    message(FATAL_ERROR "NUI_BROWSER_ENGINE must be native or cef, got '${NUI_BROWSER_ENGINE}'")
+endif()
+if (NUI_BROWSER_ENGINE STREQUAL "cef" AND WIN32)
+    message(FATAL_ERROR "NUI_BROWSER_ENGINE=cef is not supported on Windows, Nui uses WebView2 there")
+endif()

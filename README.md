@@ -28,6 +28,23 @@ Not supported:
   - Mobile Platforms
   - BSD Systems
 
+### Browser engines
+On Linux and macOS, `NUI_BROWSER_ENGINE` picks the engine: `native` (default, WebKitGTK or WKWebView) or `cef`
+(Chromium Embedded Framework). Windows always uses WebView2, which is Chromium already.
+
+| Engine | Pro | Con |
+|---|---|---|
+| `native` | No runtime to ship, small installs, engine updates come with the OS | Features and bugs depend on the OS's WebKit, WebKitGTK is slow on heavy UIs |
+| `cef` | One Chromium version everywhere, faster than WebKitGTK | About 350 MB more to ship, more memory for small apps, you ship Chromium's security fixes |
+
+To use CEF, configure with it, the code stays the same (on macOS, also call `nui_configure_application`):
+
+```bash
+cmake -B build -DNUI_BROWSER_ENGINE=cef
+```
+
+Getting CEF, options and deployment: [The CEF browser engine](docs/cef_engine.md).
+
 ## Examples
 ### nui-sftp
 nui-sftp is a terminal emulator, file explorer and ssh & sftp client built using nui. It is my nui dogfooding project. It is a good example of a non-trivial application built with nui, and is available here:

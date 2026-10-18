@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleExecutable</key><string>@NUI_HELPER_EXECUTABLE@</string>
+    <key>CFBundleIdentifier</key><string>@NUI_HELPER_IDENTIFIER@</string>
+    <key>CFBundleName</key><string>@NUI_HELPER_EXECUTABLE@</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+    <key>CFBundleShortVersionString</key><string>@NUI_HELPER_VERSION@</string>
+    <key>LSMinimumSystemVersion</key><string>@NUI_BUNDLE_MINIMUM_SYSTEM@</string>
+    <key>LSUIElement</key><true/>
+    <key>LSEnvironment</key><dict><key>MallocNanoZone</key><string>0</string></dict>
+    <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
+</dict>
+</plist>

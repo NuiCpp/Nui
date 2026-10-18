@@ -1,7 +1,8 @@
 add_library(nui-backend
     STATIC
-        window.cpp
         rpc_hub.cpp
+        rpc_message.cpp
+        mime_type.cpp
         load_file.cpp
         webkit_gtk_rendering.cpp
         filesystem/special_paths.cpp
@@ -34,12 +35,19 @@ target_link_libraries(
     PUBLIC
         traits-library
         fmt::fmt
-        webview-iface
         portable_file_dialogs
         nlohmann_json::nlohmann_json
         roar::curl
         Boost::boost
 )
+
+if (NUI_BROWSER_ENGINE STREQUAL "cef")
+    include("${CMAKE_CURRENT_LIST_DIR}/cef/CMakeLists.cmake")
+else()
+    target_sources(nui-backend PRIVATE window.cpp engine_native.cpp)
+    target_link_libraries(nui-backend PUBLIC webview-iface)
+    target_compile_definitions(nui-backend PUBLIC NUI_ENGINE_NATIVE)
+endif()
 
 if (APPLE)
     target_link_libraries(nui-backend PUBLIC
@@ -60,13 +68,13 @@ if (WIN32)
 elseif(APPLE)
     target_sources(nui-backend
         PRIVATE
-            screen_mac.cpp
+            $<$<STREQUAL:${NUI_BROWSER_ENGINE},native>:screen_mac.cpp>
             environment_variables_nix.cpp
     )
 else()
     target_sources(nui-backend
         PRIVATE
-            screen_nix.cpp
+            $<$<STREQUAL:${NUI_BROWSER_ENGINE},native>:screen_nix.cpp>
             environment_variables_nix.cpp
     )
     find_package(PkgConfig REQUIRED)

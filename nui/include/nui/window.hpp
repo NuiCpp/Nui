@@ -17,6 +17,11 @@
 
 namespace Nui
 {
+    namespace Detail
+    {
+        struct WindowAccess;
+    }
+
     enum class WebViewHint : std::int32_t
     {
         WEBVIEW_HINT_NONE,
@@ -125,6 +130,17 @@ namespace Nui
         std::function<std::size_t(char* buffer, std::size_t bufferSize)> bodyReader{};
     };
 
+    /**
+     * @brief Thread that runs CustomScheme::onRequest.
+     */
+    enum class SchemeHandlerThread
+    {
+        /// The UI thread, one request at a time. What the native engines do, safe for state shared with RPC handlers.
+        Ui,
+        /// CEF ONLY: any engine worker thread, several requests at once. For handlers that are thread safe.
+        Any,
+    };
+
     struct CustomScheme
     {
         std::string scheme;
@@ -147,6 +163,9 @@ namespace Nui
         /// into memory in their entirety. Supported fully on Windows and Linux; on macOS the body is already
         /// fully buffered by the OS so this only offers API consistency, not memory savings.
         bool streamingContent = false;
+
+        /// Thread that runs onRequest. The native engines always use the UI thread.
+        SchemeHandlerThread handlerThread = SchemeHandlerThread::Ui;
     };
 
     struct WindowOptions
@@ -293,6 +312,8 @@ namespace Nui
 
         /**
          * @brief Close the window and exit run.
+         *
+         * With the CEF engine run() returns once the last window has closed, other windows stay open.
          */
         void terminate();
 
@@ -389,6 +410,16 @@ namespace Nui
         void eval(std::filesystem::path const& file);
 
         /**
+         * @brief Calls globalThis.nui_rpc.frontend[name] with a JSON argument. Used by the RpcHub.
+         *
+         * A missing function is recorded in globalThis.nui_rpc.errors. Callable from any thread.
+         *
+         * @param name The name of the frontend function.
+         * @param jsonArgument The argument as JSON text, or an empty string for no argument.
+         */
+        void callFrontend(std::string const& name, std::string const& jsonArgument);
+
+        /**
          * @brief Place javascript in the window.
          *
          * @param js
@@ -401,6 +432,11 @@ namespace Nui
          */
         void init(std::filesystem::path const& file);
 
+#    ifdef NUI_ENGINE_CEF
+        // The CEF engine has no GTK, WebKit or WKWebView objects. Use the typed accessors in <nui/cef/client_hooks.hpp>.
+        void* getNativeWebView() = delete;
+        void* getNativeWindow() = delete;
+#    else
         /**
          * @brief Get a pointer to the underlying webview (ICoreWebView2* on windows, WEBKIT_WEB_VIEW on linux, id on
          * mac).
@@ -415,6 +451,7 @@ namespace Nui
          * @return void* Cast this pointer to the correct type depending on the OS.
          */
         void* getNativeWindow();
+#    endif
 
         /**
          * @brief [LINUX ONLY] Enable/Disable console output from view in the console.
@@ -431,6 +468,7 @@ namespace Nui
         struct MacOsImplementation;
 
       private:
+        friend struct Detail::WindowAccess;
         std::shared_ptr<Implementation> impl_;
     };
 }
