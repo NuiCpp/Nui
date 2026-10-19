@@ -1,6 +1,7 @@
-# Downloads the pinned CEF distribution ahead of an offline build.
+# Downloads the selected CEF distribution (the pinned one or NUI_CEF_VERSION_OVERRIDE) ahead of an offline build.
 #
-#   cmake [-DNUI_CEF_PLATFORM=linux64] [-DNUI_CEF_DOWNLOAD_DIR=<dir>] [-DNUI_CEF_EXTRACT=ON] -P cef_fetch.cmake
+#   cmake [-DNUI_CEF_PLATFORM=linux64] [-DNUI_CEF_DOWNLOAD_DIR=<dir>] [-DNUI_CEF_EXTRACT=ON]
+#         [-DNUI_CEF_VERSION_OVERRIDE=<version> -DNUI_CEF_SHA256_OVERRIDE=<sha256>] -P cef_fetch.cmake
 #
 # Prints the archive path (and the extracted root with NUI_CEF_EXTRACT). Pass the archive to the build as
 # NUI_CEF_ARCHIVE, or the extracted root as NUI_CEF_ROOT, together with NUI_FETCH_CEF=OFF.
