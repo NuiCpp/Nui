@@ -3,16 +3,17 @@
 # Sources of the distribution, first match wins:
 #   NUI_CEF_SYSTEM=ON   the system package (Arch: /usr/lib/cef, /usr/include/cef, /usr/src/cef)
 #   NUI_CEF_ROOT        an extracted binary distribution
-#   NUI_CEF_ARCHIVE     a local distribution archive, checked against the pinned SHA256 if it is the pinned one
-#   NUI_FETCH_CEF=ON    downloads the pinned distribution into NUI_CEF_DOWNLOAD_DIR
-# Offline builds turn NUI_FETCH_CEF off and pass one of the others, see cef_fetch.cmake.
+#   NUI_CEF_ARCHIVE     a local distribution archive, checked against the SHA256 if it is the selected one
+#   NUI_FETCH_CEF=ON    downloads the selected distribution into NUI_CEF_DOWNLOAD_DIR
+# The selected distribution is the pinned one (cef_version.cmake) or NUI_CEF_VERSION_OVERRIDE. Offline builds turn
+# NUI_FETCH_CEF off and pass one of the others, see cef_fetch.cmake.
 
 include("${CMAKE_CURRENT_LIST_DIR}/cef_version.cmake")
 
 option(NUI_CEF_SYSTEM "Use the CEF of the system (distribution package)" OFF)
 set(NUI_CEF_ROOT "" CACHE PATH "Extracted CEF binary distribution")
 set(NUI_CEF_ARCHIVE "" CACHE FILEPATH "Local CEF binary distribution archive")
-option(NUI_FETCH_CEF "Download the pinned CEF distribution if no other source is given" ON)
+option(NUI_FETCH_CEF "Download the selected CEF distribution if no other source is given" ON)
 set(NUI_CEF_PLATFORM "" CACHE STRING "CEF platform (linux64, linuxarm64, macosarm64, macosx64), empty for the target")
 nui_cef_default_download_directory(nuiCefDefaultDownloadDirectory)
 set(NUI_CEF_DOWNLOAD_DIR "${nuiCefDefaultDownloadDirectory}" CACHE PATH "Download and extraction directory for CEF")
@@ -81,11 +82,12 @@ else()
         set(nuiCefRoot "${NUI_CEF_ROOT}")
     elseif (NUI_CEF_ARCHIVE)
         get_filename_component(nuiCefArchiveName "${NUI_CEF_ARCHIVE}" NAME)
-        nui_cef_archive_name(${nuiCefPlatform} nuiCefPinnedArchiveName)
-        if (nuiCefArchiveName STREQUAL nuiCefPinnedArchiveName)
+        nui_cef_archive_name(${nuiCefPlatform} nuiCefSelectedArchiveName)
+        if (nuiCefArchiveName STREQUAL nuiCefSelectedArchiveName)
+            nui_cef_selected_distribution(${nuiCefPlatform} nuiCefSelectedVersion nuiCefSelectedSha256)
             file(SHA256 "${NUI_CEF_ARCHIVE}" nuiCefArchiveSha256)
-            if (NOT nuiCefArchiveSha256 STREQUAL NUI_CEF_SHA256_${nuiCefPlatform})
-                message(FATAL_ERROR "${NUI_CEF_ARCHIVE} does not match the pinned SHA256")
+            if (NOT nuiCefArchiveSha256 STREQUAL nuiCefSelectedSha256)
+                message(FATAL_ERROR "${NUI_CEF_ARCHIVE} does not match the SHA256 ${nuiCefSelectedSha256}")
             endif()
         endif()
         nui_cef_extract("${NUI_CEF_ARCHIVE}" "${CMAKE_BINARY_DIR}/_deps/cef" nuiCefRoot)
@@ -106,8 +108,13 @@ endif()
 
 file(STRINGS "${nuiCefIncludeRoot}/include/cef_version.h" nuiCefVersionLine REGEX "^#define CEF_VERSION \"")
 string(REGEX REPLACE "^#define CEF_VERSION \"([^\"]*)\".*" "\\1" nuiCefVersion "${nuiCefVersionLine}")
-if (NOT NUI_CEF_SYSTEM AND NOT nuiCefVersion STREQUAL NUI_CEF_PINNED_VERSION)
-    message(WARNING "CEF ${nuiCefVersion} differs from the version Nui pins (${NUI_CEF_PINNED_VERSION})")
+nui_cef_selected_distribution(${nuiCefPlatform} nuiCefSelectedVersion nuiCefSelectedSha256)
+if (NOT NUI_CEF_SYSTEM AND NOT nuiCefVersion STREQUAL nuiCefSelectedVersion)
+    if (NUI_CEF_VERSION_OVERRIDE)
+        message(WARNING "CEF ${nuiCefVersion} differs from NUI_CEF_VERSION_OVERRIDE (${nuiCefSelectedVersion})")
+    else()
+        message(WARNING "CEF ${nuiCefVersion} differs from the version Nui pins (${nuiCefSelectedVersion})")
+    endif()
 endif()
 
 file(STRINGS "${nuiCefIncludeRoot}/include/cef_api_versions.h" nuiCefApiLines REGEX "^#define CEF_API_VERSION_(MIN|LAST) ")
@@ -134,6 +141,16 @@ set(NUI_CEF_VERSION "${nuiCefVersion}" CACHE INTERNAL "")
 set(NUI_CEF_LIBRARY_DIR "${nuiCefLibraryDirectory}" CACHE INTERNAL "")
 set(NUI_CEF_RESOURCE_DIR "${nuiCefResourceDirectory}" CACHE INTERNAL "")
 set(NUI_CEF_IS_SYSTEM "${NUI_CEF_SYSTEM}" CACHE INTERNAL "")
+
+# The selected distribution of the target platform, whichever source the build used: what NUI_FETCH_CEF downloads, so
+# offline packaging can fetch the same archive.
+nui_cef_archive_name(${nuiCefPlatform} nuiCefSelectedArchiveName)
+nui_cef_archive_url(${nuiCefPlatform} nuiCefSelectedArchiveUrl)
+set(NUI_CEF_SELECTED_VERSION "${nuiCefSelectedVersion}" CACHE INTERNAL "")
+set(NUI_CEF_SELECTED_PLATFORM "${nuiCefPlatform}" CACHE INTERNAL "")
+set(NUI_CEF_SELECTED_ARCHIVE "${nuiCefSelectedArchiveName}" CACHE INTERNAL "")
+set(NUI_CEF_SELECTED_URL "${nuiCefSelectedArchiveUrl}" CACHE INTERNAL "")
+set(NUI_CEF_SELECTED_SHA256 "${nuiCefSelectedSha256}" CACHE INTERNAL "")
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Headers, definitions and the wrapper (libcef_dll_wrapper, built from the distribution's sources).

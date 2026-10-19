@@ -1,4 +1,5 @@
-# Pinned CEF binary distribution. Used by cef.cmake at configure time and by cef_fetch.cmake in script mode.
+# Pinned CEF binary distribution and its override. Used by cef.cmake at configure time and by cef_fetch.cmake in script
+# mode.
 
 set(NUI_CEF_PINNED_VERSION "154.0.34+g14c5a08+chromium-154.0.8037.98")
 set(NUI_CEF_DOWNLOAD_BASE_URL "https://cef-builds.spotifycdn.com")
@@ -10,6 +11,11 @@ set(NUI_CEF_SHA256_macosx64 "ebcb691252c9ccde63488a913e2381bce4e275acbbb96ce4763
 
 # Oldest CEF API version the Nui sources compile against (see CEF_API_ADDED in the CEF headers).
 set(NUI_CEF_API_VERSION_MIN 14100)
+
+# Another distribution than the pin, for example a security release before Nui pins it. Its archive has to be on the
+# download server like the pinned one.
+set(NUI_CEF_VERSION_OVERRIDE "" CACHE STRING "CEF version to use instead of the pinned one, empty for the pin")
+set(NUI_CEF_SHA256_OVERRIDE "" CACHE STRING "SHA256 of the NUI_CEF_VERSION_OVERRIDE archive of the target platform")
 
 # Maps a system name and processor to the CEF platform name of the distribution archives.
 function(nui_cef_platform_for systemName processor outVariable)
@@ -33,8 +39,33 @@ function(nui_cef_platform_for systemName processor outVariable)
     set(${outVariable} ${platform} PARENT_SCOPE)
 endfunction()
 
+# The selected distribution of a platform: NUI_CEF_VERSION_OVERRIDE with its SHA256, or the pin.
+function(nui_cef_selected_distribution platform outVersion outSha256)
+    if (NUI_CEF_VERSION_OVERRIDE)
+        if (NOT NUI_CEF_SHA256_OVERRIDE)
+            message(FATAL_ERROR
+                "NUI_CEF_VERSION_OVERRIDE needs NUI_CEF_SHA256_OVERRIDE, the SHA256 of its ${platform} archive")
+        endif()
+        set(${outVersion} "${NUI_CEF_VERSION_OVERRIDE}" PARENT_SCOPE)
+        set(${outSha256} "${NUI_CEF_SHA256_OVERRIDE}" PARENT_SCOPE)
+        return()
+    endif()
+    if (NOT NUI_CEF_SHA256_${platform})
+        message(FATAL_ERROR "No pinned SHA256 for CEF platform ${platform}")
+    endif()
+    set(${outVersion} "${NUI_CEF_PINNED_VERSION}" PARENT_SCOPE)
+    set(${outSha256} "${NUI_CEF_SHA256_${platform}}" PARENT_SCOPE)
+endfunction()
+
 function(nui_cef_archive_name platform outVariable)
-    set(${outVariable} "cef_binary_${NUI_CEF_PINNED_VERSION}_${platform}_minimal.tar.bz2" PARENT_SCOPE)
+    nui_cef_selected_distribution(${platform} version sha256)
+    set(${outVariable} "cef_binary_${version}_${platform}_minimal.tar.bz2" PARENT_SCOPE)
+endfunction()
+
+function(nui_cef_archive_url platform outVariable)
+    nui_cef_archive_name(${platform} name)
+    string(REPLACE "+" "%2B" encodedName "${name}")
+    set(${outVariable} "${NUI_CEF_DOWNLOAD_BASE_URL}/${encodedName}" PARENT_SCOPE)
 endfunction()
 
 function(nui_cef_default_download_directory outVariable)
@@ -50,13 +81,11 @@ function(nui_cef_default_download_directory outVariable)
     set(${outVariable} "${directory}" PARENT_SCOPE)
 endfunction()
 
-# Downloads the pinned archive of a platform into a directory, verified with SHA256. Skips valid existing files.
+# Downloads the selected archive of a platform into a directory, verified with SHA256. Skips valid existing files.
 function(nui_cef_download platform directory outArchive)
-    set(sha256 "${NUI_CEF_SHA256_${platform}}")
-    if (NOT sha256)
-        message(FATAL_ERROR "No pinned SHA256 for CEF platform ${platform}")
-    endif()
+    nui_cef_selected_distribution(${platform} version sha256)
     nui_cef_archive_name(${platform} name)
+    nui_cef_archive_url(${platform} url)
     set(archive "${directory}/${name}")
     file(MAKE_DIRECTORY "${directory}")
     file(LOCK "${directory}/${name}.lock" GUARD FUNCTION TIMEOUT 3600)
@@ -66,12 +95,11 @@ function(nui_cef_download platform directory outArchive)
             set(${outArchive} "${archive}" PARENT_SCOPE)
             return()
         endif()
-        message(STATUS "${archive} does not match the pinned SHA256 ${sha256}, downloading it again")
+        message(STATUS "${archive} does not match the SHA256 ${sha256}, downloading it again")
         file(REMOVE "${archive}")
     endif()
-    string(REPLACE "+" "%2B" encodedName "${name}")
-    message(STATUS "Downloading ${NUI_CEF_DOWNLOAD_BASE_URL}/${encodedName}")
-    file(DOWNLOAD "${NUI_CEF_DOWNLOAD_BASE_URL}/${encodedName}" "${archive}.part" STATUS status SHOW_PROGRESS)
+    message(STATUS "Downloading ${url}")
+    file(DOWNLOAD "${url}" "${archive}.part" STATUS status SHOW_PROGRESS)
     list(GET status 0 code)
     if (NOT code EQUAL 0)
         file(REMOVE "${archive}.part")

@@ -144,7 +144,13 @@ package. To fetch ahead of time:
 cmake -DNUI_CEF_DOWNLOAD_DIR=downloads [-DNUI_CEF_PLATFORM=linuxarm64] -P <Nui>/cmake/dependencies/cef_fetch.cmake
 ```
 
-The pinned version, its URLs and SHA256 sums are in `cmake/dependencies/cef_version.cmake`. `NUI_CEF_API_VERSION`
+The pinned version, its URLs and SHA256 sums are in `cmake/dependencies/cef_version.cmake`. To use another
+distribution of the download server before Nui pins it, for example a security release, set `NUI_CEF_VERSION_OVERRIDE`
+to its version (`155.0.1+g1234567+chromium-155.0.8100.10`) and `NUI_CEF_SHA256_OVERRIDE` to the SHA256 of its
+archive for the target platform, also for `cef_fetch.cmake`. Nui then downloads, checks and builds against that one.
+After configuring, the cache entries `NUI_CEF_SELECTED_VERSION`, `NUI_CEF_SELECTED_PLATFORM`, `NUI_CEF_SELECTED_ARCHIVE`,
+`NUI_CEF_SELECTED_URL` and `NUI_CEF_SELECTED_SHA256` name the selected archive, for packaging that fetches it itself.
+`NUI_CEF_API_VERSION`
 selects the CEF API version, by default the newest one of the CEF headers in use, so a build against a system package
 works with exactly that package and newer CEF versions that keep the API version.
 
