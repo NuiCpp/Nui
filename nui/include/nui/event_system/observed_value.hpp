@@ -1260,6 +1260,8 @@ namespace Nui
                         forEachReaderContext([](RangeEventContext& c) { c.reset(true); });
                         update();
                         ObservedBase::eventContext_->executeActiveEventsImmediately();
+                        // The full range update renders the change, but this should never be necessary.
+                        NUI_ASSERT(false, "Range tracking did not settle after 3 flushes, rendered the range anew.");
                         return;
                     }
                 }
@@ -1268,6 +1270,7 @@ namespace Nui
                     forEachReaderContext([](RangeEventContext& c) { c.reset(true); });
                     update();
                     ObservedBase::eventContext_->executeActiveEventsImmediately();
+                    NUI_ASSERT(false, "Range tracking rejected a change, rendered the range anew.");
                     return;
                 }
                 else

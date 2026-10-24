@@ -11,7 +11,9 @@
 #include <algorithm>
 #include <deque>
 #include <limits>
+#include <memory>
 #include <random>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -289,4 +291,19 @@ namespace Nui::Tests
         globalEventContext.executeActiveEventsImmediately();
         rowParityTest(rows, parent);
     }
+
+#ifndef NDEBUG
+    TEST_F(TestRangeTracking, ChangeThatTheTrackingCannotTakeIsReported)
+    {
+        auto rows = makeRows<std::vector>(4);
+        auto context = std::make_shared<RangeEventContext>();
+        rows.attachReaderContext(context);
+
+        // Without the registered after effect, a flush no longer resets the tracked ranges.
+        globalEventContext.reset();
+        rows.push_back("a");
+
+        EXPECT_THROW(rows[0] = "b", std::runtime_error);
+    }
+#endif
 }
