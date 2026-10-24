@@ -7,6 +7,7 @@
 #include <nui/utility/meta/pick_first.hpp>
 #include <nui/utility/move_detector.hpp>
 
+#include <algorithm>
 #include <memory>
 #include <vector>
 #include <functional>
@@ -1426,7 +1427,13 @@ namespace Nui
             if (count == std::size_t{0})
                 return *this;
             const auto sizeBefore = this->contained_.size();
-            const auto high = count == std::string::npos ? sizeBefore - 1 : count - 1;
+            if (index >= sizeBefore)
+            {
+                // Erases nothing, or throws std::out_of_range for an index past the end.
+                this->contained_.erase(index, count);
+                return *this;
+            }
+            const auto high = index + std::min(count, sizeBefore - index) - 1;
             this->eraseNotify(index, high);
             this->contained_.erase(index, count);
             this->insertRangeChecked(index, high, RangeOperationType::Erase);

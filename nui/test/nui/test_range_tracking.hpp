@@ -376,4 +376,29 @@ namespace Nui::Tests
         for (int child = 1; child <= 4; ++child)
             EXPECT_TRUE(parent["children"][child].hasOwnProperty("marker")) << child;
     }
+
+    TEST_F(TestRangeTracking, StringEraseOfACountInTheMiddleUpdatesView)
+    {
+        Nui::val parent;
+        Observed<std::string> text{"ABCDEFGH"};
+        rangeTextBodyRender(text, parent);
+
+        text.erase(2, 3);
+
+        globalEventContext.executeActiveEventsImmediately();
+        textBodyParityTest(text, parent);
+    }
+
+    TEST_F(TestRangeTracking, StringEraseOfACountPastTheEndUpdatesView)
+    {
+        Nui::val parent;
+        Observed<std::string> text{"ABCDEFGH"};
+        rangeTextBodyRender(text, parent);
+
+        text.erase(5, 10);
+        text.erase(5, 2);
+
+        globalEventContext.executeActiveEventsImmediately();
+        textBodyParityTest(text, parent);
+    }
 }
