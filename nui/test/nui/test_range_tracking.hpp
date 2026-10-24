@@ -261,4 +261,32 @@ namespace Nui::Tests
             }
         }
     }
+
+    TEST_F(TestRangeTracking, ShrinkingResizeAfterPendingPushBacksStaysInBounds)
+    {
+        Nui::val parent;
+        auto rows = makeRows<std::vector>(2);
+        rangeTextBodyRender(rows, parent);
+
+        for (auto const* text : {"a", "b", "c"})
+            rows.push_back(text);
+        rows.resize(2);
+
+        globalEventContext.executeActiveEventsImmediately();
+        rowParityTest(rows, parent);
+    }
+
+    TEST_F(TestRangeTracking, ShrinkingResizeWithFillValueAfterPendingPushBacksStaysInBounds)
+    {
+        Nui::val parent;
+        auto rows = makeRows<std::vector>(2);
+        rangeTextBodyRender(rows, parent);
+
+        for (auto const* text : {"a", "b", "c"})
+            rows.push_back(text);
+        rows.resize(3, "fill");
+
+        globalEventContext.executeActiveEventsImmediately();
+        rowParityTest(rows, parent);
+    }
 }

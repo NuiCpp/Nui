@@ -1134,16 +1134,16 @@ namespace Nui
         resize(size_type count)
         {
             const auto sizeBefore = contained_.size();
-            if (sizeBefore < count && sizeBefore != 0)
-            {
-                eraseNotify(sizeBefore, count - 1);
-            }
+            if (count < sizeBefore)
+                eraseNotify(count, sizeBefore - 1);
+            else if (sizeBefore < count)
+                insertNotify();
             contained_.resize(count);
             if (sizeBefore < count)
             {
                 insertRangeChecked(sizeBefore, count - 1, RangeOperationType::Insert);
             }
-            else if (sizeBefore != 0)
+            else if (count < sizeBefore)
             {
                 insertRangeChecked(count, sizeBefore - 1, RangeOperationType::Erase);
             }
@@ -1155,13 +1155,16 @@ namespace Nui
         resize(size_type count, value_type const& fillValue)
         {
             const auto sizeBefore = contained_.size();
-            eraseNotify(sizeBefore, count - 1);
+            if (count < sizeBefore)
+                eraseNotify(count, sizeBefore - 1);
+            else if (sizeBefore < count)
+                insertNotify();
             contained_.resize(count, fillValue);
             if (sizeBefore < count)
             {
                 insertRangeChecked(sizeBefore, count - 1, RangeOperationType::Insert);
             }
-            else if (sizeBefore != 0)
+            else if (count < sizeBefore)
             {
                 insertRangeChecked(count, sizeBefore - 1, RangeOperationType::Erase);
             }
