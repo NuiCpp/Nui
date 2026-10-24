@@ -477,4 +477,109 @@ namespace Nui::Tests
         rowParityTest(rows, parent1);
         rowParityTest(rows, parent2);
     }
+
+    TEST_F(TestRangeTracking, RandomChangesBetweenSyncsRenderEveryRow)
+    {
+        using Nui::Elements::body;
+        using Nui::Elements::div;
+        using namespace Nui::Attributes;
+
+        Nui::val parent;
+        std::weak_ptr<Dom::BasicElement> weakHost;
+        // Ranges attached during a round, a deque keeps the references stable.
+        std::deque<Nui::val> attachedParents;
+        // The mocked DOM knows the length of the children only after the first child was added.
+        auto rows = makeRows<std::vector>(1);
+        auto renderer = [](long long, auto const& row) {
+            return div{}(row);
+        };
+        render(body{}(div{reference = parent}(range(rows), renderer), div{reference = weakHost}()));
+        auto host = std::static_pointer_cast<Dom::Element>(weakHost.lock());
+
+        std::mt19937 generator{3};
+        const auto pick = [&generator](long low, long high) {
+            return std::uniform_int_distribution<long>{low, high}(generator);
+        };
+        const auto rendered = [](Nui::val const& rangeParent) {
+            std::string texts;
+            for (long long i = 0, end = rangeParent["children"]["length"].as<long long>(); i != end; ++i)
+                texts += rangeParent["children"][i]["textContent"].as<std::string>() + "|";
+            return texts;
+        };
+        const auto syncAndCompare = [&](int round, int change) {
+            globalEventContext.executeActiveEventsImmediately();
+            std::string expected;
+            for (auto const& row : rows.value())
+                expected += row + "|";
+            EXPECT_EQ(rendered(parent), expected) << "round " << round << ", change " << change;
+            for (auto const& attached : attachedParents)
+                EXPECT_EQ(rendered(attached), expected) << "attached range, round " << round << ", change " << change;
+        };
+
+        int next = 0;
+        for (int round = 0; round != 300 && !HasFailure(); ++round)
+        {
+            std::vector<std::string> initial;
+            for (auto count = pick(0, 8); count != 0; --count)
+                initial.push_back(std::to_string(next++));
+            rows = std::move(initial);
+            host->clearChildren();
+            attachedParents.clear();
+            syncAndCompare(round, -1);
+
+            for (int change = 0; change != 40 && !HasFailure(); ++change)
+            {
+                const auto size = static_cast<long>(rows.size());
+                switch (pick(0, 9))
+                {
+                    case 0:
+                    {
+                        std::vector<std::string> incoming;
+                        for (auto count = pick(1, 3); count != 0; --count)
+                            incoming.push_back(std::to_string(next++));
+                        rows.insert(rows.cbegin() + pick(0, size), incoming.begin(), incoming.end());
+                        break;
+                    }
+                    case 1:
+                        rows.insert(rows.cbegin(), std::to_string(next++));
+                        break;
+                    case 2:
+                        rows.push_back(std::to_string(next++));
+                        break;
+                    case 3:
+                        if (size != 0)
+                        {
+                            const auto low = pick(0, size - 1);
+                            rows.erase(rows.cbegin() + low, rows.cbegin() + std::min(size, low + pick(1, 3)));
+                        }
+                        break;
+                    case 4:
+                        rows.pop_back();
+                        break;
+                    case 5:
+                        if (size != 0)
+                            rows[static_cast<std::size_t>(pick(0, size - 1))] = std::to_string(next++);
+                        break;
+                    case 6:
+                        if (size != 0)
+                            rows[static_cast<std::size_t>(pick(0, size - 1))].get() = std::to_string(next++);
+                        break;
+                    case 7:
+                        rows.resize(static_cast<std::size_t>(std::max(0L, size + pick(-3, 3))));
+                        break;
+                    case 8:
+                        if (size != 0 && attachedParents.size() < 2)
+                        {
+                            attachedParents.emplace_back();
+                            host->appendElement(div{reference = attachedParents.back()}(range(rows), renderer));
+                        }
+                        break;
+                    default:
+                        syncAndCompare(round, change);
+                        break;
+                }
+            }
+            syncAndCompare(round, 40);
+        }
+    }
 }
