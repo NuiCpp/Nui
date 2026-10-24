@@ -188,4 +188,77 @@ namespace Nui::Tests
             }
         }
     }
+
+    TEST_F(TestRangeTracking, InsertInsideAPendingInsertRendersEachRowOnce)
+    {
+        Nui::val parent;
+        auto rows = makeRows<std::vector>(4);
+        rangeTextBodyRender(rows, parent);
+
+        const std::vector<std::string> first{"a", "b", "c"};
+        rows.insert(rows.cbegin() + 1, first.begin(), first.end());
+        rows.insert(rows.cbegin() + 2, "d");
+
+        globalEventContext.executeActiveEventsImmediately();
+        rowParityTest(rows, parent);
+    }
+
+    TEST_F(TestRangeTracking, InsertRightAfterAPendingInsertRendersEachRowOnce)
+    {
+        Nui::val parent;
+        auto rows = makeRows<std::vector>(4);
+        rangeTextBodyRender(rows, parent);
+
+        const std::vector<std::string> first{"a", "b"};
+        rows.insert(rows.cbegin() + 1, first.begin(), first.end());
+        rows.insert(rows.cbegin() + 3, "c");
+        rows.insert(rows.cbegin() + 6, "d");
+
+        globalEventContext.executeActiveEventsImmediately();
+        rowParityTest(rows, parent);
+    }
+
+    TEST_F(TestRangeTracking, LongerInsertAtThePositionOfAPendingInsertRendersEachRowOnce)
+    {
+        Nui::val parent;
+        auto rows = makeRows<std::vector>(10);
+        rangeTextBodyRender(rows, parent);
+
+        rows.insert(rows.cbegin() + 5, "x");
+        rows.insert(rows.cbegin(), "a");
+        const std::vector<std::string> second{"b", "c"};
+        rows.insert(rows.cbegin(), second.begin(), second.end());
+
+        globalEventContext.executeActiveEventsImmediately();
+        rowParityTest(rows, parent);
+    }
+
+    TEST_F(TestRangeTracking, RandomPendingInsertsTrackEveryNewRowOnce)
+    {
+        std::mt19937 generator{11};
+        for (int round = 0; round != 100; ++round)
+        {
+            RangeEventContext context;
+            // true for the rows that are pending inserts.
+            std::vector<bool> pending(20, false);
+            for (int insert = 0; insert != 30; ++insert)
+            {
+                const auto low = std::uniform_int_distribution<long>{0, static_cast<long>(pending.size())}(generator);
+                const auto count = std::uniform_int_distribution<long>{1, 3}(generator);
+                context.insertModificationRange(low, low + count - 1, RangeOperationType::Insert);
+                pending.insert(pending.begin() + low, static_cast<std::size_t>(count), true);
+
+                std::vector<int> tracked(pending.size(), 0);
+                for (auto const& range : context)
+                {
+                    ASSERT_LE(0, range.low()) << range << " in round " << round;
+                    ASSERT_LT(range.high(), static_cast<long>(pending.size())) << range << " in round " << round;
+                    for (auto row = range.low(); row <= range.high(); ++row)
+                        ++tracked[static_cast<std::size_t>(row)];
+                }
+                for (std::size_t row = 0; row != pending.size(); ++row)
+                    ASSERT_EQ(tracked[row], pending[row] ? 1 : 0) << "row " << row << " in round " << round;
+            }
+        }
+    }
 }

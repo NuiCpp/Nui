@@ -346,22 +346,19 @@ namespace Nui
         void insertInsertRange(long low, long high)
         {
             // TODO: perform optimization using interval tree specialization for shifting subtrees.
-            auto newRange = Detail::RangeStateInterval<long>{low, high};
+            const auto count = high - low + 1;
 
-            // find insert at same position first to move previous insert at that position over:
-            auto it = trackedRanges_.find(newRange, [](auto const& a, auto const& b) {
-                return a.low() == b.low();
-            });
-
+            // A pending insert that holds low or ends right before it takes the new rows. Tracking them on their own
+            // would make the inserts overlap, which renders rows twice or not at all.
+            auto it = trackedRanges_.overlap_find({low - 1, low}, true);
             if (it != trackedRanges_.end())
             {
-                newRange = it->expand(newRange);
-                trackedRanges_.erase(it);
-                it = trackedRanges_.insert(newRange);
+                auto* const interval = it.node()->interval();
+                interval->high(interval->high() + count);
             }
             else
             {
-                it = trackedRanges_.insert(newRange);
+                it = trackedRanges_.insert({low, high});
             }
             auto* const inserted = it.node();
 
@@ -369,7 +366,7 @@ namespace Nui
             // TODO: This is the expensive part and should be optimized.
             for (++it; it != trackedRanges_.end(); ++it)
             {
-                it.node()->shiftRight(high - low + 1);
+                it.node()->shiftRight(count);
             }
             // Every node that did not shift but has shifted nodes below it is an ancestor of the inserted one, because
             // the shifted nodes are the ones after it.
