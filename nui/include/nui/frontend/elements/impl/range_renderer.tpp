@@ -97,8 +97,10 @@ namespace Nui::Detail
                     elementRenderer_(counter++, element)(*parent, Renderer{.type = RendererType::Append});
                 ownContext().reset();
 
+                const auto childCountBeforeAfter = parent->childCount();
                 if (!after_.empty())
                     parent->appendElements(after_);
+                renderedAfterCount_ = parent->childCount() - childCountBeforeAfter;
                 return true;
             }
             return false;
@@ -115,6 +117,12 @@ namespace Nui::Detail
         {
             return ownContext_;
         }
+        /// The children that render the rows, without the elements before and after them.
+        long renderedRowCount(auto const& parent) const
+        {
+            return static_cast<long>(parent->childCount()) - static_cast<long>(renderedBeforeCount_) -
+                static_cast<long>(renderedAfterCount_);
+        }
 
       protected:
         GeneratorT elementRenderer_;
@@ -122,6 +130,7 @@ namespace Nui::Detail
         RendererVector before_;
         RendererVector after_;
         std::size_t renderedBeforeCount_{0};
+        std::size_t renderedAfterCount_{0};
         std::shared_ptr<RangeEventContext> ownContext_{std::make_shared<RangeEventContext>()};
 
       private:
@@ -143,16 +152,22 @@ namespace Nui::Detail
         using BasicObservedRenderer<RangeT, GeneratorT>::before_;
         using BasicObservedRenderer<RangeT, GeneratorT>::after_;
         using BasicObservedRenderer<RangeT, GeneratorT>::renderedBeforeCount_;
+        using BasicObservedRenderer<RangeT, GeneratorT>::renderedRowCount;
 
-        void insertions(auto& parent)
+        /// @return false if a range is out of bounds, nothing is rendered from there on.
+        bool insertions(auto& parent)
         {
             auto valueRangeHolder = CommonHoldToken<RangeT>{};
             auto* valueRange = getValueRange(valueRangeHolder);
             if (valueRange == nullptr)
-                return;
+                return true;
 
+            const auto rowCount = static_cast<long>(valueRange->value().size());
             for (auto i = ownContext().begin(), end = ownContext().end(); i != end; ++i)
             {
+                // Inserts are replayed from the front, each one starts at most right after the rows rendered so far.
+                if (i->low() < 0 || i->high() >= rowCount || i->low() > renderedRowCount(parent))
+                    return false;
                 for (auto r = i->low(), high = i->high(); r <= high; ++r)
                 {
                     elementRenderer_(r, valueRange->value()[static_cast<std::size_t>(r)])(
@@ -162,45 +177,51 @@ namespace Nui::Detail
                             .metadata = static_cast<std::size_t>(r) + renderedBeforeCount_});
                 }
             }
+            return true;
         }
 
-        void modifications(auto& parent)
+        /// @return false if a range is out of bounds, nothing is rendered from there on.
+        bool modifications(auto& parent)
         {
             auto valueRangeHolder = CommonHoldToken<RangeT>{};
             auto* valueRange = getValueRange(valueRangeHolder);
             if (valueRange == nullptr)
-                return;
+                return true;
 
+            const auto rowCount = static_cast<long>(valueRange->value().size());
             for (auto const& range : ownContext())
             {
-                using RangeValueType = typename std::decay_t<decltype(range)>::value_type;
-                const auto clampedLow = std::max(range.low(), RangeValueType{0});
-                const auto clampedHigh =
-                    std::min(range.high(), static_cast<RangeValueType>(valueRange->value().size()) - RangeValueType{1});
-                if (clampedLow > clampedHigh)
-                    continue;
-                for (auto r = clampedLow, high = clampedHigh; r <= high; ++r)
+                if (range.low() < 0 || range.high() >= rowCount || range.high() >= renderedRowCount(parent))
+                    return false;
+                for (auto r = range.low(), high = range.high(); r <= high; ++r)
                 {
                     elementRenderer_(r, valueRange->value()[static_cast<std::size_t>(r)])(
                         *(*parent)[static_cast<std::size_t>(r) + renderedBeforeCount_],
                         Renderer{.type = RendererType::Replace});
                 }
             }
+            return true;
         }
 
-        void erasures(auto& parent)
+        /// @return false if a range is out of bounds, nothing is erased from there on.
+        bool erasures(auto& parent)
         {
             auto valueRangeHolder = CommonHoldToken<RangeT>{};
             auto* valueRange = getValueRange(valueRangeHolder);
             if (valueRange == nullptr)
-                return;
+                return true;
 
             for (auto const& eraseRange : reverse_view{ownContext()})
             {
+                // An empty range, [low, low - 1], erases nothing.
+                if (eraseRange.low() < 0 || eraseRange.high() < eraseRange.low() - 1 ||
+                    eraseRange.high() >= renderedRowCount(parent))
+                    return false;
                 parent->erase(
                     begin(*parent) + eraseRange.low() + renderedBeforeCount_,
                     begin(*parent) + eraseRange.high() + 1 + renderedBeforeCount_);
             }
+            return true;
         }
 
         bool updateChildren(bool initial) override
@@ -218,20 +239,25 @@ namespace Nui::Detail
             if (fullRangeUpdate(parent, initial))
                 return KeepRange;
 
+            bool inBounds = true;
             switch (ownContext().operationType())
             {
                 case RangeOperationType::Insert:
-                    insertions(parent);
+                    inBounds = insertions(parent);
                     break;
                 case RangeOperationType::Modify:
-                    modifications(parent);
+                    inBounds = modifications(parent);
                     break;
                 case RangeOperationType::Erase:
-                    erasures(parent);
+                    inBounds = erasures(parent);
                     break;
                 default:
                     break;
             }
+            // Tracked ranges that do not fit the rows or the children would corrupt memory when replayed. Rendering the
+            // whole range anew is slower, but correct.
+            if (!inBounds)
+                fullRangeUpdate(parent, true);
 
             return KeepRange;
         }

@@ -306,4 +306,74 @@ namespace Nui::Tests
         EXPECT_THROW(rows[0] = "b", std::runtime_error);
     }
 #endif
+
+    // Changes through value() are not observed: the tracked change that follows does not fit the rendered rows.
+    TEST_F(TestRangeTracking, ModificationOfARowThatIsNotRenderedRendersTheRangeAnew)
+    {
+        Nui::val parent;
+        auto rows = makeRows<std::vector>(4);
+        rangeTextBodyRender(rows, parent);
+
+        rows.value().push_back("untracked");
+        rows[4] = "modified";
+
+        globalEventContext.executeActiveEventsImmediately();
+        rowParityTest(rows, parent);
+    }
+
+    TEST_F(TestRangeTracking, EraseOfARowThatIsNotRenderedRendersTheRangeAnew)
+    {
+        Nui::val parent;
+        auto rows = makeRows<std::vector>(4);
+        rangeTextBodyRender(rows, parent);
+
+        rows.value().push_back("untracked");
+        rows.erase(rows.cbegin() + 4);
+
+        globalEventContext.executeActiveEventsImmediately();
+        rowParityTest(rows, parent);
+    }
+
+    TEST_F(TestRangeTracking, InsertOfARowThatIsGoneRendersTheRangeAnew)
+    {
+        Nui::val parent;
+        auto rows = makeRows<std::vector>(4);
+        rangeTextBodyRender(rows, parent);
+
+        rows.push_back("a");
+        rows.value().pop_back();
+
+        globalEventContext.executeActiveEventsImmediately();
+        rowParityTest(rows, parent);
+    }
+
+    TEST_F(TestRangeTracking, InsertAtTheEndOfARangeWithPrefixAndPostfixKeepsTheRenderedRows)
+    {
+        using Nui::Elements::body;
+        using Nui::Elements::div;
+        using namespace Nui::Attributes;
+
+        Nui::val parent;
+        auto rows = makeRows<std::vector>(4);
+        render(body{reference = parent}(
+            range(rows).before(div{}("prefix")).after(div{}("postfix1"), div{}("postfix2")),
+            [](long long, auto const& row) {
+                return div{}(row);
+            }));
+        // Rendering the range anew would replace the marked children.
+        for (int child = 1; child <= 4; ++child)
+            parent["children"][child].set("marker", Nui::val{true});
+
+        rows.push_back("a");
+        globalEventContext.executeActiveEventsImmediately();
+
+        ASSERT_EQ(parent["children"]["length"].as<long long>(), 8);
+        EXPECT_EQ(parent["children"][0]["textContent"].as<std::string>(), "prefix");
+        for (int row = 0; row != 5; ++row)
+            EXPECT_EQ(parent["children"][row + 1]["textContent"].as<std::string>(), rows.value()[row]) << row;
+        EXPECT_EQ(parent["children"][6]["textContent"].as<std::string>(), "postfix1");
+        EXPECT_EQ(parent["children"][7]["textContent"].as<std::string>(), "postfix2");
+        for (int child = 1; child <= 4; ++child)
+            EXPECT_TRUE(parent["children"][child].hasOwnProperty("marker")) << child;
+    }
 }
