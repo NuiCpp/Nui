@@ -154,6 +154,8 @@ namespace Nui
         {
             using lib_interval_tree::node<long, RangeStateInterval<long>, CustomIntervalTreeNode>::node;
 
+            // Shifts move the interval and max of this node only. The max of its ancestors has to be recalculated
+            // afterwards (recalculateMaxUpwards).
             void shiftRight(long offset)
             {
                 this->interval_.low(this->interval_.low() + offset);
@@ -166,6 +168,19 @@ namespace Nui
                 this->interval_.low(this->interval_.low() - offset);
                 this->interval_.high(this->interval_.high() - offset);
                 this->max_ = this->max_ - offset;
+            }
+
+            // Recalculates the max of this node and of all its ancestors from their intervals and children.
+            void recalculateMaxUpwards()
+            {
+                for (auto* node = this; node != nullptr; node = node->parent_)
+                {
+                    node->max_ = node->interval_.high();
+                    if (node->left_ != nullptr)
+                        node->max_ = std::max(node->max_, node->left_->max_);
+                    if (node->right_ != nullptr)
+                        node->max_ = std::max(node->max_, node->right_->max_);
+                }
             }
         };
 
@@ -348,15 +363,17 @@ namespace Nui
             {
                 it = trackedRanges_.insert(newRange);
             }
-            if (it != std::end(trackedRanges_))
-                ++it;
+            auto* const inserted = it.node();
 
             // move all subsequent intervals to the right:
             // TODO: This is the expensive part and should be optimized.
-            for (; it != trackedRanges_.end(); ++it)
+            for (++it; it != trackedRanges_.end(); ++it)
             {
                 it.node()->shiftRight(high - low + 1);
             }
+            // Every node that did not shift but has shifted nodes below it is an ancestor of the inserted one, because
+            // the shifted nodes are the ones after it.
+            inserted->recalculateMaxUpwards();
         }
         void insertEraseRange(long low, long high)
         {

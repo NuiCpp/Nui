@@ -6,7 +6,12 @@
 #include "engine/global_object.hpp"
 #include "engine/document.hpp"
 
+#include <nui/event_system/range_event_context.hpp>
+
+#include <algorithm>
 #include <deque>
+#include <limits>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -46,6 +51,14 @@ namespace Nui::Tests
             ASSERT_EQ(parent["children"]["length"].as<long long>(), static_cast<long long>(rows.size()));
             for (std::size_t index = 0; index < rows.size(); ++index)
                 EXPECT_EQ(parent["children"][index]["textContent"].as<std::string>(), rows.value()[index]) << index;
+        }
+
+        template <typename NodeT>
+        static long subtreeHigh(NodeT const* node)
+        {
+            if (node == nullptr)
+                return std::numeric_limits<long>::min();
+            return std::max({node->interval()->high(), subtreeHigh(node->left()), subtreeHigh(node->right())});
         }
     };
 
@@ -144,5 +157,35 @@ namespace Nui::Tests
 
         globalEventContext.executeActiveEventsImmediately();
         rowParityTest(rows, parent);
+    }
+
+    TEST_F(TestRangeTracking, ShiftedPendingInsertsKeepTheMaxOfEverySubtree)
+    {
+        RangeEventContext context;
+        for (long position : {10L, 20L, 30L, 40L, 50L, 60L, 70L})
+            context.insertModificationRange(position, position, RangeOperationType::Insert);
+        context.insertModificationRange(35L, 35L, RangeOperationType::Insert);
+
+        for (auto it = context.begin(); it != context.end(); ++it)
+            EXPECT_GE(it.node()->max(), subtreeHigh(it.node())) << *it;
+    }
+
+    TEST_F(TestRangeTracking, RandomPendingInsertsKeepTheMaxOfEverySubtree)
+    {
+        std::mt19937 generator{7};
+        for (int round = 0; round != 100; ++round)
+        {
+            RangeEventContext context;
+            long size = 20;
+            for (int insert = 0; insert != 30; ++insert)
+            {
+                const auto low = std::uniform_int_distribution<long>{0, size}(generator);
+                const auto count = std::uniform_int_distribution<long>{1, 3}(generator);
+                context.insertModificationRange(low, low + count - 1, RangeOperationType::Insert);
+                size += count;
+                for (auto it = context.begin(); it != context.end(); ++it)
+                    ASSERT_GE(it.node()->max(), subtreeHigh(it.node())) << *it << " in round " << round;
+            }
+        }
     }
 }
