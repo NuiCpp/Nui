@@ -256,8 +256,17 @@ namespace Nui
                 {
                     if (nextEraseOverride_)
                     {
-                        insertEraseRange(nextEraseOverride_->low(), nextEraseOverride_->high());
+                        const auto eraseOverride = *nextEraseOverride_;
                         nextEraseOverride_ = std::nullopt;
+                        // Every erased position was a pending insert that eraseInsertionFixup cut out:
+                        // nothing is left to erase from the rendered children.
+                        if (eraseOverride.high() < eraseOverride.low())
+                        {
+                            if (trackedRanges_.empty())
+                                operationType_ = RangeOperationType::Keep;
+                            break;
+                        }
+                        insertEraseRange(eraseOverride.low(), eraseOverride.high());
                     }
                     else
                         insertEraseRange(low, high);
@@ -395,38 +404,36 @@ namespace Nui
             if (high < lastInterval.high())
                 return true;
 
-            auto eraseRange = Detail::RangeStateInterval<long>{low, high};
-            auto eraseRangeOrig = eraseRange;
+            const auto eraseRange = Detail::RangeStateInterval<long>{low, high};
+            // Erased positions that are pending inserts. They are cut out of the inserts and never rendered, so the
+            // erase that is left for the rendered children is shorter by that many.
+            long cutCount = 0;
 
-            auto iter = trackedRanges_.overlap_find(eraseRange, true);
             // if erase is completely at the end of a previous insert, we can cut the inserted elements out.
-            for (; iter != trackedRanges_.end(); iter = trackedRanges_.overlap_find(eraseRangeOrig, true))
+            for (auto iter = trackedRanges_.overlap_find(eraseRange, true); iter != trackedRanges_.end();
+                 iter = trackedRanges_.overlap_find(eraseRange, true))
             {
-                if (iter == trackedRanges_.end())
-                    return true;
                 const auto insertInterval = *iter;
 
-                // erase overlaps insert to the end or over:
-                if (eraseRangeOrig.high() >= insertInterval.high())
-                {
-                    trackedRanges_.erase(iter);
-                    // if beginning of insert is left of erase, we have to insert the left part of the insert
-                    if (insertInterval.low() < eraseRangeOrig.low())
-                    {
-                        trackedRanges_.insert({insertInterval.low(), eraseRangeOrig.low() - 1});
-                        eraseRangeOrig.high(-insertInterval.high() + eraseRangeOrig.low() + eraseRangeOrig.high() - 1);
-                    }
+                // erase does not reach the end of the insert:
+                if (insertInterval.high() > high)
+                    break; // bail out
 
-                    eraseRange.high(eraseRange.high() - insertInterval.size() - 1);
+                trackedRanges_.erase(iter);
+                // if beginning of insert is left of erase, we have to keep the left part of the insert
+                if (insertInterval.low() < low)
+                {
+                    trackedRanges_.insert({insertInterval.low(), low - 1});
+                    cutCount += insertInterval.high() - low + 1;
                 }
                 else
-                {
-                    break; // bail out
-                }
+                    cutCount += insertInterval.size() + 1;
             }
 
-            if (eraseRange.high() != high)
-                nextEraseOverride_ = eraseRange;
+            // The cut positions all lie within [low, high], so what remains of the erase on the children after the
+            // flush that follows starts at low.
+            if (cutCount != 0)
+                nextEraseOverride_ = Detail::RangeStateInterval<long>{low, high - cutCount};
 
             // Other tracking cases are too complicated.
             // The reason is that cutting the intervals is not enough, we also have to modify where these insertions are
