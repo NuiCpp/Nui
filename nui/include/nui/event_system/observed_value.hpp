@@ -1215,7 +1215,10 @@ namespace Nui
             {
                 if (auto shared = it->lock())
                 {
-                    fn(*shared);
+                    if constexpr (std::is_invocable_v<Fn const&, std::shared_ptr<RangeEventContext> const&>)
+                        fn(shared);
+                    else
+                        fn(*shared);
                     ++it;
                 }
                 else
@@ -1227,22 +1230,32 @@ namespace Nui
 
         void insertRangeChecked(std::size_t low, std::size_t high, RangeOperationType type)
         {
+            // The flush before a retry renders the change in the contexts that took it already. Only the ones that
+            // could not take it are asked again, the others would render it twice. Modifications are asked of all
+            // contexts again, because they can be tracked before the element changes.
+            std::vector<std::shared_ptr<RangeEventContext>> retryContexts;
             std::function<void(int)> doInsert;
             doInsert = [&](int retries) {
                 NUI_ASSERT(ObservedBase::eventContext_ != nullptr, "Event context must never be null.");
 
-                bool needsRetry = false;
                 bool needsFlush = false;
                 bool rejected = false;
-                forEachReaderContext([&](RangeEventContext& c) {
-                    auto const r = c.insertModificationRange(low, high, type);
+                std::vector<std::shared_ptr<RangeEventContext>> contextsToRetry;
+                auto const insert = [&](std::shared_ptr<RangeEventContext> const& c) {
+                    auto const r = c->insertModificationRange(low, high, type);
                     if (r == RangeEventContext::InsertResult::Perform)
                         needsFlush = true;
                     else if (r == RangeEventContext::InsertResult::PerformAndRetry)
-                        needsRetry = true;
+                        contextsToRetry.push_back(c);
                     else if (r == RangeEventContext::InsertResult::Rejected)
                         rejected = true;
-                });
+                };
+                if (retries == 0 || type == RangeOperationType::Modify)
+                    forEachReaderContext(insert);
+                else
+                    std::for_each(retryContexts.begin(), retryContexts.end(), insert);
+                const bool needsRetry = !contextsToRetry.empty();
+                retryContexts = std::move(contextsToRetry);
 
                 if (needsFlush && !needsRetry)
                 {

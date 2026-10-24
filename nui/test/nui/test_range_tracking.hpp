@@ -401,4 +401,80 @@ namespace Nui::Tests
         globalEventContext.executeActiveEventsImmediately();
         textBodyParityTest(text, parent);
     }
+
+    TEST_F(TestRangeTracking, InsertAfterPendingEraseWorksInARangeAttachedInBetween)
+    {
+        using Nui::Elements::body;
+        using Nui::Elements::div;
+        using namespace Nui::Attributes;
+
+        Nui::val parent1;
+        Nui::val parent2;
+        std::weak_ptr<Dom::BasicElement> host;
+        auto rows = makeRows<std::vector>(4);
+        auto renderer = [](long long, auto const& row) {
+            return div{}(row);
+        };
+        render(body{}(div{reference = parent1}(range(rows), renderer), div{reference = host}()));
+
+        rows.erase(rows.cbegin());
+        std::static_pointer_cast<Dom::Element>(host.lock())->appendElement(
+            div{reference = parent2}(range(rows), renderer));
+        rows.push_back("new");
+
+        globalEventContext.executeActiveEventsImmediately();
+        rowParityTest(rows, parent1);
+        rowParityTest(rows, parent2);
+    }
+
+    TEST_F(TestRangeTracking, EraseAfterPendingModificationWorksInARangeAttachedInBetween)
+    {
+        using Nui::Elements::body;
+        using Nui::Elements::div;
+        using namespace Nui::Attributes;
+
+        Nui::val parent1;
+        Nui::val parent2;
+        std::weak_ptr<Dom::BasicElement> host;
+        auto rows = makeRows<std::vector>(6);
+        auto renderer = [](long long, auto const& row) {
+            return div{}(row);
+        };
+        render(body{}(div{reference = parent1}(range(rows), renderer), div{reference = host}()));
+
+        rows[1] = "modified";
+        std::static_pointer_cast<Dom::Element>(host.lock())->appendElement(
+            div{reference = parent2}(range(rows), renderer));
+        rows.erase(rows.cbegin() + 3);
+
+        globalEventContext.executeActiveEventsImmediately();
+        rowParityTest(rows, parent1);
+        rowParityTest(rows, parent2);
+    }
+
+    TEST_F(TestRangeTracking, ModificationThroughAReferenceAfterPendingInsertWorksInARangeAttachedInBetween)
+    {
+        using Nui::Elements::body;
+        using Nui::Elements::div;
+        using namespace Nui::Attributes;
+
+        Nui::val parent1;
+        Nui::val parent2;
+        std::weak_ptr<Dom::BasicElement> host;
+        auto rows = makeRows<std::vector>(4);
+        auto renderer = [](long long, auto const& row) {
+            return div{}(row);
+        };
+        render(body{}(div{reference = parent1}(range(rows), renderer), div{reference = host}()));
+
+        rows.push_back("new");
+        std::static_pointer_cast<Dom::Element>(host.lock())->appendElement(
+            div{reference = parent2}(range(rows), renderer));
+        // get() tracks the modification before the row changes.
+        rows[1].get() = "modified";
+
+        globalEventContext.executeActiveEventsImmediately();
+        rowParityTest(rows, parent1);
+        rowParityTest(rows, parent2);
+    }
 }
