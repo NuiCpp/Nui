@@ -7,6 +7,7 @@
 #include <nui/utility/meta/pick_first.hpp>
 #include <nui/utility/move_detector.hpp>
 
+#include <algorithm>
 #include <memory>
 #include <vector>
 #include <functional>
@@ -968,6 +969,7 @@ namespace Nui
         iterator insert(const_iterator pos, const value_type& value)
         {
             const auto distance = pos - cbegin();
+            insertNotify();
             auto it = contained_.insert(pos, value);
             insertRangeChecked(distance, distance, RangeOperationType::Insert);
             return iterator{this, it};
@@ -979,6 +981,7 @@ namespace Nui
         iterator insert(const_iterator pos, value_type&& value)
         {
             const auto distance = pos - cbegin();
+            insertNotify();
             auto it = contained_.insert(pos, std::move(value));
             insertRangeChecked(distance, distance, RangeOperationType::Insert);
             return iterator{this, it};
@@ -990,6 +993,7 @@ namespace Nui
         iterator insert(const_iterator pos, size_type count, const value_type& value)
         {
             const auto distance = pos - cbegin();
+            insertNotify();
             auto it = contained_.insert(pos, count, value);
             insertRangeChecked(distance, distance + count - 1, RangeOperationType::Insert);
             return iterator{this, it};
@@ -1003,6 +1007,7 @@ namespace Nui
         iterator insert(const_iterator pos, Iterator first, Iterator last)
         {
             const auto distance = pos - cbegin();
+            insertNotify();
             auto it = contained_.insert(pos, first, last);
             insertRangeChecked(distance, distance + std::distance(first, last) - 1, RangeOperationType::Insert);
             return iterator{this, it};
@@ -1014,6 +1019,7 @@ namespace Nui
         iterator insert(const_iterator pos, std::initializer_list<value_type> ilist)
         {
             const auto distance = pos - cbegin();
+            insertNotify();
             auto it = contained_.insert(pos, ilist);
             insertRangeChecked(distance, distance + ilist.size() - 1, RangeOperationType::Insert);
             return iterator{this, it};
@@ -1022,6 +1028,7 @@ namespace Nui
         iterator emplace(const_iterator pos, Args&&... args)
         {
             const auto distance = pos - cbegin();
+            insertNotify();
             auto it = contained_.emplace(pos, std::forward<Args>(args)...);
             insertRangeChecked(distance, distance, RangeOperationType::Insert);
             return iterator{this, it};
@@ -1064,6 +1071,7 @@ namespace Nui
         Detail::PickFirst_t<void, decltype(std::declval<U>().push_back(std::declval<const value_type&>()))>
         push_back(const value_type& value)
         {
+            insertNotify();
             contained_.push_back(value);
             insertRangeChecked(size() - 1, size() - 1, RangeOperationType::Insert);
         }
@@ -1071,6 +1079,7 @@ namespace Nui
         Detail::PickFirst_t<void, decltype(std::declval<U>().push_back(std::declval<value_type>()))>
         push_back(value_type&& value)
         {
+            insertNotify();
             contained_.push_back(std::move(value));
             insertRangeChecked(size() - 1, size() - 1, RangeOperationType::Insert);
         }
@@ -1078,6 +1087,7 @@ namespace Nui
         Detail::PickFirst_t<void, decltype(std::declval<U>().push_front(std::declval<const value_type&>()))>
         push_front(const value_type& value)
         {
+            insertNotify();
             contained_.push_front(value);
             insertRangeChecked(0, 0, RangeOperationType::Insert);
         }
@@ -1085,18 +1095,21 @@ namespace Nui
         Detail::PickFirst_t<void, decltype(std::declval<U>().push_front(std::declval<value_type>()))>
         push_front(value_type&& value)
         {
+            insertNotify();
             contained_.push_front(std::move(value));
             insertRangeChecked(0, 0, RangeOperationType::Insert);
         }
         template <typename... Args>
         void emplace_back(Args&&... args)
         {
+            insertNotify();
             contained_.emplace_back(std::forward<Args>(args)...);
             insertRangeChecked(size() - 1, size() - 1, RangeOperationType::Insert);
         }
         template <typename U = ContainerT, typename... Args>
         Detail::PickFirst_t<void, decltype(std::declval<U>().emplace_front())> emplace_front(Args&&... args)
         {
+            insertNotify();
             contained_.emplace_front(std::forward<Args>(args)...);
             insertRangeChecked(0, 0, RangeOperationType::Insert);
         }
@@ -1122,16 +1135,16 @@ namespace Nui
         resize(size_type count)
         {
             const auto sizeBefore = contained_.size();
-            if (sizeBefore < count && sizeBefore != 0)
-            {
-                eraseNotify(sizeBefore, count - 1);
-            }
+            if (count < sizeBefore)
+                eraseNotify(count, sizeBefore - 1);
+            else if (sizeBefore < count)
+                insertNotify();
             contained_.resize(count);
             if (sizeBefore < count)
             {
                 insertRangeChecked(sizeBefore, count - 1, RangeOperationType::Insert);
             }
-            else if (sizeBefore != 0)
+            else if (count < sizeBefore)
             {
                 insertRangeChecked(count, sizeBefore - 1, RangeOperationType::Erase);
             }
@@ -1143,13 +1156,16 @@ namespace Nui
         resize(size_type count, value_type const& fillValue)
         {
             const auto sizeBefore = contained_.size();
-            eraseNotify(sizeBefore, count - 1);
+            if (count < sizeBefore)
+                eraseNotify(count, sizeBefore - 1);
+            else if (sizeBefore < count)
+                insertNotify();
             contained_.resize(count, fillValue);
             if (sizeBefore < count)
             {
                 insertRangeChecked(sizeBefore, count - 1, RangeOperationType::Insert);
             }
-            else if (sizeBefore != 0)
+            else if (count < sizeBefore)
             {
                 insertRangeChecked(count, sizeBefore - 1, RangeOperationType::Erase);
             }
@@ -1199,7 +1215,10 @@ namespace Nui
             {
                 if (auto shared = it->lock())
                 {
-                    fn(*shared);
+                    if constexpr (std::is_invocable_v<Fn const&, std::shared_ptr<RangeEventContext> const&>)
+                        fn(shared);
+                    else
+                        fn(*shared);
                     ++it;
                 }
                 else
@@ -1211,22 +1230,32 @@ namespace Nui
 
         void insertRangeChecked(std::size_t low, std::size_t high, RangeOperationType type)
         {
+            // The flush before a retry renders the change in the contexts that took it already. Only the ones that
+            // could not take it are asked again, the others would render it twice. Modifications are asked of all
+            // contexts again, because they can be tracked before the element changes.
+            std::vector<std::shared_ptr<RangeEventContext>> retryContexts;
             std::function<void(int)> doInsert;
             doInsert = [&](int retries) {
                 NUI_ASSERT(ObservedBase::eventContext_ != nullptr, "Event context must never be null.");
 
-                bool needsRetry = false;
                 bool needsFlush = false;
                 bool rejected = false;
-                forEachReaderContext([&](RangeEventContext& c) {
-                    auto const r = c.insertModificationRange(low, high, type);
+                std::vector<std::shared_ptr<RangeEventContext>> contextsToRetry;
+                auto const insert = [&](std::shared_ptr<RangeEventContext> const& c) {
+                    auto const r = c->insertModificationRange(low, high, type);
                     if (r == RangeEventContext::InsertResult::Perform)
                         needsFlush = true;
                     else if (r == RangeEventContext::InsertResult::PerformAndRetry)
-                        needsRetry = true;
+                        contextsToRetry.push_back(c);
                     else if (r == RangeEventContext::InsertResult::Rejected)
                         rejected = true;
-                });
+                };
+                if (retries == 0 || type == RangeOperationType::Modify)
+                    forEachReaderContext(insert);
+                else
+                    std::for_each(retryContexts.begin(), retryContexts.end(), insert);
+                const bool needsRetry = !contextsToRetry.empty();
+                retryContexts = std::move(contextsToRetry);
 
                 if (needsFlush && !needsRetry)
                 {
@@ -1245,6 +1274,8 @@ namespace Nui
                         forEachReaderContext([](RangeEventContext& c) { c.reset(true); });
                         update();
                         ObservedBase::eventContext_->executeActiveEventsImmediately();
+                        // The full range update renders the change, but this should never be necessary.
+                        NUI_ASSERT(false, "Range tracking did not settle after 3 flushes, rendered the range anew.");
                         return;
                     }
                 }
@@ -1253,6 +1284,7 @@ namespace Nui
                     forEachReaderContext([](RangeEventContext& c) { c.reset(true); });
                     update();
                     ObservedBase::eventContext_->executeActiveEventsImmediately();
+                    NUI_ASSERT(false, "Range tracking rejected a change, rendered the range anew.");
                     return;
                 }
                 else
@@ -1281,6 +1313,20 @@ namespace Nui
                     }
                     return true;
                 }});
+        }
+
+        void insertNotify()
+        {
+            bool anyPendingChange = false;
+            forEachReaderContext([&](RangeEventContext& c) {
+                if (c.insertNotify())
+                    anyPendingChange = true;
+            });
+            if (anyPendingChange) // FORCE update:
+            {
+                update();
+                ObservedBase::eventContext_->executeActiveEventsImmediately();
+            }
         }
 
         void eraseNotify(std::size_t index, std::size_t high)
@@ -1394,7 +1440,13 @@ namespace Nui
             if (count == std::size_t{0})
                 return *this;
             const auto sizeBefore = this->contained_.size();
-            const auto high = count == std::string::npos ? sizeBefore - 1 : count - 1;
+            if (index >= sizeBefore)
+            {
+                // Erases nothing, or throws std::out_of_range for an index past the end.
+                this->contained_.erase(index, count);
+                return *this;
+            }
+            const auto high = index + std::min(count, sizeBefore - index) - 1;
             this->eraseNotify(index, high);
             this->contained_.erase(index, count);
             this->insertRangeChecked(index, high, RangeOperationType::Erase);

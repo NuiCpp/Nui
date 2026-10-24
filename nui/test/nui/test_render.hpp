@@ -1015,4 +1015,44 @@ namespace Nui::Tests
 
         EXPECT_EQ(Nui::val::global("document")["body"]["textContent"].as<std::string>(), "Hello");
     }
+
+    TEST_F(TestRender, RemovedReactiveElementIsReleasedWhenItsEventIsCleanedUp)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::span;
+
+        Observed<std::string> text{"Hello"};
+        auto token = std::make_shared<int>(0);
+        auto weakToken = std::weak_ptr{token};
+
+        render(div{}(span{}(observe(text), [&text, token = std::move(token)]() -> std::string {
+            return text.value();
+        })));
+        ASSERT_FALSE(weakToken.expired());
+
+        render(div{}());
+        globalEventContext.cleanInvalidEvents();
+
+        EXPECT_TRUE(weakToken.expired());
+    }
+
+    TEST_F(TestRender, RemovedReactiveFragmentIsReleasedWhenItsEventIsCleanedUp)
+    {
+        using Nui::Elements::div;
+        using Nui::Elements::fragment;
+
+        Observed<std::string> text{"Hello"};
+        auto token = std::make_shared<int>(0);
+        auto weakToken = std::weak_ptr{token};
+
+        render(div{}(div{}(fragment(observe(text), [&text, token = std::move(token)]() {
+            return div{}(text.value());
+        }))));
+        ASSERT_FALSE(weakToken.expired());
+
+        render(div{}());
+        globalEventContext.cleanInvalidEvents();
+
+        EXPECT_TRUE(weakToken.expired());
+    }
 }

@@ -154,6 +154,8 @@ namespace Nui
         {
             using lib_interval_tree::node<long, RangeStateInterval<long>, CustomIntervalTreeNode>::node;
 
+            // Shifts move the interval and max of this node only. The max of its ancestors has to be recalculated
+            // afterwards (recalculateMaxUpwards).
             void shiftRight(long offset)
             {
                 this->interval_.low(this->interval_.low() + offset);
@@ -166,6 +168,19 @@ namespace Nui
                 this->interval_.low(this->interval_.low() - offset);
                 this->interval_.high(this->interval_.high() - offset);
                 this->max_ = this->max_ - offset;
+            }
+
+            // Recalculates the max of this node and of all its ancestors from their intervals and children.
+            void recalculateMaxUpwards()
+            {
+                for (auto* node = this; node != nullptr; node = node->parent_)
+                {
+                    node->max_ = node->interval_.high();
+                    if (node->left_ != nullptr)
+                        node->max_ = std::max(node->max_, node->left_->max_);
+                    if (node->right_ != nullptr)
+                        node->max_ = std::max(node->max_, node->right_->max_);
+                }
             }
         };
 
@@ -222,6 +237,14 @@ namespace Nui
         {
             return eraseNotify(static_cast<long>(low), static_cast<long>(high));
         }
+        /// @brief Done before the insertion is performed:
+        /// @return true if the pending changes have to be applied first
+        bool insertNotify() const
+        {
+            // Modifications are rendered from the container, an insertion would shift the rows they are read from.
+            return operationType_ == RangeOperationType::Modify && !fullRangeUpdate_ && !disableOptimizations_ &&
+                !trackedRanges_.empty();
+        }
         InsertResult insertModificationRange(long low, long high, RangeOperationType type)
         {
             if (disableOptimizations_)
@@ -256,8 +279,17 @@ namespace Nui
                 {
                     if (nextEraseOverride_)
                     {
-                        insertEraseRange(nextEraseOverride_->low(), nextEraseOverride_->high());
+                        const auto eraseOverride = *nextEraseOverride_;
                         nextEraseOverride_ = std::nullopt;
+                        // Every erased position was a pending insert that eraseInsertionFixup cut out:
+                        // nothing is left to erase from the rendered children.
+                        if (eraseOverride.high() < eraseOverride.low())
+                        {
+                            if (trackedRanges_.empty())
+                                operationType_ = RangeOperationType::Keep;
+                            break;
+                        }
+                        insertEraseRange(eraseOverride.low(), eraseOverride.high());
                     }
                     else
                         insertEraseRange(low, high);
@@ -314,32 +346,31 @@ namespace Nui
         void insertInsertRange(long low, long high)
         {
             // TODO: perform optimization using interval tree specialization for shifting subtrees.
-            auto newRange = Detail::RangeStateInterval<long>{low, high};
+            const auto count = high - low + 1;
 
-            // find insert at same position first to move previous insert at that position over:
-            auto it = trackedRanges_.find(newRange, [](auto const& a, auto const& b) {
-                return a.low() == b.low();
-            });
-
+            // A pending insert that holds low or ends right before it takes the new rows. Tracking them on their own
+            // would make the inserts overlap, which renders rows twice or not at all.
+            auto it = trackedRanges_.overlap_find({low - 1, low}, true);
             if (it != trackedRanges_.end())
             {
-                newRange = it->expand(newRange);
-                trackedRanges_.erase(it);
-                it = trackedRanges_.insert(newRange);
+                auto* const interval = it.node()->interval();
+                interval->high(interval->high() + count);
             }
             else
             {
-                it = trackedRanges_.insert(newRange);
+                it = trackedRanges_.insert({low, high});
             }
-            if (it != std::end(trackedRanges_))
-                ++it;
+            auto* const inserted = it.node();
 
             // move all subsequent intervals to the right:
             // TODO: This is the expensive part and should be optimized.
-            for (; it != trackedRanges_.end(); ++it)
+            for (++it; it != trackedRanges_.end(); ++it)
             {
-                it.node()->shiftRight(high - low + 1);
+                it.node()->shiftRight(count);
             }
+            // Every node that did not shift but has shifted nodes below it is an ancestor of the inserted one, because
+            // the shifted nodes are the ones after it.
+            inserted->recalculateMaxUpwards();
         }
         void insertEraseRange(long low, long high)
         {
@@ -395,38 +426,36 @@ namespace Nui
             if (high < lastInterval.high())
                 return true;
 
-            auto eraseRange = Detail::RangeStateInterval<long>{low, high};
-            auto eraseRangeOrig = eraseRange;
+            const auto eraseRange = Detail::RangeStateInterval<long>{low, high};
+            // Erased positions that are pending inserts. They are cut out of the inserts and never rendered, so the
+            // erase that is left for the rendered children is shorter by that many.
+            long cutCount = 0;
 
-            auto iter = trackedRanges_.overlap_find(eraseRange, true);
             // if erase is completely at the end of a previous insert, we can cut the inserted elements out.
-            for (; iter != trackedRanges_.end(); iter = trackedRanges_.overlap_find(eraseRangeOrig, true))
+            for (auto iter = trackedRanges_.overlap_find(eraseRange, true); iter != trackedRanges_.end();
+                 iter = trackedRanges_.overlap_find(eraseRange, true))
             {
-                if (iter == trackedRanges_.end())
-                    return true;
                 const auto insertInterval = *iter;
 
-                // erase overlaps insert to the end or over:
-                if (eraseRangeOrig.high() >= insertInterval.high())
-                {
-                    trackedRanges_.erase(iter);
-                    // if beginning of insert is left of erase, we have to insert the left part of the insert
-                    if (insertInterval.low() < eraseRangeOrig.low())
-                    {
-                        trackedRanges_.insert({insertInterval.low(), eraseRangeOrig.low() - 1});
-                        eraseRangeOrig.high(-insertInterval.high() + eraseRangeOrig.low() + eraseRangeOrig.high() - 1);
-                    }
+                // erase does not reach the end of the insert:
+                if (insertInterval.high() > high)
+                    break; // bail out
 
-                    eraseRange.high(eraseRange.high() - insertInterval.size() - 1);
+                trackedRanges_.erase(iter);
+                // if beginning of insert is left of erase, we have to keep the left part of the insert
+                if (insertInterval.low() < low)
+                {
+                    trackedRanges_.insert({insertInterval.low(), low - 1});
+                    cutCount += insertInterval.high() - low + 1;
                 }
                 else
-                {
-                    break; // bail out
-                }
+                    cutCount += insertInterval.size() + 1;
             }
 
-            if (eraseRange.high() != high)
-                nextEraseOverride_ = eraseRange;
+            // The cut positions all lie within [low, high], so what remains of the erase on the children after the
+            // flush that follows starts at low.
+            if (cutCount != 0)
+                nextEraseOverride_ = Detail::RangeStateInterval<long>{low, high - cutCount};
 
             // Other tracking cases are too complicated.
             // The reason is that cutting the intervals is not enough, we also have to modify where these insertions are
