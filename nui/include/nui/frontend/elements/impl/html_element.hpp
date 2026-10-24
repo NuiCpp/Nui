@@ -98,7 +98,8 @@ namespace Nui
                         std::forward<GeneratorT>(elementRenderer)](auto& parentElement, Renderer const& gen) {
                 using ElementType = std::decay_t<decltype(parentElement)>;
 
-                // function is called when observed values change to refabricate the children.
+                // function is called when observed values change to refabricate the children. It holds itself only
+                // weakly: the event that calls it owns it, so it is released even when that event is removed uncalled.
                 auto childrenRefabricator = std::make_shared<std::function<void()>>();
 
                 auto&& createdSelf = renderElement(gen, parentElement, self);
@@ -147,15 +148,13 @@ namespace Nui
                                              render,
                                              fragmentContext = Detail::FragmentContext<ElementType>{},
                                              createdSelfWeak = std::weak_ptr<ElementType>(createdSelf),
-                                             childrenRefabricator]() mutable {
+                                             childrenRefabricatorWeak = std::weak_ptr{childrenRefabricator}]() mutable {
+                        auto childrenRefabricator = childrenRefabricatorWeak.lock();
                         fragmentContext.clear();
 
                         auto parent = createdSelfWeak.lock();
-                        if (!parent || observedValues.isAnyExpired())
-                        {
-                            childrenRefabricator.reset();
+                        if (!childrenRefabricator || !parent || observedValues.isAnyExpired())
                             return;
-                        }
 
                         Detail::makeChildrenUpdateEvent(observedValues, childrenRefabricator, createdSelfWeak);
 
@@ -179,13 +178,11 @@ namespace Nui
                                              elementRenderer,
                                              render,
                                              createdSelfWeak = std::weak_ptr<ElementType>(createdSelf),
-                                             childrenRefabricator]() mutable {
+                                             childrenRefabricatorWeak = std::weak_ptr{childrenRefabricator}]() mutable {
+                        auto childrenRefabricator = childrenRefabricatorWeak.lock();
                         auto parent = createdSelfWeak.lock();
-                        if (!parent || observedValues.isAnyExpired())
-                        {
-                            childrenRefabricator.reset();
+                        if (!childrenRefabricator || !parent || observedValues.isAnyExpired())
                             return;
-                        }
 
                         // clear children
                         parent->clearChildren();
