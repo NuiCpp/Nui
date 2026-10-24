@@ -222,6 +222,14 @@ namespace Nui
         {
             return eraseNotify(static_cast<long>(low), static_cast<long>(high));
         }
+        /// @brief Done before the insertion is performed:
+        /// @return true if the pending changes have to be applied first
+        bool insertNotify() const
+        {
+            // Modifications are rendered from the container, an insertion would shift the rows they are read from.
+            return operationType_ == RangeOperationType::Modify && !fullRangeUpdate_ && !disableOptimizations_ &&
+                !trackedRanges_.empty();
+        }
         InsertResult insertModificationRange(long low, long high, RangeOperationType type)
         {
             if (disableOptimizations_)

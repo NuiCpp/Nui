@@ -6,6 +6,7 @@
 #include "engine/global_object.hpp"
 #include "engine/document.hpp"
 
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -113,6 +114,33 @@ namespace Nui::Tests
         rows.push_back("b");
         rows.erase(rows.cbegin() + 4, rows.cend());
         rows.insert(rows.cbegin(), "c");
+
+        globalEventContext.executeActiveEventsImmediately();
+        rowParityTest(rows, parent);
+    }
+
+    TEST_F(TestRangeTracking, InsertAfterPendingModificationRendersTheModifiedRow)
+    {
+        Nui::val parent;
+        auto rows = makeRows<std::vector>(10);
+        rangeTextBodyRender(rows, parent);
+
+        rows[5] = "modified";
+        rows.insert(rows.cbegin(), "new");
+
+        globalEventContext.executeActiveEventsImmediately();
+        rowParityTest(rows, parent);
+    }
+
+    TEST_F(TestRangeTracking, PushFrontAfterPendingModificationRendersTheModifiedRow)
+    {
+        Nui::val parent;
+        auto rows = makeRows<std::deque>(10);
+        rangeTextBodyRender(rows, parent);
+
+        rows[2] = "modified";
+        rows[7] = "modified";
+        rows.push_front("new");
 
         globalEventContext.executeActiveEventsImmediately();
         rowParityTest(rows, parent);
